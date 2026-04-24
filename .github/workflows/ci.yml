@@ -39,6 +39,46 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @iox/shared build
 
+  prisma-drift:
+    name: Prisma schema ↔ migrations drift
+    needs: install
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: iox
+          POSTGRES_PASSWORD: iox
+          POSTGRES_DB: iox_shadow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U iox -d iox_shadow"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+
+      # Fails (exit-code 2) if migrations/ don't fully describe schema.prisma —
+      # exactement le symptôme qui a causé les 500 marketplace en prod le 2026-04-24.
+      - name: Check migrations cover schema
+        env:
+          SHADOW_DATABASE_URL: postgresql://iox:iox@localhost:5432/iox_shadow?sslmode=disable
+        run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code
+
   backend:
     name: Backend (typecheck + lint + test + build)
     needs: install
@@ -166,14 +206,14 @@ jobs:
 
   summary:
     name: CI summary
-    needs: [backend, frontend, e2e]
+    needs: [prisma-drift, backend, frontend, e2e]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Check status
         run: |
-          if [[ "${{ needs.backend.result }}" != "success" || "${{ needs.frontend.result }}" != "success" || "${{ needs.e2e.result }}" != "success" ]]; then
-            echo "CI failed — backend=${{ needs.backend.result }} frontend=${{ needs.frontend.result }} e2e=${{ needs.e2e.result }}"
+          if [[ "${{ needs.prisma-drift.result }}" != "success" || "${{ needs.backend.result }}" != "success" || "${{ needs.frontend.result }}" != "success" || "${{ needs.e2e.result }}" != "success" ]]; then
+            echo "CI failed — prisma-drift=${{ needs.prisma-drift.result }} backend=${{ needs.backend.result }} frontend=${{ needs.frontend.result }} e2e=${{ needs.e2e.result }}"
             exit 1
           fi
           echo "CI green ✔"
