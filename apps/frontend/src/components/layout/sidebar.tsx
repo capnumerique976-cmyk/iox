@@ -222,7 +222,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           className="flex items-center gap-3 rounded-lg p-2 -mx-2 hover:bg-gray-100/80 transition-colors"
         >
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-iox-primary text-sm font-semibold text-white shadow-premium-sm">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-iox-primary text-sm font-semibold text-white shadow-glow-cyan-sm ring-1 ring-premium-accent/20">
             {(user.firstName?.[0] ?? '').toUpperCase()}
             {(user.lastName?.[0] ?? '').toUpperCase()}
           </div>
@@ -281,17 +281,17 @@ function NavLink({
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-fast ease-premium',
+        'group relative flex items-center gap-2.5 overflow-hidden rounded-lg px-3 py-2 text-sm transition-all duration-fast ease-premium',
         active
-          ? 'bg-premium-accent/10 text-premium-primary font-medium shadow-premium-sm'
+          ? 'bg-gradient-to-r from-premium-accent/15 via-premium-accent/8 to-transparent text-premium-primary font-medium shadow-premium-sm ring-1 ring-inset ring-premium-accent/10'
           : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900',
       )}
     >
-      {/* Indicateur actif : filet vertical gradient */}
+      {/* Indicateur actif : filet vertical gradient + léger glow cyan */}
       {active && (
         <span
           aria-hidden
-          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-gradient-iox-accent"
+          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-gradient-iox-accent shadow-[0_0_8px_rgba(45,156,219,0.55)]"
         />
       )}
       <Icon

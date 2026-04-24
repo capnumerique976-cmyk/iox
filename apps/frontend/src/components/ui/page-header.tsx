@@ -41,7 +41,9 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4',
+        'relative flex flex-col gap-3 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4',
+        // Fine ligne basse premium (gradient cyan→violet très discret)
+        "after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-gradient-to-r after:from-premium-accent/30 after:via-premium-accent/10 after:to-transparent after:content-['']",
         className,
       )}
     >
@@ -55,7 +57,11 @@ export function PageHeader({
           {icon ? (
             <div
               aria-hidden
-              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-premium-accent/10 text-premium-accent sm:inline-flex"
+              className={cn(
+                'hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:inline-flex',
+                'bg-gradient-to-br from-premium-accent/20 via-premium-accent/10 to-indigo-500/15',
+                'text-premium-accent ring-1 ring-inset ring-premium-accent/20 shadow-premium-sm',
+              )}
             >
               {icon}
             </div>

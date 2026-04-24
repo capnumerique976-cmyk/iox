@@ -299,10 +299,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Tableau de bord</h1>
+      {/* Header — accent premium subtil (halo cyan + bordure basse gradient) */}
+      <div className="relative flex flex-wrap items-start justify-between gap-2 overflow-hidden pb-4 after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-gradient-to-r after:from-premium-accent/30 after:via-premium-accent/10 after:to-transparent">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-premium-accent/10 blur-3xl"
+        />
+        <div className="relative min-w-0">
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+            Tableau de{' '}
+            <span className="bg-gradient-to-r from-premium-accent to-indigo-500 bg-clip-text text-transparent">
+              bord
+            </span>
+          </h1>
           {lastUpdated && (
             <p className="text-xs text-gray-400 mt-1">
               Mis à jour{' '}
@@ -313,7 +322,7 @@ export default function DashboardPage() {
         <button
           onClick={fetchAll}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-40"
+          className="relative inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent disabled:opacity-40"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           Actualiser

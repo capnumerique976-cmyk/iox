@@ -61,7 +61,19 @@ export function MetricCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: DURATION.slow, ease: EASE_PREMIUM, delay }}
     >
-      <Card variant="metric" className={cn('p-4', className)}>
+      <Card
+        variant="metric"
+        className={cn(
+          'group/metric relative overflow-hidden p-4 transition-all duration-base ease-premium',
+          'hover:-translate-y-0.5 hover:border-premium-accent/40 hover:shadow-glow-cyan-sm',
+          className,
+        )}
+      >
+        {/* Accent premium — fine ligne top cyan→violet révélée au hover */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-premium-accent/40 to-transparent opacity-0 transition-opacity duration-base ease-premium group-hover/metric:opacity-100"
+        />
         <div className="relative z-[1] flex items-start justify-between">
           <div className="flex-1">
             <p className="mb-1 text-xs text-muted-foreground">{label}</p>
