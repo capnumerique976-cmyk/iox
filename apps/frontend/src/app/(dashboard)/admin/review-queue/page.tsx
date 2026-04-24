@@ -110,10 +110,26 @@ export default function ReviewQueuePage() {
       ]);
       if (!resList.ok) throw new Error();
       const json = await resList.json();
-      setItems(json.data ?? []);
-      setTotal(json.meta?.total ?? 0);
-      setTotalPages(json.meta?.totalPages ?? 1);
-      if (resCounts.ok) setCounts(await resCounts.json());
+      // Le backend enveloppe toutes les réponses dans { success, data, timestamp }.
+      // Pour les endpoints paginés, `data` contient lui-même { data: [...], meta: {...} }.
+      const payload = json?.data ?? json;
+      setItems(Array.isArray(payload?.data) ? payload.data : []);
+      setTotal(payload?.meta?.total ?? 0);
+      setTotalPages(payload?.meta?.totalPages ?? 1);
+      if (resCounts.ok) {
+        const countsJson = await resCounts.json();
+        const countsPayload = countsJson?.data ?? countsJson;
+        if (countsPayload && typeof countsPayload === 'object') {
+          setCounts({
+            total: countsPayload.total ?? 0,
+            byType: {
+              publication: countsPayload.byType?.publication ?? 0,
+              media: countsPayload.byType?.media ?? 0,
+              document: countsPayload.byType?.document ?? 0,
+            },
+          });
+        }
+      }
     } catch {
       setError('Impossible de charger la file de revue');
     } finally {
@@ -146,8 +162,10 @@ export default function ReviewQueuePage() {
           setMediaPreviews((p) => ({ ...p, [it.entityId]: null }));
           return;
         }
-        const asset = await resAsset.json();
-        const urlJson = await resUrl.json();
+        const assetRaw = await resAsset.json();
+        const urlRaw = await resUrl.json();
+        const asset = assetRaw?.data ?? assetRaw;
+        const urlJson = urlRaw?.data ?? urlRaw;
         setMediaPreviews((p) => ({
           ...p,
           [it.entityId]: {

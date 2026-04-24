@@ -331,9 +331,13 @@ export default function UsersPage() {
       });
       if (!res.ok) throw new Error();
       const json = await res.json();
-      setUsers(json.data ?? []);
-      setTotal(json.meta?.total ?? 0);
-      setTotalPages(json.meta?.totalPages ?? 1);
+      // Le backend enveloppe toutes les réponses dans { success, data, timestamp }.
+      // Pour les endpoints paginés, `data` contient lui-même { data: [...], meta: {...} }.
+      // On tolère les deux formes pour rester compatible si l'enveloppe évolue.
+      const payload = json?.data ?? json;
+      setUsers(Array.isArray(payload?.data) ? payload.data : []);
+      setTotal(payload?.meta?.total ?? 0);
+      setTotalPages(payload?.meta?.totalPages ?? 1);
     } catch {
       setError('Impossible de charger les utilisateurs');
     } finally {
