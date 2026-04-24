@@ -175,7 +175,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             return (
               <div key={section.title} className="mb-2">
                 <div className="px-5 pt-3 pb-1.5">
-                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.12em]">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#00D4FF]/70">
                     {section.title}
                   </span>
                 </div>
@@ -196,7 +196,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           {visibleAdmin.length > 0 && (
             <div className="mb-2">
               <div className="px-5 pt-3 pb-1.5">
-                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.12em]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7B61FF]/80">
                   Administration
                 </span>
               </div>
@@ -216,21 +216,21 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {/* Pied de barre — utilisateur connecté */}
-      <div className="p-4 border-t border-gray-200/70 flex-shrink-0 bg-gradient-to-b from-transparent to-gray-50/50">
+      <div className="p-4 border-t border-white/10 flex-shrink-0 bg-gradient-to-b from-transparent to-white/[0.03]">
         <Link
           href="/profile"
           onClick={onNavigate}
-          className="flex items-center gap-3 rounded-lg p-2 -mx-2 hover:bg-gray-100/80 transition-colors"
+          className="flex items-center gap-3 rounded-lg p-2 -mx-2 transition-colors hover:bg-white/5"
         >
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-iox-primary text-sm font-semibold text-white shadow-glow-cyan-sm ring-1 ring-premium-accent/20">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-iox-neon text-sm font-semibold text-white shadow-glow-cyan-sm ring-1 ring-[#00D4FF]/30">
             {(user.firstName?.[0] ?? '').toUpperCase()}
             {(user.lastName?.[0] ?? '').toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-900">
+            <p className="truncate text-sm font-medium text-white">
               {user.firstName} {user.lastName}
             </p>
-            <p className="truncate text-xs text-gray-500">{ROLE_LABELS[user.role]}</p>
+            <p className="truncate text-xs text-white/50">{ROLE_LABELS[user.role]}</p>
           </div>
         </Link>
         <button
@@ -238,7 +238,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             onNavigate?.();
             logout();
           }}
-          className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+          className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-white/55 transition-colors hover:bg-white/5 hover:text-white"
         >
           <LogOut className="h-3.5 w-3.5" aria-hidden />
           Déconnexion
@@ -255,7 +255,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function Sidebar() {
   // Masquée sous `lg` (<1024px) — sur mobile/tablette le drawer prend le relais.
   return (
-    <aside className="hidden lg:flex w-64 min-h-screen bg-white border-r border-gray-200/70 flex-col overflow-hidden">
+    <aside className="hidden lg:flex w-64 min-h-screen bg-[#0A0E1A]/85 backdrop-blur-xl border-r border-white/10 flex-col overflow-hidden">
       <SidebarContent />
     </aside>
   );
@@ -283,21 +283,21 @@ function NavLink({
       className={cn(
         'group relative flex items-center gap-2.5 overflow-hidden rounded-lg px-3 py-2 text-sm transition-all duration-fast ease-premium',
         active
-          ? 'bg-gradient-to-r from-premium-accent/15 via-premium-accent/8 to-transparent text-premium-primary font-medium shadow-premium-sm ring-1 ring-inset ring-premium-accent/10'
-          : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900',
+          ? 'bg-gradient-to-r from-[#00D4FF]/18 via-[#7B61FF]/10 to-transparent font-semibold text-white ring-1 ring-inset ring-[#00D4FF]/20'
+          : 'text-white/65 hover:bg-white/5 hover:text-white',
       )}
     >
-      {/* Indicateur actif : filet vertical gradient + léger glow cyan */}
+      {/* Indicateur actif : filet vertical gradient cyan→violet + glow */}
       {active && (
         <span
           aria-hidden
-          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-gradient-iox-accent shadow-[0_0_8px_rgba(45,156,219,0.55)]"
+          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-[#00D4FF] to-[#7B61FF] shadow-[0_0_10px_rgba(0,212,255,0.7)]"
         />
       )}
       <Icon
         className={cn(
           'h-4 w-4 flex-shrink-0 transition-colors',
-          active ? 'text-premium-accent' : 'text-gray-400 group-hover:text-gray-600',
+          active ? 'text-[#00D4FF]' : 'text-white/40 group-hover:text-white/80',
         )}
         aria-hidden
       />

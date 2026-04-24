@@ -23,9 +23,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-premium-accent" aria-hidden />
+      <div className="iox-neon-root dark min-h-screen flex items-center justify-center">
+        <div className="flex items-center gap-2 text-sm text-white/60">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-[#00D4FF]" aria-hidden />
           Chargement...
         </div>
       </div>
@@ -35,8 +35,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50/60">
-      <header className="sticky top-0 z-30 border-b border-gray-200/70 bg-white/85 backdrop-blur-md">
+    <div className="iox-neon-root dark relative min-h-screen overflow-x-hidden">
+      {/* Halos décoratifs ambiants — discrets pour ne pas perturber la lecture métier. */}
+      <div
+        aria-hidden
+        className="iox-halo top-[-120px] right-[-120px] h-[420px] w-[420px] bg-[#00D4FF]"
+      />
+      <div
+        aria-hidden
+        className="iox-halo bottom-[-120px] left-[-180px] h-[460px] w-[460px] bg-[#7B61FF]"
+      />
+
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0A0E1A]/80 backdrop-blur-xl">
         <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-6 sm:py-3">
           <div className="flex items-center gap-1.5 min-w-0">
             {/* Trigger mobile/tablette — visible < lg */}
@@ -54,13 +64,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <AlertsBell />
-            <div className="hidden h-8 w-px bg-gray-200 sm:block" aria-hidden />
+            <div className="hidden h-8 w-px bg-white/10 sm:block" aria-hidden />
             <Link
               href="/profile"
-              className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900 sm:px-2"
+              className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 text-sm text-white/80 transition-colors hover:bg-white/5 hover:text-white sm:px-2"
             >
               <div
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-iox-primary text-[11px] font-semibold text-white sm:h-7 sm:w-7"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-iox-neon text-[11px] font-semibold text-white shadow-glow-cyan-sm ring-1 ring-[#00D4FF]/30 sm:h-7 sm:w-7"
                 aria-hidden
               >
                 {(user.firstName?.[0] ?? '').toUpperCase()}
@@ -74,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <div className="flex">
+      <div className="relative flex">
         <Sidebar />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
           <SellerOnboardingBanner />

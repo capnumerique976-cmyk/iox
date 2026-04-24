@@ -23,13 +23,16 @@ export function MobileSidebar() {
         <button
           type="button"
           aria-label="Ouvrir le menu de navigation"
-          className="inline-flex items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 lg:hidden"
+          className="inline-flex items-center justify-center rounded-lg p-2 text-white/70 transition-colors hover:bg-white/5 hover:text-white lg:hidden"
         >
           <Menu className="h-5 w-5" aria-hidden />
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[86vw] max-w-xs p-0">
-        <div className="flex h-14 items-center border-b border-gray-200/70 px-5">
+      <SheetContent
+        side="left"
+        className="w-[86vw] max-w-xs border-r border-white/10 bg-[#0A0E1A]/95 p-0 text-white backdrop-blur-xl"
+      >
+        <div className="flex h-14 items-center border-b border-white/10 px-5">
           <Logo variant="horizontal" height={32} />
         </div>
         <SidebarContent onNavigate={() => setOpen(false)} />

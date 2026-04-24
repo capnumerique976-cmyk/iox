@@ -297,6 +297,173 @@
   }
 
   /* ─────────────────────────────────────────────────────────
+   * IOX Neon — cascade shell dark
+   *
+   * Lot 6 : bascule globale du shell authentifié en dark premium
+   * cohérent avec /login et /marketplace. Principe : scoper un ensemble
+   * d'overrides à `.iox-neon-root` pour remapper les classes Tailwind
+   * light les plus utilisées (bg-white, border-gray-*, text-gray-*)
+   * vers leurs équivalents dark glass — sans devoir modifier les 80+
+   * pages métier une par une.
+   *
+   * Règles :
+   *  — form controls (input/select/textarea) exclus via `:not()`
+   *    pour rester lisibles en clair (contrainte business : la saisie
+   *    doit rester en light)
+   *  — `.iox-form-light` permet de désactiver la cascade sur un sous-
+   *    arbre (ex. card de CRUD majoritairement formulaire)
+   *  — specificité (0,2,1) supérieure aux utilitaires Tailwind (0,1,0)
+   *  — couleurs métier (bg-green-100, bg-amber-50, bg-red-50…) non
+   *    remappées : les badges de statut restent lisibles
+   * ───────────────────────────────────────────────────────── */
+
+  /* Remappe les variables shadcn pour que Card/Button/etc. se noircissent. */
+  .iox-neon-root {
+    --background: 222 40% 6%; /* #0A0E1A */
+    --foreground: 0 0% 100%;
+    --card: 222 24% 11%; /* #12161F */
+    --card-foreground: 0 0% 100%;
+    --popover: 222 24% 11%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 193 100% 50%;
+    --primary-foreground: 222 40% 6%;
+    --secondary: 222 24% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 222 24% 14%;
+    --muted-foreground: 225 15% 72%;
+    --accent: 193 100% 50%;
+    --accent-foreground: 222 40% 6%;
+    --border: 0 0% 100% / 0.1;
+    --input: 0 0% 100% / 0.1;
+    --ring: 193 100% 50%;
+  }
+
+  /* Surfaces : tout ce qui est bg-white (sauf inputs et zones opt-out) devient glass dark. */
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-white,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-white\/85,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-white\/80,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-white\/60,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-slate-50,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-slate-50\/60,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-slate-100 {
+    background-color: rgba(18, 22, 31, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Surfaces douces (listes, rails, empty states) — bg-gray-50/100/200 */
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-gray-50,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-gray-50\/60,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-gray-50\/80,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-gray-100,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-gray-100\/80,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).bg-gray-200 {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  /* Hover surfaces */
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:bg-gray-50:hover,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:bg-gray-100:hover,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:bg-gray-100\/80:hover,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:bg-gray-100\/70:hover,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:bg-white:hover {
+    background-color: rgba(0, 212, 255, 0.08) !important;
+  }
+
+  /* Borders */
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).border-gray-100,
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).border-gray-200,
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).border-gray-200\/70,
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).border-gray-200\/80,
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).border-gray-300,
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).border-slate-200 {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).hover\:border-gray-300:hover {
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  /* Divide (listes divisées) */
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).divide-gray-50 > :not([hidden]) ~ :not([hidden]),
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  /* Text — mapping light → white with alpha (ne touche pas les inputs ni les tons métier rouge/vert/orange). */
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-gray-900,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-slate-900 {
+    color: #ffffff;
+  }
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-gray-800,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-gray-700 {
+    color: rgba(255, 255, 255, 0.88);
+  }
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-gray-600 {
+    color: rgba(255, 255, 255, 0.72);
+  }
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-gray-500 {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-gray-400 {
+    color: rgba(255, 255, 255, 0.45);
+  }
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-gray-300 {
+    color: rgba(255, 255, 255, 0.32);
+  }
+
+  /* Hover text clair → blanc */
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:text-gray-900:hover,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:text-gray-700:hover {
+    color: #ffffff;
+  }
+
+  /* Les liens / accents premium "text-premium-primary" (= navy) deviennent blancs sur fond dark. */
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-premium-primary {
+    color: #ffffff;
+  }
+  /* text-blue-600/700 (liens) → cyan neon */
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-blue-600,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-blue-700,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).text-blue-800 {
+    color: #00d4ff;
+  }
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:text-blue-700:hover,
+  .iox-neon-root :not(input):not(textarea):not(select):not(option):not(.iox-form-light):not(.iox-form-light *).hover\:text-blue-800:hover {
+    color: #6fe5ff;
+  }
+
+  /* Header / placeholder skeletons light — deviennent rails dark. */
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).bg-gray-100.animate-pulse,
+  .iox-neon-root :not(.iox-form-light):not(.iox-form-light *).bg-gray-200.animate-pulse {
+    background-color: rgba(255, 255, 255, 0.06);
+  }
+
+  /* Focus rings shadcn (ring-ring) — cyan plutôt que navy */
+  .iox-neon-root :where(.ring-ring) {
+    --tw-ring-color: rgba(0, 212, 255, 0.5);
+  }
+
+  /* `.iox-form-light` : opt-out localisé pour cartes de saisie majoritaires.
+   * Pose un fond blanc net et restaure les tons light à l'intérieur. */
+  .iox-neon-root .iox-form-light {
+    background-color: #ffffff;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.12);
+  }
+
+  /* Bouton "bg-blue-600" utilisé un peu partout pour les CTA → gradient neon */
+  .iox-neon-root :not(input):not(textarea):not(select):not(.iox-form-light):not(.iox-form-light *).bg-blue-600 {
+    background-image: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%);
+    background-color: transparent;
+    color: #ffffff;
+  }
+  .iox-neon-root :not(input):not(textarea):not(select):not(.iox-form-light):not(.iox-form-light *).hover\:bg-blue-700:hover {
+    filter: brightness(1.1);
+    background-color: transparent;
+  }
+
+  /* ─────────────────────────────────────────────────────────
    * IOX — table wrapper responsive
    * Usage : envelopper un <table> pour forcer le scroll horizontal
    * sur mobile plutôt que de casser le layout de la page.
