@@ -1,0 +1,179 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9.0.0'
+
+jobs:
+  install:
+    name: Install & cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Build shared package
+        run: pnpm --filter @iox/shared build
+
+  backend:
+    name: Backend (typecheck + lint + test + build)
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm db:generate
+
+      - name: Build shared
+        run: pnpm --filter @iox/shared build
+
+      - name: Typecheck backend
+        working-directory: apps/backend
+        run: npx tsc --noEmit
+
+      - name: Lint backend
+        working-directory: apps/backend
+        run: npx eslint "src/**/*.ts" --max-warnings 100
+
+      - name: Unit tests backend
+        working-directory: apps/backend
+        run: npx jest --ci --coverage=false
+
+      - name: Build backend
+        working-directory: apps/backend
+        run: npx tsc --project tsconfig.json --skipLibCheck
+
+  frontend:
+    name: Frontend (typecheck + lint + test + build)
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm db:generate
+
+      - name: Build shared
+        run: pnpm --filter @iox/shared build
+
+      - name: Typecheck frontend
+        working-directory: apps/frontend
+        run: npx tsc --noEmit
+
+      - name: Lint frontend
+        working-directory: apps/frontend
+        run: npx next lint --max-warnings 50
+
+      - name: Unit tests frontend
+        working-directory: apps/frontend
+        run: npx vitest run --reporter=default
+
+      - name: Build frontend
+        working-directory: apps/frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: npx next build
+
+  e2e:
+    name: Frontend E2E (Playwright)
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm db:generate
+
+      - name: Build shared
+        run: pnpm --filter @iox/shared build
+
+      - name: Install Playwright browsers
+        working-directory: apps/frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        working-directory: apps/frontend
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/frontend/playwright-report
+          retention-days: 7
+
+  summary:
+    name: CI summary
+    needs: [backend, frontend, e2e]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check status
+        run: |
+          if [[ "${{ needs.backend.result }}" != "success" || "${{ needs.frontend.result }}" != "success" || "${{ needs.e2e.result }}" != "success" ]]; then
+            echo "CI failed — backend=${{ needs.backend.result }} frontend=${{ needs.frontend.result }} e2e=${{ needs.e2e.result }}"
+            exit 1
+          fi
+          echo "CI green ✔"

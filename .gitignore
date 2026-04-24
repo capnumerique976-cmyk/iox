@@ -1,0 +1,60 @@
+# ── Dépendances & artefacts de build ──────────────────────────────
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# ── Environnement — tous les fichiers .env et variantes (jamais commit)
+*.env
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# ── Logs & résultats de test ──────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+test-results/
+playwright-report/
+playwright/.cache/
+
+# ── Backups / dumps / artefacts sensibles (jamais commit) ─────────
+backups/
+*.dump
+*.sql.gz
+*.tar.gz
+*.tgz
+
+# ── Secrets & clés (défense en profondeur) ────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# ── Compose operator-only (jamais en repo — rsync-exclude côté deploy.sh)
+docker-compose.vps*.yml
+!docker-compose.vps*.example.yml
+
+# ── OS / éditeurs ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Uploads applicatifs (données utilisateurs, jamais commit) ─────
+uploads/
+
+# ── NOTE : les fichiers migration.sql DOIVENT être commités ───────
+# Ils sont la source de vérité en préprod/prod (`prisma migrate deploy`).

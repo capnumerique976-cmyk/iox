@@ -1,0 +1,1215 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// IOX — Schéma Prisma
+// Plateforme MCH : conformité, traçabilité, logistique, mise en marché
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  COORDINATOR
+  BENEFICIARY_MANAGER
+  SUPPLY_MANAGER
+  QUALITY_MANAGER
+  MARKET_VALIDATOR
+  LOGISTICS_MANAGER
+  COMMERCIAL_MANAGER
+  BENEFICIARY
+  FUNDER
+  AUDITOR
+  MARKETPLACE_SELLER
+  MARKETPLACE_BUYER
+}
+
+enum BeneficiaryStatus {
+  DRAFT
+  QUALIFIED
+  IN_PROGRESS
+  SUSPENDED
+  EXITED
+}
+
+enum AccompanimentActionStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MaturityLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CompanyType {
+  SUPPLIER
+  COOPERATIVE
+  BUYER
+  PARTNER
+  INSTITUTIONAL
+}
+
+enum ProductStatus {
+  DRAFT
+  IN_PREPARATION
+  READY_FOR_VALIDATION
+  COMPLIANT
+  COMPLIANT_WITH_RESERVATIONS
+  BLOCKED
+  ARCHIVED
+}
+
+enum SupplyContractStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  TERMINATED
+}
+
+enum InboundBatchStatus {
+  RECEIVED
+  IN_CONTROL
+  ACCEPTED
+  REJECTED
+}
+
+enum ProductBatchStatus {
+  CREATED
+  READY_FOR_VALIDATION
+  AVAILABLE
+  RESERVED
+  SHIPPED
+  BLOCKED
+  DESTROYED
+}
+
+enum MarketReleaseDecisionStatus {
+  COMPLIANT
+  COMPLIANT_WITH_RESERVATIONS
+  NON_COMPLIANT
+}
+
+enum IncidentStatus {
+  OPEN
+  ANALYZING
+  ACTION_IN_PROGRESS
+  CONTROLLED
+  CLOSED
+}
+
+enum IncidentSeverity {
+  MINOR
+  MAJOR
+  CRITICAL
+}
+
+enum DocumentStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  REJECTED
+}
+
+enum DistributionStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum EntityType {
+  BENEFICIARY
+  PRODUCT
+  INBOUND_BATCH
+  TRANSFORMATION_OPERATION
+  PRODUCT_BATCH
+  MARKET_RELEASE_DECISION
+  SUPPLY_CONTRACT
+  INCIDENT
+  DISTRIBUTION
+  USER
+  COMPANY
+  SELLER_PROFILE
+  MARKETPLACE_PRODUCT
+  MARKETPLACE_OFFER
+  MARKETPLACE_DOCUMENT
+  MEDIA_ASSET
+  QUOTE_REQUEST
+  MARKETPLACE_REVIEW
+}
+
+// ─── UTILISATEURS ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  role         UserRole
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdById String? @map("created_by_user_id")
+  updatedById String? @map("updated_by_user_id")
+
+  // Relations
+  auditLogs              AuditLog[]
+  marketReleaseDecisions MarketReleaseDecision[]
+  labelValidations       LabelValidation[]
+  beneficiaryRef         Beneficiary?            @relation("BeneficiaryReferent")
+  beneficiaryAccount     Beneficiary?            @relation("BeneficiaryAccount")
+
+  // Marketplace
+  mediaUploads           MediaAsset[]
+  quoteRequestsMade      QuoteRequest[]          @relation("QuoteRequestBuyerUser")
+  quoteRequestsAssigned  QuoteRequest[]          @relation("QuoteRequestAssignedTo")
+  quoteRequestMessages   QuoteRequestMessage[]
+  marketplaceReviews     MarketplaceReviewQueue[]
+
+  // V2 — Appartenance métier : un user peut être rattaché à plusieurs companies
+  // (p.ex. responsable commercial + responsable qualité d'un même seller,
+  // ou consultant qui gère 2 coopératives). Sert à l'enforcement d'ownership
+  // côté marketplace (User → Company → SellerProfile).
+  companyMemberships     UserCompanyMembership[]
+
+  @@map("users")
+}
+
+// ─── MEMBERSHIP USER ↔ COMPANY (V2 ownership marketplace) ────────────────────
+// Table de jonction N:N. Contrairement à un FK direct `User.companyId`, elle
+// permet :
+//  - plusieurs users par company (réalité B2B : sales, logistique, direction),
+//  - un user rattaché à plusieurs companies (consultant, compte multi-seller),
+//  - une absence de lien pour les users IOX-internal (staff, auditor).
+//
+// L'accès au SellerProfile est transitif : Company possède 0..1 SellerProfile.
+// Le flag `isPrimary` désigne la company principale d'un user (UX onboarding,
+// défaut pour l'édition), sans contrainte fonctionnelle stricte.
+model UserCompanyMembership {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  companyId   String   @map("company_id")
+  isPrimary   Boolean  @default(false) @map("is_primary")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  createdById String?  @map("created_by_user_id")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([userId])
+  @@index([companyId])
+  @@map("user_company_memberships")
+}
+
+// ─── BÉNÉFICIAIRES ────────────────────────────────────────────────────────────
+
+model Beneficiary {
+  id                  String            @id @default(uuid())
+  code                String            @unique // BEN-0001
+  name                String
+  type                String            // entreprise, artisan, producteur, groupement, transformateur
+  status              BeneficiaryStatus @default(DRAFT)
+  email               String?
+  phone               String?
+  address             String?
+  city                String?
+  postalCode          String?           @map("postal_code")
+  siret               String?
+  sector              String?           // filière : maraîchage, pêche, artisanat, transformation...
+  description         String?
+  legalStatus         String?           @map("legal_status")  // SAS, SARL, auto-entrepreneur...
+  establishedAt       DateTime?         @map("established_at")
+  employeeCount       Int?              @map("employee_count")
+  certifications      String[]
+  capacityDescription String?           @map("capacity_description")
+
+  referentId          String?           @unique @map("referent_id")
+  referent            User?             @relation("BeneficiaryReferent", fields: [referentId], references: [id])
+
+  accountUserId       String?           @unique @map("account_user_id")
+  accountUser         User?             @relation("BeneficiaryAccount", fields: [accountUserId], references: [id])
+
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  deletedAt           DateTime?         @map("deleted_at")
+  createdById         String?           @map("created_by_user_id")
+  updatedById         String?           @map("updated_by_user_id")
+
+  // Relations
+  diagnostic          BeneficiaryDiagnostic?
+  actions             AccompanimentAction[]
+  products            Product[]
+  documents           Document[]
+  distributions       Distribution[]
+
+  @@map("beneficiaries")
+}
+
+// ─── DIAGNOSTIC BÉNÉFICIAIRE ──────────────────────────────────────────────────
+
+model BeneficiaryDiagnostic {
+  id              String        @id @default(uuid())
+  maturityLevel   MaturityLevel? @map("maturity_level")
+  constraints     String?       // freins identifiés
+  needs           String?       // besoins
+  objectives      String?       // objectifs
+  risks           String?       // risques
+  priorities      String?       // priorités d'action
+  notes           String?
+  conductedAt     DateTime?     @map("conducted_at")
+
+  beneficiaryId   String        @unique @map("beneficiary_id")
+  beneficiary     Beneficiary   @relation(fields: [beneficiaryId], references: [id])
+
+  conductedById   String?       @map("conducted_by_user_id")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  createdById     String?       @map("created_by_user_id")
+
+  @@map("beneficiary_diagnostics")
+}
+
+// ─── ACTIONS D'ACCOMPAGNEMENT ─────────────────────────────────────────────────
+
+model AccompanimentAction {
+  id              String                     @id @default(uuid())
+  title           String
+  description     String?
+  actionType      String                     @map("action_type") // formation, diagnostic, accompagnement, certification, autre
+  status          AccompanimentActionStatus  @default(PLANNED)
+  dueDate         DateTime?                  @map("due_date")
+  completedAt     DateTime?                  @map("completed_at")
+  notes           String?
+
+  beneficiaryId   String                     @map("beneficiary_id")
+  beneficiary     Beneficiary                @relation(fields: [beneficiaryId], references: [id])
+
+  assignedToId    String?                    @map("assigned_to_user_id")
+
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+  createdById     String?                    @map("created_by_user_id")
+  updatedById     String?                    @map("updated_by_user_id")
+
+  @@map("accompaniment_actions")
+}
+
+// ─── ENTREPRISES (fournisseurs, coopératives, acheteurs) ──────────────────────
+
+model Company {
+  id          String      @id @default(uuid())
+  code        String      @unique // SUP-0001, BUY-0001
+  name        String
+  types       CompanyType[]
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  country     String?
+  vatNumber   String?     @map("vat_number")
+  website     String?
+  notes       String?
+  isActive    Boolean     @default(true) @map("is_active")
+
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+  createdById String?     @map("created_by_user_id")
+  updatedById String?     @map("updated_by_user_id")
+
+  // Relations
+  supplyContracts  SupplyContract[]
+  inboundBatches   InboundBatch[]
+  documents        Document[]
+
+  // Marketplace
+  sellerProfile       SellerProfile?
+  quoteRequestsAsBuyer QuoteRequest[]  @relation("QuoteRequestBuyerCompany")
+
+  // V2 — memberships user→company (ownership marketplace)
+  userMemberships     UserCompanyMembership[]
+
+  @@map("companies")
+}
+
+// ─── PRODUITS ─────────────────────────────────────────────────────────────────
+
+model Product {
+  id                  String        @id @default(uuid())
+  code                String        @unique // PRD-0001
+  name                String
+  commercialName      String?       @map("commercial_name")
+  category            String        // ex: conserve, épice, filet de poisson, artisanat...
+  description         String?
+  origin              String?       // origine matière première
+  transformationSite  String?       @map("transformation_site")
+  packagingSpec       String?       @map("packaging_spec")     // format, poids net, matériau
+  productionCapacity  Decimal?      @map("production_capacity") @db.Decimal(10, 2)
+  unit                String?       // kg, unité, litre, boîte...
+  status              ProductStatus @default(DRAFT)
+  version             Int           @default(1)
+  versionNotes        String?       @map("version_notes")
+
+  // Fiche technique
+  ingredients         String?       // liste des ingrédients
+  allergens           String[]      // allergènes déclarés
+  shelfLife           String?       @map("shelf_life")         // ex: "18 mois"
+  storageConditions   String?       @map("storage_conditions") // ex: "Conserver au frais"
+  labelingInfo        String?       @map("labeling_info")      // mentions d'étiquetage spécifiques
+  nutritionalInfo     String?       @map("nutritional_info")   // tableau nutritionnel (texte/JSON)
+  technicalNotes      String?       @map("technical_notes")    // notes complémentaires
+
+  beneficiaryId       String        @map("beneficiary_id")
+  beneficiary         Beneficiary   @relation(fields: [beneficiaryId], references: [id])
+
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  deletedAt           DateTime?     @map("deleted_at")
+  createdById         String?       @map("created_by_user_id")
+  updatedById         String?       @map("updated_by_user_id")
+
+  // Relations
+  supplyContracts     SupplyContract[]
+  inboundBatches      InboundBatch[]
+  productBatches      ProductBatch[]
+  documents           Document[]
+
+  // Marketplace
+  marketplaceProducts MarketplaceProduct[]
+
+  @@map("products")
+}
+
+// ─── CONTRATS APPROVISIONNEMENT ───────────────────────────────────────────────
+
+model SupplyContract {
+  id               String               @id @default(uuid())
+  code             String               @unique // SC-0001
+  status           SupplyContractStatus @default(DRAFT)
+  startDate        DateTime             @map("start_date")
+  endDate          DateTime?            @map("end_date")
+  volumeCommitted  Decimal?             @map("volume_committed") @db.Decimal(10, 2)
+  unit             String?
+  paymentTerms     String?              @map("payment_terms")
+  notes            String?
+
+  supplierId       String               @map("supplier_id")
+  supplier         Company              @relation(fields: [supplierId], references: [id])
+
+  products         Product[]
+
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  deletedAt        DateTime?            @map("deleted_at")
+  createdById      String?              @map("created_by_user_id")
+  updatedById      String?              @map("updated_by_user_id")
+
+  // Relations
+  inboundBatches   InboundBatch[]
+  documents        Document[]
+
+  @@map("supply_contracts")
+}
+
+// ─── LOTS ENTRANTS (réception matière) ────────────────────────────────────────
+
+model InboundBatch {
+  id              String             @id @default(uuid())
+  code            String             @unique // IB-2026-0001
+  status          InboundBatchStatus @default(RECEIVED)
+  receivedAt      DateTime           @map("received_at")
+  quantity        Decimal            @db.Decimal(10, 2)
+  unit            String
+  origin          String?
+  notes           String?
+  controlNotes    String?            @map("control_notes")
+  controlledAt    DateTime?          @map("controlled_at")
+  controlledById  String?            @map("controlled_by_user_id")
+
+  supplierId      String             @map("supplier_id")
+  supplier        Company            @relation(fields: [supplierId], references: [id])
+
+  productId       String             @map("product_id")
+  product         Product            @relation(fields: [productId], references: [id])
+
+  supplyContractId String?           @map("supply_contract_id")
+  supplyContract   SupplyContract?   @relation(fields: [supplyContractId], references: [id])
+
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  deletedAt       DateTime?          @map("deleted_at")
+  createdById     String?            @map("created_by_user_id")
+  updatedById     String?            @map("updated_by_user_id")
+
+  // Relations
+  transformationOperations TransformationOperation[]
+  documents                Document[]
+
+  @@map("inbound_batches")
+}
+
+// ─── OPÉRATIONS DE TRANSFORMATION ────────────────────────────────────────────
+
+model TransformationOperation {
+  id            String   @id @default(uuid())
+  code          String   @unique // TO-2026-0001
+  name          String
+  description   String?
+  operationDate DateTime @map("operation_date")
+  site          String?
+  operatorNotes String?  @map("operator_notes")
+  yieldRate     Decimal? @map("yield_rate") @db.Decimal(5, 2) // taux de transformation %
+
+  inboundBatchId String       @map("inbound_batch_id")
+  inboundBatch   InboundBatch @relation(fields: [inboundBatchId], references: [id])
+
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  createdById    String?      @map("created_by_user_id")
+  updatedById    String?      @map("updated_by_user_id")
+
+  // Relations
+  productBatches ProductBatch[]
+
+  @@map("transformation_operations")
+}
+
+// ─── LOTS PRODUITS FINIS ──────────────────────────────────────────────────────
+
+model ProductBatch {
+  id                     String             @id @default(uuid())
+  code                   String             @unique // PB-2026-0001
+  status                 ProductBatchStatus @default(CREATED)
+  quantity               Decimal            @db.Decimal(10, 2)
+  unit                   String
+  productionDate         DateTime           @map("production_date")
+  expiryDate             DateTime?          @map("expiry_date")
+  storageLocation        String?            @map("storage_location")
+  marketEligibilityStatus String?           @map("market_eligibility_status")
+  notes                  String?
+
+  productId              String             @map("product_id")
+  product                Product            @relation(fields: [productId], references: [id])
+
+  transformationOpId     String?            @map("transformation_op_id")
+  transformationOp       TransformationOperation? @relation(fields: [transformationOpId], references: [id])
+
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+  deletedAt              DateTime?          @map("deleted_at")
+  createdById            String?            @map("created_by_user_id")
+  updatedById            String?            @map("updated_by_user_id")
+
+  // Relations
+  labelValidations       LabelValidation[]
+  marketReleaseDecisions MarketReleaseDecision[]
+  documents              Document[]
+  distributionLines      DistributionLine[]
+
+  // Marketplace
+  marketplaceOfferBatches MarketplaceOfferBatch[]
+
+  @@map("product_batches")
+}
+
+// ─── VALIDATION ÉTIQUETAGE ────────────────────────────────────────────────────
+
+model LabelValidation {
+  id             String   @id @default(uuid())
+  isValid        Boolean  @default(false) @map("is_valid")
+  validatedAt    DateTime? @map("validated_at")
+  notes          String?
+  reservations   String[] // réserves à lever
+
+  productBatchId String       @map("product_batch_id")
+  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id])
+
+  validatedById  String?   @map("validated_by_user_id")
+  validatedBy    User?     @relation(fields: [validatedById], references: [id])
+
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  createdById    String?   @map("created_by_user_id")
+
+  @@map("label_validations")
+}
+
+// ─── DÉCISION DE MISE EN MARCHÉ ───────────────────────────────────────────────
+// Règle : une seule décision active par lot (index partiel unique)
+
+model MarketReleaseDecision {
+  id             String                      @id @default(uuid())
+  decision       MarketReleaseDecisionStatus
+  isActive       Boolean                     @default(true) @map("is_active")
+  decidedAt      DateTime                    @map("decided_at")
+  notes          String?
+  reservations   String[]                    // réserves si conforme_sous_reserve
+  blockingReason String?                     @map("blocking_reason") // obligatoire si NON_COMPLIANT
+
+  // Checklist des 7 conditions (stockées en JSONB)
+  checklist      Json                        @default("{}")
+
+  productBatchId String                      @map("product_batch_id")
+  productBatch   ProductBatch                @relation(fields: [productBatchId], references: [id])
+
+  validatedById  String                      @map("validated_by_user_id")
+  validatedBy    User                        @relation(fields: [validatedById], references: [id])
+
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  updatedAt      DateTime                    @updatedAt @map("updated_at")
+
+  @@map("market_release_decisions")
+  // Index partiel garantissant une seule décision active par lot :
+  // CREATE UNIQUE INDEX ON market_release_decisions(product_batch_id) WHERE is_active = true;
+  // → Ajouté dans la migration SQL raw
+}
+
+// ─── INCIDENTS ────────────────────────────────────────────────────────────────
+
+model Incident {
+  id              String           @id @default(uuid())
+  code            String           @unique // INC-0001
+  title           String
+  description     String
+  status          IncidentStatus   @default(OPEN)
+  severity        IncidentSeverity
+  incidentDate    DateTime         @map("incident_date")
+  resolvedAt      DateTime?        @map("resolved_at")
+  resolution      String?
+  actionsTaken    String?          @map("actions_taken")
+
+  // Entité concernée (polymorphisme)
+  linkedEntityType EntityType?     @map("linked_entity_type")
+  linkedEntityId   String?         @map("linked_entity_id")
+
+  assignedToId    String?          @map("assigned_to_user_id")
+
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  deletedAt       DateTime?        @map("deleted_at")
+  createdById     String?          @map("created_by_user_id")
+  updatedById     String?          @map("updated_by_user_id")
+
+  documents       Document[]
+
+  @@map("incidents")
+}
+
+// ─── DOCUMENTS (gestion documentaire polymorphique) ───────────────────────────
+
+model Document {
+  id               String         @id @default(uuid())
+  name             String
+  originalFilename String         @map("original_filename")
+  mimeType         String         @map("mime_type")
+  storageKey       String         @map("storage_key") // chemin dans MinIO/S3
+  sizeBytes        Int            @map("size_bytes")
+  status           DocumentStatus @default(ACTIVE)
+  version          Int            @default(1)
+  notes            String?
+  expiresAt        DateTime?      @map("expires_at")
+
+  // Entité parente (polymorphisme)
+  linkedEntityType EntityType     @map("linked_entity_type")
+  linkedEntityId   String         @map("linked_entity_id")
+
+  // Relations optionnelles nommées
+  beneficiaryId    String?        @map("beneficiary_id")
+  beneficiary      Beneficiary?   @relation(fields: [beneficiaryId], references: [id])
+
+  productId        String?        @map("product_id")
+  product          Product?       @relation(fields: [productId], references: [id])
+
+  companyId        String?        @map("company_id")
+  company          Company?       @relation(fields: [companyId], references: [id])
+
+  supplyContractId String?        @map("supply_contract_id")
+  supplyContract   SupplyContract? @relation(fields: [supplyContractId], references: [id])
+
+  inboundBatchId   String?        @map("inbound_batch_id")
+  inboundBatch     InboundBatch?  @relation(fields: [inboundBatchId], references: [id])
+
+  productBatchId   String?        @map("product_batch_id")
+  productBatch     ProductBatch?  @relation(fields: [productBatchId], references: [id])
+
+  incidentId       String?        @map("incident_id")
+  incident         Incident?      @relation(fields: [incidentId], references: [id])
+
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  createdById      String?        @map("created_by_user_id")
+
+  // Marketplace
+  marketplaceDocuments MarketplaceDocument[]
+
+  @@index([linkedEntityType, linkedEntityId])
+  @@map("documents")
+}
+
+// ─── JOURNAL D'AUDIT ──────────────────────────────────────────────────────────
+
+// ─── DISTRIBUTIONS ────────────────────────────────────────────────────────────
+
+model Distribution {
+  id               String             @id @default(uuid())
+  code             String             @unique // DIST-2026-0001
+  status           DistributionStatus @default(PLANNED)
+  distributionDate DateTime           @map("distribution_date")
+  notes            String?
+
+  beneficiaryId    String             @map("beneficiary_id")
+  beneficiary      Beneficiary        @relation(fields: [beneficiaryId], references: [id])
+
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  deletedAt        DateTime?          @map("deleted_at")
+  createdById      String?            @map("created_by_user_id")
+  updatedById      String?            @map("updated_by_user_id")
+
+  lines            DistributionLine[]
+
+  @@map("distributions")
+}
+
+model DistributionLine {
+  id             String       @id @default(uuid())
+  quantity       Decimal      @db.Decimal(10, 2)
+  unit           String
+  notes          String?
+
+  distributionId String       @map("distribution_id")
+  distribution   Distribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  productBatchId String       @map("product_batch_id")
+  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id])
+
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@map("distribution_lines")
+}
+
+// ─── AUDIT ────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id           String     @id @default(uuid())
+  action       String     // ex: USER_LOGIN, BATCH_STATUS_CHANGED, MARKET_DECISION_CREATED
+  entityType   EntityType @map("entity_type")
+  entityId     String     @map("entity_id")
+  previousData Json?      @map("previous_data") // snapshot avant
+  newData      Json?      @map("new_data")       // snapshot après
+  ipAddress    String?    @map("ip_address")
+  userAgent    String?    @map("user_agent")
+  notes        String?
+
+  userId       String?    @map("user_id")
+  user         User?      @relation(fields: [userId], references: [id])
+
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── MARKETPLACE ──────────────────────────────────────────────────────────────
+// Module B2B export : vitrine contrôlée branchée sur Companies/Products/Batches.
+// Règles de publication garanties au niveau service ; schéma ne fait que modéliser.
+
+enum SellerProfileStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+
+enum MarketplacePublicationStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  SUSPENDED
+  REJECTED
+  ARCHIVED
+}
+
+enum ExportReadinessStatus {
+  NOT_ELIGIBLE
+  INTERNAL_ONLY
+  PENDING_DOCUMENTS
+  PENDING_QUALITY_REVIEW
+  EXPORT_READY
+  EXPORT_READY_WITH_CONDITIONS
+}
+
+enum MarketplacePriceMode {
+  FIXED
+  QUOTE_ONLY
+  FROM_PRICE
+}
+
+enum MarketplaceVisibilityScope {
+  PRIVATE
+  BUYERS_ONLY
+  PUBLIC
+}
+
+enum MarketplaceDocumentVisibility {
+  PRIVATE
+  BUYER_ON_REQUEST
+  PUBLIC
+}
+
+enum MarketplaceVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum MediaAssetType {
+  IMAGE
+  ILLUSTRATION
+  VIDEO
+}
+
+enum MediaAssetRole {
+  PRIMARY
+  GALLERY
+  PACKAGING
+  LABEL
+  LOT
+  ORIGIN
+  MARKETING
+  LOGO
+  BANNER
+}
+
+enum MediaModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum QuoteRequestStatus {
+  NEW
+  QUALIFIED
+  QUOTED
+  NEGOTIATING
+  WON
+  LOST
+  CANCELLED
+}
+
+enum MarketplaceReviewType {
+  PUBLICATION
+  MEDIA
+  DOCUMENT
+}
+
+enum MarketplaceReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MarketplaceRelatedEntityType {
+  SELLER_PROFILE
+  MARKETPLACE_PRODUCT
+  MARKETPLACE_OFFER
+  PRODUCT_BATCH
+}
+
+// ─── SELLER PROFILE (extension vitrine d'une Company) ─────────────────────────
+
+model SellerProfile {
+  id                  String              @id @default(uuid())
+  companyId           String              @unique @map("company_id")
+  status              SellerProfileStatus @default(DRAFT)
+
+  publicDisplayName   String              @map("public_display_name")
+  legalName           String?             @map("legal_name")
+  slug                String              @unique
+
+  country             String
+  region              String?
+  cityOrZone          String?             @map("city_or_zone")
+
+  descriptionShort    String?             @map("description_short")
+  descriptionLong     String?             @map("description_long")
+  story               String?
+
+  languages           Json?
+  salesEmail          String?             @map("sales_email")
+  salesPhone          String?             @map("sales_phone")
+  website             String?
+
+  supportedIncoterms  Json?               @map("supported_incoterms")
+  destinationsServed  Json?               @map("destinations_served")
+  averageLeadTimeDays Int?                @map("average_lead_time_days")
+
+  logoMediaId         String?             @map("logo_media_id")
+  bannerMediaId       String?             @map("banner_media_id")
+
+  isFeatured          Boolean             @default(false) @map("is_featured")
+  rejectionReason     String?             @map("rejection_reason")
+  approvedAt          DateTime?           @map("approved_at")
+  suspendedAt         DateTime?           @map("suspended_at")
+
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  createdById         String?             @map("created_by_user_id")
+  updatedById         String?             @map("updated_by_user_id")
+
+  company             Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  marketplaceProducts MarketplaceProduct[]
+  marketplaceOffers   MarketplaceOffer[]
+
+  @@index([status])
+  @@index([country])
+  @@index([region])
+  @@index([isFeatured])
+  @@map("seller_profiles")
+}
+
+// ─── CATÉGORIES MARKETPLACE (arborescence) ───────────────────────────────────
+
+model MarketplaceCategory {
+  id          String   @id @default(uuid())
+  parentId    String?  @map("parent_id")
+  nameFr      String   @map("name_fr")
+  nameEn      String?  @map("name_en")
+  slug        String   @unique
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  parent   MarketplaceCategory?  @relation("MarketplaceCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children MarketplaceCategory[] @relation("MarketplaceCategoryTree")
+
+  marketplaceProducts MarketplaceProduct[]
+
+  @@index([parentId])
+  @@index([isActive, sortOrder])
+  @@map("marketplace_categories")
+}
+
+// ─── PRODUIT MARKETPLACE (déclinaison commercialisable d'un Product IOX) ─────
+
+model MarketplaceProduct {
+  id                       String                       @id @default(uuid())
+  productId                String                       @map("product_id")
+  sellerProfileId          String                       @map("seller_profile_id")
+  categoryId               String?                      @map("category_id")
+
+  commercialName           String                       @map("commercial_name")
+  regulatoryName           String?                      @map("regulatory_name")
+  subtitle                 String?
+  slug                     String                       @unique
+
+  originCountry            String                       @map("origin_country")
+  originRegion             String?                      @map("origin_region")
+  varietySpecies           String?                      @map("variety_species")
+  productionMethod         String?                      @map("production_method")
+
+  descriptionShort         String?                      @map("description_short")
+  descriptionLong          String?                      @map("description_long")
+  usageTips                String?                      @map("usage_tips")
+  packagingDescription     String?                      @map("packaging_description")
+  storageConditions        String?                      @map("storage_conditions")
+  shelfLifeInfo            String?                      @map("shelf_life_info")
+  allergenInfo             String?                      @map("allergen_info")
+  nutritionInfoJson        Json?                        @map("nutrition_info_json")
+
+  defaultUnit              String?                      @map("default_unit")
+  minimumOrderQuantity     Decimal?                     @map("minimum_order_quantity") @db.Decimal(12, 3)
+
+  mainMediaId              String?                      @map("main_media_id")
+  completionScore          Int                          @default(0) @map("completion_score")
+
+  complianceStatusSnapshot String?                      @map("compliance_status_snapshot")
+  exportReadinessStatus    ExportReadinessStatus        @default(PENDING_QUALITY_REVIEW) @map("export_readiness_status")
+  publicationStatus        MarketplacePublicationStatus @default(DRAFT) @map("publication_status")
+
+  rejectionReason          String?                      @map("rejection_reason")
+  submittedAt              DateTime?                    @map("submitted_at")
+  approvedAt               DateTime?                    @map("approved_at")
+  publishedAt              DateTime?                    @map("published_at")
+
+  createdAt                DateTime                     @default(now()) @map("created_at")
+  updatedAt                DateTime                     @updatedAt @map("updated_at")
+  createdById              String?                      @map("created_by_user_id")
+  updatedById              String?                      @map("updated_by_user_id")
+
+  product       Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sellerProfile SellerProfile        @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+  category      MarketplaceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  offers        MarketplaceOffer[]
+
+  @@index([productId])
+  @@index([sellerProfileId])
+  @@index([categoryId])
+  @@index([publicationStatus])
+  @@index([exportReadinessStatus])
+  @@index([originCountry])
+  @@index([originRegion])
+  @@map("marketplace_products")
+}
+
+// ─── OFFRE MARKETPLACE (version commerciale active du produit marketplace) ───
+
+model MarketplaceOffer {
+  id                     String                       @id @default(uuid())
+  marketplaceProductId   String                       @map("marketplace_product_id")
+  sellerProfileId        String                       @map("seller_profile_id")
+
+  title                  String
+  shortDescription       String?                      @map("short_description")
+
+  priceMode              MarketplacePriceMode         @default(QUOTE_ONLY) @map("price_mode")
+  unitPrice              Decimal?                     @map("unit_price") @db.Decimal(12, 2)
+  currency               String?
+  moq                    Decimal?                     @db.Decimal(12, 3)
+  availableQuantity      Decimal?                     @map("available_quantity") @db.Decimal(12, 3)
+
+  availabilityStart      DateTime?                    @map("availability_start")
+  availabilityEnd        DateTime?                    @map("availability_end")
+  leadTimeDays           Int?                         @map("lead_time_days")
+
+  incoterm               String?
+  departureLocation      String?                      @map("departure_location")
+  destinationMarketsJson Json?                        @map("destination_markets_json")
+
+  visibilityScope        MarketplaceVisibilityScope   @default(BUYERS_ONLY) @map("visibility_scope")
+  exportReadinessStatus  ExportReadinessStatus        @default(PENDING_QUALITY_REVIEW) @map("export_readiness_status")
+  publicationStatus      MarketplacePublicationStatus @default(DRAFT) @map("publication_status")
+
+  featuredRank           Int?                         @map("featured_rank")
+  rejectionReason        String?                      @map("rejection_reason")
+
+  submittedAt            DateTime?                    @map("submitted_at")
+  approvedAt             DateTime?                    @map("approved_at")
+  publishedAt            DateTime?                    @map("published_at")
+  suspendedAt            DateTime?                    @map("suspended_at")
+
+  createdAt              DateTime                     @default(now()) @map("created_at")
+  updatedAt              DateTime                     @updatedAt @map("updated_at")
+  createdById            String?                      @map("created_by_user_id")
+  updatedById            String?                      @map("updated_by_user_id")
+
+  marketplaceProduct MarketplaceProduct @relation(fields: [marketplaceProductId], references: [id], onDelete: Cascade)
+  sellerProfile      SellerProfile      @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+
+  offerBatches  MarketplaceOfferBatch[]
+  quoteRequests QuoteRequest[]
+
+  @@index([marketplaceProductId])
+  @@index([sellerProfileId])
+  @@index([publicationStatus])
+  @@index([exportReadinessStatus])
+  @@index([visibilityScope])
+  @@index([availabilityStart, availabilityEnd])
+  @@map("marketplace_offers")
+}
+
+// ─── PONT OFFRE ↔ LOT RÉEL (traçabilité + stock) ────────────────────────────
+
+model MarketplaceOfferBatch {
+  id                  String   @id @default(uuid())
+  marketplaceOfferId  String   @map("marketplace_offer_id")
+  productBatchId      String   @map("product_batch_id")
+
+  quantityAvailable   Decimal  @map("quantity_available") @db.Decimal(12, 3)
+  quantityReserved    Decimal  @default(0) @map("quantity_reserved") @db.Decimal(12, 3)
+
+  exportEligible      Boolean  @default(true) @map("export_eligible")
+  qualityStatus       String?  @map("quality_status")
+  traceabilityStatus  String?  @map("traceability_status")
+  notes               String?
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  marketplaceOffer MarketplaceOffer @relation(fields: [marketplaceOfferId], references: [id], onDelete: Cascade)
+  productBatch     ProductBatch     @relation(fields: [productBatchId], references: [id], onDelete: Cascade)
+
+  @@unique([marketplaceOfferId, productBatchId])
+  @@index([productBatchId])
+  @@index([exportEligible])
+  @@map("marketplace_offer_batches")
+}
+
+// ─── DOCUMENT MARKETPLACE (projection avec visibilité et validité) ──────────
+
+model MarketplaceDocument {
+  id                 String                        @id @default(uuid())
+  relatedType        MarketplaceRelatedEntityType  @map("related_type")
+  relatedId          String                        @map("related_id")
+
+  documentId         String                        @map("document_id")
+  documentType       String                        @map("document_type")
+  title              String
+
+  visibility         MarketplaceDocumentVisibility @default(PRIVATE)
+  verificationStatus MarketplaceVerificationStatus @default(PENDING) @map("verification_status")
+
+  validFrom          DateTime?                     @map("valid_from")
+  validUntil         DateTime?                     @map("valid_until")
+
+  createdAt          DateTime                      @default(now()) @map("created_at")
+  updatedAt          DateTime                      @updatedAt @map("updated_at")
+  createdById        String?                       @map("created_by_user_id")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([relatedType, relatedId])
+  @@index([documentId])
+  @@index([visibility])
+  @@index([verificationStatus])
+  @@index([validUntil])
+  @@map("marketplace_documents")
+}
+
+// ─── MÉDIA (image / illustration polymorphique) ─────────────────────────────
+
+model MediaAsset {
+  id                String                       @id @default(uuid())
+  relatedType       MarketplaceRelatedEntityType @map("related_type")
+  relatedId         String                       @map("related_id")
+
+  mediaType         MediaAssetType        @default(IMAGE) @map("media_type")
+  role              MediaAssetRole        @default(GALLERY)
+
+  storageKey        String                @map("storage_key")
+  publicUrl         String?               @map("public_url")
+
+  mimeType          String?               @map("mime_type")
+  sizeBytes         Int?                  @map("size_bytes")
+  width             Int?
+  height            Int?
+
+  altTextFr         String?               @map("alt_text_fr")
+  altTextEn         String?               @map("alt_text_en")
+
+  sortOrder         Int                   @default(0) @map("sort_order")
+
+  moderationStatus  MediaModerationStatus @default(PENDING) @map("moderation_status")
+  moderationReason  String?               @map("moderation_reason")
+
+  uploadedByUserId  String                @map("uploaded_by_user_id")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  uploadedBy User @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([relatedType, relatedId])
+  @@index([uploadedByUserId])
+  @@index([moderationStatus])
+  @@index([role])
+  @@index([sortOrder])
+  @@map("media_assets")
+}
+
+// ─── DEMANDES DE DEVIS ──────────────────────────────────────────────────────
+
+model QuoteRequest {
+  id                 String             @id @default(uuid())
+  buyerCompanyId     String             @map("buyer_company_id")
+  buyerUserId        String             @map("buyer_user_id")
+  marketplaceOfferId String             @map("marketplace_offer_id")
+
+  requestedQuantity  Decimal?           @map("requested_quantity") @db.Decimal(12, 3)
+  requestedUnit      String?            @map("requested_unit")
+  deliveryCountry    String?            @map("delivery_country")
+  targetMarket       String?            @map("target_market")
+  message            String?
+
+  status             QuoteRequestStatus @default(NEW)
+  assignedToUserId   String?            @map("assigned_to_user_id")
+
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  buyerCompany     Company          @relation("QuoteRequestBuyerCompany", fields: [buyerCompanyId], references: [id], onDelete: Restrict)
+  buyerUser        User             @relation("QuoteRequestBuyerUser", fields: [buyerUserId], references: [id], onDelete: Restrict)
+  marketplaceOffer MarketplaceOffer @relation(fields: [marketplaceOfferId], references: [id], onDelete: Cascade)
+  assignedToUser   User?            @relation("QuoteRequestAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  messages QuoteRequestMessage[]
+
+  @@index([buyerCompanyId])
+  @@index([buyerUserId])
+  @@index([marketplaceOfferId])
+  @@index([status])
+  @@index([assignedToUserId])
+  @@map("quote_requests")
+}
+
+model QuoteRequestMessage {
+  id             String   @id @default(uuid())
+  quoteRequestId String   @map("quote_request_id")
+  authorUserId   String   @map("author_user_id")
+
+  message        String
+  isInternalNote Boolean  @default(false) @map("is_internal_note")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  quoteRequest QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  authorUser   User         @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([quoteRequestId])
+  @@index([authorUserId])
+  @@index([createdAt])
+  @@map("quote_request_messages")
+}
+
+// ─── QUEUE DE REVUE (admin qualité) ─────────────────────────────────────────
+
+model MarketplaceReviewQueue {
+  id               String                       @id @default(uuid())
+  entityType       MarketplaceRelatedEntityType @map("entity_type")
+  entityId         String                       @map("entity_id")
+
+  reviewType       MarketplaceReviewType        @map("review_type")
+  status           MarketplaceReviewStatus      @default(PENDING)
+
+  reviewedByUserId String?                      @map("reviewed_by_user_id")
+  reviewReason     String?                      @map("review_reason")
+
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  updatedAt        DateTime                     @updatedAt @map("updated_at")
+
+  reviewedByUser User? @relation(fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([reviewType])
+  @@index([status])
+  @@index([reviewedByUserId])
+  @@map("marketplace_review_queue")
+}

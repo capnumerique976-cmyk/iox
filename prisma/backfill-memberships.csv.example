@@ -1,0 +1,8 @@
+# Exemple de CSV pour `pnpm backfill:memberships`.
+# Header obligatoire : user_email,company_code,is_primary
+# is_primary : true | false | vide (vide = false). Un seul primary par user.
+# Les lignes commençant par # ou vides sont ignorées.
+user_email,company_code,is_primary
+alice@seller.fr,SELL-0001,true
+bob@seller.fr,SELL-0001,
+carole@consultant.fr,COOP-0002,

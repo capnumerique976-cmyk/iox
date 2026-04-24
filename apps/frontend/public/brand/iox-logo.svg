@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- IOX — Lockup horizontal (emblème + wordmark) -->
+<!-- Reproduction fidèle du logo officiel Indian Ocean Xchange -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 110" role="img" aria-label="IOX Indian Ocean Xchange">
+  <defs>
+    <linearGradient id="iox-ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1f4d"/>
+      <stop offset="100%" stop-color="#1a3a7d"/>
+    </linearGradient>
+    <linearGradient id="iox-swoosh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2d9cdb"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="iox-leaf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4a6741"/>
+      <stop offset="100%" stop-color="#27ae60"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Emblème (centré sur 55,50, rayon ≈ 42) -->
+  <g>
+    <!-- Anneau principal navy -->
+    <circle cx="55" cy="50" r="36" fill="none" stroke="url(#iox-ring)" stroke-width="5"/>
+
+    <!-- Swoosh teal/sky qui enveloppe -->
+    <path d="M 22 55 A 36 36 0 0 1 88 55" fill="none" stroke="url(#iox-swoosh)" stroke-width="4.5" stroke-linecap="round"/>
+
+    <!-- Feuille verte à gauche -->
+    <path d="M 32 62 Q 36 42 50 36 Q 44 54 36 66 Q 33 66 32 62 Z" fill="url(#iox-leaf)"/>
+    <path d="M 36 55 Q 42 46 48 42" fill="none" stroke="#0a1f4d" stroke-width="0.8" opacity="0.35"/>
+
+    <!-- Lettre "i" navy -->
+    <rect x="47" y="42" width="5" height="22" rx="1" fill="#0a1f4d"/>
+    <rect x="47" y="34" width="5" height="5" rx="1" fill="#2d9cdb"/>
+
+    <!-- Lettre "o" (demi-disque navy) -->
+    <circle cx="65" cy="53" r="10" fill="none" stroke="#0a1f4d" stroke-width="4.5"/>
+
+    <!-- Icône réseau vert en haut à droite -->
+    <g transform="translate(85, 22)">
+      <line x1="0" y1="0" x2="-6" y2="6" stroke="#27ae60" stroke-width="1.4"/>
+      <line x1="0" y1="0" x2="7" y2="-3" stroke="#27ae60" stroke-width="1.4"/>
+      <line x1="0" y1="0" x2="5" y2="8" stroke="#27ae60" stroke-width="1.4"/>
+      <circle cx="0" cy="0" r="2.4" fill="#27ae60"/>
+      <circle cx="-6" cy="6" r="1.9" fill="#27ae60"/>
+      <circle cx="7" cy="-3" r="1.9" fill="#27ae60"/>
+      <circle cx="5" cy="8" r="1.9" fill="#27ae60"/>
+    </g>
+  </g>
+
+  <!-- Wordmark IOX (grand, navy, bold) -->
+  <text x="120" y="60" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="44" font-weight="800" fill="#0a1f4d" letter-spacing="-1">
+    IOX
+  </text>
+
+  <!-- Sous-titre Indian Ocean Xchange -->
+  <text x="121" y="82" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="11.5" font-weight="500" fill="#1a3a7d" letter-spacing="1.2">
+    INDIAN OCEAN XCHANGE
+  </text>
+</svg>

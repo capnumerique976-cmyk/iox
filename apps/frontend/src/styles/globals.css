@@ -1,0 +1,284 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────
+ * IOX — Brand tokens (B2B Platform design)
+ * Source : "UI Design for B2B Platform" (Figma bundle)
+ * Marque : Indian Ocean Xchange — tech blue + ocean teal + earth/vanilla accents
+ *
+ * Progressive adoption : ces variables coexistent avec la base shadcn.
+ * Utiliser via `var(--iox-*)` en CSS ou via les couleurs `iox-*` dans
+ * Tailwind (cf. tailwind.config.ts).
+ * ───────────────────────────────────────────────────────── */
+:root {
+  /* Couleurs de marque IOX */
+  --iox-tech-blue: #0066cc;
+  --iox-tech-blue-dark: #0a2540;
+  --iox-ocean-teal: #0891b2;
+  --iox-vanilla-gold: #d4a574;
+  --iox-earth-green: #4a6741;
+
+  /* Alias sémantiques */
+  --iox-primary: #0a2540;
+  --iox-accent: #0066cc;
+
+  /* ─────────────────────────────────────────────────────────
+   * IOX Premium Design System (DS-0)
+   * Source : Figma Make — "Premium Mobile App Design"
+   * Adoption : progressive, additive. Ne remplace pas les vars shadcn.
+   * ───────────────────────────────────────────────────────── */
+
+  /* Couleurs premium — palette Figma */
+  --iox-premium-primary: #0a1f4d; /* deep navy */
+  --iox-premium-primary-light: #1a3a7d; /* royal blue */
+  --iox-premium-accent: #2d9cdb; /* sky blue */
+  --iox-premium-accent-light: #5ab7e8; /* light sky */
+  --iox-premium-success: #27ae60;
+  --iox-premium-success-light: #3dd47f;
+  --iox-premium-warning: #f2994a;
+  --iox-premium-warning-light: #f5b072;
+  --iox-premium-danger: #eb5757;
+  --iox-premium-neutral-50: #f8fafc;
+
+  /* Gradients */
+  --gradient-iox-primary: linear-gradient(135deg, #0a1f4d 0%, #1a3a7d 100%);
+  --gradient-iox-accent: linear-gradient(135deg, #2d9cdb 0%, #5ab7e8 100%);
+  --gradient-iox-success: linear-gradient(135deg, #27ae60 0%, #3dd47f 100%);
+  --gradient-iox-warning: linear-gradient(135deg, #f2994a 0%, #f5b072 100%);
+  --gradient-iox-glass: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  --gradient-iox-overlay: linear-gradient(
+    180deg,
+    rgba(10, 31, 77, 0) 0%,
+    rgba(10, 31, 77, 0.8) 100%
+  );
+
+  /* Shadows — élévation premium (navy-tinted) */
+  --shadow-premium-sm: 0 2px 8px rgba(10, 31, 77, 0.04), 0 1px 2px rgba(10, 31, 77, 0.06);
+  --shadow-premium-md: 0 4px 16px rgba(10, 31, 77, 0.08), 0 2px 4px rgba(10, 31, 77, 0.06);
+  --shadow-premium-lg: 0 8px 24px rgba(10, 31, 77, 0.12), 0 4px 8px rgba(10, 31, 77, 0.08);
+  --shadow-premium-xl: 0 16px 48px rgba(10, 31, 77, 0.16), 0 8px 16px rgba(10, 31, 77, 0.12);
+  --shadow-premium-glow-accent: 0 8px 24px rgba(45, 156, 219, 0.25);
+  --shadow-premium-glow-primary: 0 8px 24px rgba(10, 31, 77, 0.3);
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-backdrop: blur(12px);
+
+  /* Radii additionnels (shadcn en garde 3 : sm/md/lg via --radius) */
+  --radius-xl: 1rem; /* 16px */
+  --radius-2xl: 1.25rem; /* 20px */
+
+  /* Motion tokens */
+  --ease-premium: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 200ms;
+  --duration-base: 300ms;
+  --duration-slow: 500ms;
+}
+
+.dark {
+  --shadow-premium-sm: 0 2px 8px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-premium-md: 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.15);
+  --shadow-premium-lg: 0 8px 24px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.2);
+  --shadow-premium-xl: 0 16px 48px rgba(0, 0, 0, 0.5), 0 8px 16px rgba(0, 0, 0, 0.25);
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 220.9 39.3% 11%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 224 71.4% 4.1%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 210 20% 98%;
+    --primary-foreground: 220.9 39.3% 11%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 216 12.2% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+ * IOX Premium — keyframes & utilities (DS-0)
+ * ───────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Gradient text helpers */
+  .text-gradient-iox-primary {
+    background: var(--gradient-iox-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .text-gradient-iox-accent {
+    background: var(--gradient-iox-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* Glass surface (backdrop-filter) */
+  .surface-glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Interaction helpers */
+  .hover-lift {
+    transition:
+      transform var(--duration-base) var(--ease-premium),
+      box-shadow var(--duration-base) var(--ease-premium);
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-premium-lg);
+  }
+
+  .active-press:active {
+    transform: scale(0.97);
+  }
+
+  /* Scrollbar hide (mobile panels, carousels) */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ─── Keyframes (enregistrées aussi dans tailwind.config pour `animate-*`) */
+@keyframes iox-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes iox-shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes iox-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(45, 156, 219, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(45, 156, 219, 0.6);
+  }
+}
+
+@keyframes iox-scale-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes iox-slide-up {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes iox-status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes iox-spin-glow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Shimmer utility (skeleton) */
+@layer utilities {
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted) / 0.6) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 1000px 100%;
+    animation: iox-shimmer 2s infinite linear;
+  }
+}

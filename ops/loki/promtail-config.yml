@@ -1,0 +1,88 @@
+# IOX — Promtail config (collecte logs backend → Loki)
+#
+# Le backend IOX émet des logs console au format Nest. L'interceptor
+# `LoggingInterceptor` sérialise le payload HTTP en JSON dans le `message` :
+#   [Nest] 1234  - 2026-04-24, 08:00:00.000     LOG [HTTP] {"requestId":"…","method":"GET",…}
+#
+# Ce pipeline :
+# 1. Parse le préfixe Nest pour extraire level + module.
+# 2. Détecte le JSON embarqué et en extrait `requestId`, `method`, `url`, `status`, `durationMs`.
+# 3. Ajoute des labels Loki utiles au routage (app, env, level).
+#
+# Hypothèse : le backend tourne en container stdout-captured par Docker/k8s.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # ── IOX Backend : Docker logs ─────────────────────────────────────────────
+  - job_name: iox-backend
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        filters:
+          - name: label
+            values: ['com.iox.service=backend']
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        target_label: container
+      - source_labels: ['__meta_docker_container_label_com_iox_service']
+        target_label: app
+      - source_labels: ['__meta_docker_container_label_com_iox_env']
+        target_label: env
+    pipeline_stages:
+      # 1. Préfixe Nest standard
+      - regex:
+          expression: '^\[Nest\]\s+\d+\s+-\s+\S+\s+\S+\s+(?P<level>\w+)\s+\[(?P<module>[^\]]+)\]\s+(?P<payload>.*)$'
+      - labels:
+          level:
+          module:
+
+      # 2. Payload JSON (HTTP interceptor)
+      - match:
+          selector: '{app="iox-backend"} |~ "^\\{"'
+          stages:
+            - json:
+                expressions:
+                  requestId: requestId
+                  method: method
+                  url: url
+                  status: status
+                  durationMs: durationMs
+                  userId: userId
+                  error: error
+                  source: payload
+            - labels:
+                method:
+                status:
+            # Ne pas indexer requestId comme label (haute cardinalité) :
+            # il reste searchable via `|= "req-id-xxx"` ou `| json`.
+
+      # 3. Timestamp depuis le préfixe Nest si présent, sinon fallback
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+          fallback_formats:
+            - '2006-01-02T15:04:05.000Z07:00'
+          action_on_failure: skip
+
+  # ── Promtail Kubernetes (alternative) ───────────────────────────────────
+  # Décommenter si Promtail tourne comme DaemonSet k8s.
+  # - job_name: kubernetes-pods
+  #   kubernetes_sd_configs:
+  #     - role: pod
+  #   relabel_configs:
+  #     - source_labels: ['__meta_kubernetes_pod_label_app']
+  #       regex: 'iox-backend'
+  #       action: keep
+  #     - source_labels: ['__meta_kubernetes_pod_label_app']
+  #       target_label: app
+  #     - source_labels: ['__meta_kubernetes_namespace']
+  #       target_label: namespace
+  #   pipeline_stages: *iox_pipeline  # réutiliser le même pipeline

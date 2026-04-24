@@ -1,0 +1,103 @@
+# ─────────────────────────────────────────────────────────
+#  IOX — template Nginx reverse proxy préprod
+# ─────────────────────────────────────────────────────────
+#  - Termine TLS (Let's Encrypt / acme.sh).
+#  - Redirige HTTP → HTTPS.
+#  - Proxifie / → frontend:3000, /api/ → backend:3001.
+#  - Ajoute les headers de sécurité standards.
+#  - Expose /api/v1/metrics uniquement depuis un bloc IP interne
+#    (ajuster `allow` au CIDR Prometheus).
+#
+#  Usage :
+#    cp nginx.preprod.conf.example /etc/nginx/sites-available/iox.conf
+#    ln -s ../sites-available/iox.conf /etc/nginx/sites-enabled/
+#    nginx -t && systemctl reload nginx
+# ─────────────────────────────────────────────────────────
+
+# Redirection HTTP → HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name preprod.iox.mch;
+
+    # ACME HTTP-01 challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS public
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name preprod.iox.mch;
+
+    # TLS — chemins à adapter selon votre ACME client.
+    ssl_certificate     /etc/letsencrypt/live/preprod.iox.mch/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/preprod.iox.mch/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+    # HSTS (ne pas activer avant d'être sûr du HTTPS permanent)
+    add_header Strict-Transport-Security "max-age=15768000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+
+    # Limite body (upload MinIO → ajuster selon taille max document)
+    client_max_body_size 50m;
+
+    # Logs
+    access_log /var/log/nginx/iox.preprod.access.log;
+    error_log  /var/log/nginx/iox.preprod.error.log  warn;
+
+    # ─── Backend API ─────────────────────────────────────
+    # Tout /api/v1 va à Nest. Le frontend Next rewrite server-side
+    # ne traverse pas ce chemin : /api/v1 public → Nest direct.
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_connect_timeout 10s;
+    }
+
+    # ─── Metrics (accès interne uniquement) ──────────────
+    # Ajuster le CIDR à celui de votre scraper Prometheus.
+    location = /api/v1/metrics {
+        allow 10.0.0.0/8;
+        allow 172.16.0.0/12;
+        allow 192.168.0.0/16;
+        deny  all;
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host              $host;
+        proxy_set_header Authorization     $http_authorization;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ─── Frontend Next.js ────────────────────────────────
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- IOX — Emblème seul (favicon, tiles compactes, avatar app) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="IOX">
+  <defs>
+    <linearGradient id="emblem-ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1f4d"/>
+      <stop offset="100%" stop-color="#1a3a7d"/>
+    </linearGradient>
+    <linearGradient id="emblem-swoosh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2d9cdb"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="emblem-leaf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4a6741"/>
+      <stop offset="100%" stop-color="#27ae60"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Anneau principal -->
+  <circle cx="50" cy="52" r="40" fill="none" stroke="url(#emblem-ring)" stroke-width="6"/>
+
+  <!-- Swoosh teal -->
+  <path d="M 14 58 A 40 40 0 0 1 86 58" fill="none" stroke="url(#emblem-swoosh)" stroke-width="5.5" stroke-linecap="round"/>
+
+  <!-- Feuille verte -->
+  <path d="M 26 66 Q 31 42 48 35 Q 41 57 32 72 Q 28 72 26 66 Z" fill="url(#emblem-leaf)"/>
+  <path d="M 31 58 Q 39 47 46 42" fill="none" stroke="#0a1f4d" stroke-width="0.9" opacity="0.35"/>
+
+  <!-- Lettre i -->
+  <rect x="44" y="43" width="6" height="25" rx="1.2" fill="#0a1f4d"/>
+  <rect x="44" y="33" width="6" height="6" rx="1" fill="#2d9cdb"/>
+
+  <!-- Lettre o (anneau) -->
+  <circle cx="64" cy="55" r="12" fill="none" stroke="#0a1f4d" stroke-width="5.5"/>
+
+  <!-- Réseau vert -->
+  <g transform="translate(82, 20)">
+    <line x1="0" y1="0" x2="-7" y2="7" stroke="#27ae60" stroke-width="1.6"/>
+    <line x1="0" y1="0" x2="8" y2="-4" stroke="#27ae60" stroke-width="1.6"/>
+    <line x1="0" y1="0" x2="6" y2="9" stroke="#27ae60" stroke-width="1.6"/>
+    <circle cx="0" cy="0" r="2.8" fill="#27ae60"/>
+    <circle cx="-7" cy="7" r="2.2" fill="#27ae60"/>
+    <circle cx="8" cy="-4" r="2.2" fill="#27ae60"/>
+    <circle cx="6" cy="9" r="2.2" fill="#27ae60"/>
+  </g>
+</svg>

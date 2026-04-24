@@ -1,0 +1,232 @@
+# IOX — Règles d'alerte Prometheus / Alertmanager
+#
+# Chaque alerte référence un runbook dans `docs/ops/RUNBOOKS.md` via l'annotation
+# `runbook`. Les seuils sont volontairement conservateurs pour un premier
+# déploiement — à affiner avec les métriques réelles après 2 semaines de trafic.
+
+groups:
+  # ═══════════════════════════════════════════════════════════════════════
+  # Groupe 1 — Santé service (SLO technique)
+  # ═══════════════════════════════════════════════════════════════════════
+  - name: iox-service-health
+    interval: 30s
+    rules:
+      - alert: IoxBackendDown
+        expr: up{job="iox-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: iox-backend
+        annotations:
+          summary: "IOX backend injoignable (scrape échoue depuis 2 min)"
+          description: >
+            Prometheus n'arrive plus à scraper `/api/v1/metrics` sur
+            {{ $labels.instance }}. Le process est probablement down ou
+            le réseau est coupé.
+          runbook: docs/ops/RUNBOOKS.md#rb-02--health-retourne-503
+
+      - alert: IoxReadinessFailing
+        expr: probe_success{job="iox-readiness"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          service: iox-backend
+        annotations:
+          summary: "IOX readiness KO (health endpoint 503)"
+          description: >
+            Le health agrégé (`/api/v1/health`) renvoie en erreur depuis 3 min.
+            DB ou stockage KO.
+          runbook: docs/ops/RUNBOOKS.md#rb-02--health-retourne-503
+
+      - alert: IoxProcessCrashLoop
+        expr: iox_process_uptime_seconds < 120
+        for: 10m
+        labels:
+          severity: warning
+          service: iox-backend
+        annotations:
+          summary: "IOX backend redémarre en boucle (uptime < 2 min)"
+          description: >
+            L'uptime reste sous 2 minutes depuis 10 minutes — signal d'une
+            crash loop (exception au boot, OOM, probe trop stricte).
+
+      - alert: IoxMemoryHigh
+        expr: iox_process_memory_rss_bytes > 1.5e9
+        for: 15m
+        labels:
+          severity: warning
+          service: iox-backend
+        annotations:
+          summary: "IOX backend consomme > 1.5 Go RSS depuis 15 min"
+          description: >
+            Fuite mémoire suspectée ou workload anormale. Inspecter
+            `iox_process_memory_heap_used_bytes` pour discriminer heap vs
+            natif (attachements, buffers).
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Groupe 2 — Qualité HTTP (SLO trafic)
+  # ═══════════════════════════════════════════════════════════════════════
+  - name: iox-http-slo
+    interval: 30s
+    rules:
+      - alert: IoxHttp5xxRateHigh
+        expr: |
+          (
+            sum(rate(iox_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(iox_http_requests_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          service: iox-backend
+        annotations:
+          summary: "Taux d'erreurs 5xx > 1 % sur 5 min"
+          description: >
+            Corréler dans Loki :
+            `{app="iox-backend"} | json | status >= 500`.
+          runbook: docs/ops/RUNBOOKS.md#rb-01--un-utilisateur-signale-erreur-sur-un-écran
+
+      - alert: IoxHttp5xxRateCritical
+        expr: |
+          (
+            sum(rate(iox_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(iox_http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: iox-backend
+        annotations:
+          summary: "Taux d'erreurs 5xx > 5 % sur 5 min — incident en cours"
+          description: >
+            Plateforme dégradée pour les utilisateurs. Basculer en mode
+            incident : identifier un requestId dans Loki, remonter le
+            stack trace, rollback si déploiement récent.
+
+      - alert: IoxHttpLatencyP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(iox_http_duration_seconds_bucket[5m]))
+          ) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: iox-backend
+        annotations:
+          summary: "Latence p95 > 800 ms sur 10 min"
+          description: >
+            Dégradation perçue par les utilisateurs. Identifier la route
+            lente via `sum by (route) (rate(iox_http_duration_seconds_sum[5m]))
+            / sum by (route) (rate(iox_http_duration_seconds_count[5m]))`.
+
+      - alert: IoxHttp4xxAuthBurst
+        expr: |
+          sum(rate(iox_http_requests_total{status="401"}[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+          service: iox-backend
+        annotations:
+          summary: "Burst de 401 (> 5 req/s sur 10 min)"
+          description: >
+            Signal d'une tentative de brute-force ou d'un client mal configuré
+            (token expiré sans refresh).
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Groupe 3 — Exploitation marketplace (SLO métier)
+  # ═══════════════════════════════════════════════════════════════════════
+  - name: iox-marketplace-ops
+    interval: 60s
+    rules:
+      - alert: IoxMarketplaceMetricsStale
+        expr: (time() - iox_marketplace_metrics_last_refresh_seconds) > 300
+        for: 5m
+        labels:
+          severity: warning
+          service: iox-backend
+        annotations:
+          summary: "Gauges marketplace non rafraîchies depuis > 5 min"
+          description: >
+            `OpsMetricsService` ne publie plus ses gauges. Probable exception
+            Prisma répétée — chercher `Ops metrics tick failed` dans Loki.
+
+      - alert: IoxReviewQueueBacklog
+        expr: iox_marketplace_review_pending > 20
+        for: 30m
+        labels:
+          severity: warning
+          team: quality
+        annotations:
+          summary: "File de revue > 20 items depuis 30 min"
+          description: >
+            Staff QUALITY_MANAGER à mobiliser. Ouvrir `/admin` → section
+            Risques & alertes pour prioriser les items les plus anciens.
+          runbook: docs/ops/RUNBOOKS.md#rb-04--la-file-de-revue-pending-explose
+
+      - alert: IoxReviewQueueCritical
+        expr: iox_marketplace_review_pending > 50
+        for: 15m
+        labels:
+          severity: critical
+          team: quality
+        annotations:
+          summary: "File de revue > 50 items — backpressure critique"
+
+      - alert: IoxDocumentsRejectedPresent
+        expr: iox_marketplace_documents{verification_status="rejected"} > 0
+        for: 1h
+        labels:
+          severity: info
+          team: quality
+        annotations:
+          summary: "Documents seller rejetés non relancés depuis 1 h"
+          description: >
+            Vérifier que le seller a été contacté (template SUPPORT-002).
+          runbook: docs/ops/RUNBOOKS.md#rb-05--document-seller-expiré--rejeté
+
+      - alert: IoxSellersSuspendedSpike
+        expr: |
+          increase(iox_marketplace_sellers_by_status{status="suspended"}[1h]) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "Plus de 2 sellers suspendus en 1 h"
+          description: >
+            Vérifier qu'il s'agit d'actions volontaires et non d'un bug de
+            logique (cascade sur expiration documentaire).
+
+      - alert: IoxRfqBacklogNew
+        expr: iox_marketplace_rfq{status="new"} > 10
+        for: 2h
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "Plus de 10 RFQ en statut NEW depuis 2 h"
+          description: >
+            Staff COORDINATOR à mobiliser pour qualifier.
+          runbook: docs/ops/RUNBOOKS.md#rb-06--rfq-bloquée-en-new--48h
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # Groupe 4 — Sécurité / abus (signal faible)
+  # ═══════════════════════════════════════════════════════════════════════
+  - name: iox-security-signals
+    interval: 60s
+    rules:
+      - alert: IoxForbiddenBurst
+        expr: |
+          sum(rate(iox_http_requests_total{status="403"}[5m])) > 2
+        for: 15m
+        labels:
+          severity: info
+          team: ops
+        annotations:
+          summary: "Burst de 403 — possible ownership / rôle cassé"
+          description: >
+            Corréler avec `/admin/diagnostics` → sellers sans rattachement.
+          runbook: docs/ops/RUNBOOKS.md#rb-03--un-seller-se-plaint-de-ne-plus-pouvoir-publier-403

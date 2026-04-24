@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(grep -rn *)",
+      "Bash(find * -type f *)",
+      "Bash(ls *)"
+    ]
+  }
+}

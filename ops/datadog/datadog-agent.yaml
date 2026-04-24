@@ -1,0 +1,73 @@
+# IOX — Datadog Agent config (alternative à la stack Loki+Prometheus)
+#
+# Utilise l'autodiscovery Docker/k8s et les checks HTTP pour :
+#  - collecter `/api/v1/metrics` (openmetrics)
+#  - collecter les logs stdout parsés en JSON
+#  - probe readiness `/api/v1/health`
+#
+# Remplacer le placeholder `<DATADOG_API_KEY>` par un secret géré.
+
+api_key: ENC[<DATADOG_API_KEY>]
+site: datadoghq.eu  # ou datadoghq.com selon le compte
+
+logs_enabled: true
+
+tags:
+  - env:preprod
+  - service:iox-backend
+
+# ── OpenMetrics (Prometheus) scrape ──────────────────────────────────────
+# À placer dans conf.d/openmetrics.d/iox.yaml avec ce contenu :
+#
+# instances:
+#   - openmetrics_endpoint: http://iox-backend:3001/api/v1/metrics
+#     namespace: iox
+#     metrics:
+#       - iox_http_requests_total
+#       - iox_http_duration_seconds
+#       - iox_process_uptime_seconds
+#       - iox_process_memory_rss_bytes
+#       - iox_process_memory_heap_used_bytes
+#       - iox_marketplace_sellers_total
+#       - iox_marketplace_sellers_by_status
+#       - iox_marketplace_publications
+#       - iox_marketplace_review_pending
+#       - iox_marketplace_documents
+#       - iox_marketplace_rfq
+#       - iox_marketplace_metrics_last_refresh_seconds
+#     headers:
+#       Authorization: Bearer ENC[<IOX_METRICS_TOKEN>]
+
+# ── Logs pipeline ─────────────────────────────────────────────────────────
+# conf.d/iox-backend.d/conf.yaml :
+#
+# logs:
+#   - type: docker
+#     image: iox-backend
+#     service: iox-backend
+#     source: nodejs
+#     log_processing_rules:
+#       - type: multi_line
+#         name: nest_prefix
+#         pattern: '\[Nest\]'
+#       - type: mask_sequences
+#         name: mask_bearer
+#         pattern: 'Bearer [A-Za-z0-9._-]+'
+#         replace_placeholder: 'Bearer [REDACTED]'
+#
+# Puis configurer un processor pipeline Datadog (UI ou config-as-code)
+# pour extraire `requestId`, `method`, `url`, `status`, `durationMs` depuis
+# le JSON embarqué dans `message`.
+
+# ── HTTP probe readiness ─────────────────────────────────────────────────
+# conf.d/http_check.d/iox.yaml :
+#
+# init_config:
+# instances:
+#   - name: iox-readiness
+#     url: http://iox-backend:3001/api/v1/health
+#     timeout: 5
+#     http_response_status_code: 200
+#     tags:
+#       - service:iox-backend
+#       - check:readiness

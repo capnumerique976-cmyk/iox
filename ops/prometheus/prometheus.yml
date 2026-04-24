@@ -1,0 +1,59 @@
+# IOX — Prometheus scrape config (exemple exploitation)
+#
+# À adapter selon l'environnement (adresses, namespace k8s, secret manager).
+# Le backend IOX expose `/api/v1/metrics` au format Prometheus v0.0.4.
+# Protection optionnelle via Bearer token `METRICS_TOKEN` (voir docs/OBSERVABILITY.md).
+
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    # Ajoute `env` et `cluster` sur chaque série — utile pour multi-env.
+    env: preprod
+    cluster: iox-main
+
+rule_files:
+  - /etc/prometheus/rules/iox-alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  # ── IOX Backend : HTTP + métriques marketplace via `iox_marketplace_*` ─────
+  - job_name: iox-backend
+    metrics_path: /api/v1/metrics
+    static_configs:
+      - targets: ['iox-backend:3001']
+        labels:
+          service: iox-backend
+    # Active si METRICS_TOKEN est défini côté backend.
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/iox-metrics-token
+
+  # ── IOX Backend : probe readiness via blackbox_exporter ───────────────────
+  # Permet un SLO "service up" indépendant du scraping /metrics (qui peut
+  # réussir même si la DB est KO).
+  - job_name: iox-readiness
+    metrics_path: /probe
+    params:
+      module: [http_2xx_readiness]
+    static_configs:
+      - targets:
+          - http://iox-backend:3001/api/v1/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # ── Node / Container metrics (à brancher depuis ton infra k8s) ───────────
+  # - job_name: kubernetes-cadvisor
+  #   kubernetes_sd_configs:
+  #     - role: node
