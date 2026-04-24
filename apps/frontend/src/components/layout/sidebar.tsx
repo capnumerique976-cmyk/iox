@@ -1,144 +1,25 @@
 'use client';
 
+/**
+ * IOX — Sidebar contextuelle
+ *
+ * Affiche uniquement les items de la section active (voir `nav-config.ts`).
+ * Composition à 3 niveaux :
+ *   1. TopNav (horizontale)  → choix de section
+ *   2. Sidebar (verticale)   → items de la section active
+ *   3. Page                  → contenu
+ *
+ * Sur `/profile` ou hors section identifiée, la sidebar tombe sur HOME_SECTION.
+ * Le pied de barre (avatar + déconnexion) est conservé.
+ */
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  Users,
-  Package,
-  Building2,
-  FileSignature,
-  Inbox,
-  GitBranch,
-  Boxes,
-  Tag,
-  CheckCircle2,
-  Search,
-  Store,
-  MessageSquareQuote,
-  FolderLock,
-  Truck,
-  AlertTriangle,
-  FileArchive,
-  ShieldCheck,
-  UserCog,
-  Network,
-  ClipboardList,
-  Activity,
-  ScrollText,
-  LogOut,
-  type LucideIcon,
-} from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
 import { hasPermission, ROLE_LABELS } from '@/lib/auth';
 import { UserRole } from '@iox/shared';
 import { cn } from '@/lib/utils';
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                               */
-/* ------------------------------------------------------------------ */
-
-interface NavItem {
-  label: string;
-  href: string;
-  permission: string;
-  icon: LucideIcon;
-}
-
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
-
-/* ------------------------------------------------------------------ */
-/*  Navigation structure                                                */
-/* ------------------------------------------------------------------ */
-
-const NAV_SECTIONS: NavSection[] = [
-  {
-    title: "Vue d'ensemble",
-    items: [
-      { label: 'Tableau de bord', href: '/dashboard', permission: '*', icon: LayoutDashboard },
-    ],
-  },
-  {
-    title: 'Référentiel',
-    items: [
-      { label: 'Bénéficiaires', href: '/beneficiaries', permission: '*', icon: Users },
-      { label: 'Produits', href: '/products', permission: '*', icon: Package },
-      { label: 'Entreprises', href: '/companies', permission: '*', icon: Building2 },
-      { label: 'Contrats appro.', href: '/supply-contracts', permission: '*', icon: FileSignature },
-    ],
-  },
-  {
-    title: 'Chaîne de production',
-    items: [
-      { label: 'Lots entrants', href: '/inbound-batches', permission: '*', icon: Inbox },
-      {
-        label: 'Transformations',
-        href: '/transformation-operations',
-        permission: '*',
-        icon: GitBranch,
-      },
-      { label: 'Lots finis', href: '/product-batches', permission: '*', icon: Boxes },
-      { label: 'Étiquetage', href: '/label-validations', permission: '*', icon: Tag },
-      {
-        label: 'Mise en marché',
-        href: '/market-release-decisions',
-        permission: '*',
-        icon: CheckCircle2,
-      },
-      { label: 'Traçabilité', href: '/traceability', permission: '*', icon: Search },
-    ],
-  },
-  {
-    title: 'Marketplace',
-    items: [
-      { label: 'Cockpit vendeur', href: '/seller/dashboard', permission: '*', icon: Store },
-      {
-        label: 'Demandes de devis',
-        href: '/quote-requests',
-        permission: '*',
-        icon: MessageSquareQuote,
-      },
-      {
-        label: 'Documents marketplace',
-        href: '/seller/documents',
-        permission: '*',
-        icon: FolderLock,
-      },
-    ],
-  },
-  {
-    title: 'Distribution & Suivi',
-    items: [
-      { label: 'Distributions', href: '/distributions', permission: '*', icon: Truck },
-      { label: 'Incidents', href: '/incidents', permission: '*', icon: AlertTriangle },
-      { label: 'Documents', href: '/documents', permission: '*', icon: FileArchive },
-    ],
-  },
-];
-
-const ADMIN_ITEMS: NavItem[] = [
-  { label: 'Tableau admin', href: '/admin', permission: 'users:read', icon: ShieldCheck },
-  { label: 'Utilisateurs', href: '/admin/users', permission: 'users:read', icon: UserCog },
-  { label: 'Rattachements', href: '/admin/memberships', permission: 'users:read', icon: Network },
-  { label: 'Vendeurs', href: '/admin/sellers', permission: 'marketplace:review', icon: Store },
-  {
-    label: 'File de revue',
-    href: '/admin/review-queue',
-    permission: 'marketplace:review',
-    icon: ClipboardList,
-  },
-  {
-    label: 'Demandes de devis',
-    href: '/admin/rfq',
-    permission: 'marketplace:review',
-    icon: MessageSquareQuote,
-  },
-  { label: 'Diagnostics', href: '/admin/diagnostics', permission: 'users:read', icon: Activity },
-  { label: "Journal d'audit", href: '/audit-logs', permission: 'audit', icon: ScrollText },
-];
+import { getActiveSection, type NavItem } from './nav-config';
 
 /* ------------------------------------------------------------------ */
 /*  SidebarContent — partagé desktop (aside) + mobile (drawer)          */
@@ -154,7 +35,10 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   if (!user) return null;
 
-  const EXACT_MATCH_ROUTES = new Set(['/dashboard', '/admin']);
+  const section = getActiveSection(pathname);
+  const SectionIcon = section.icon;
+
+  const EXACT_MATCH_ROUTES = new Set(['/dashboard', '/admin', '/profile']);
   const isActive = (href: string) =>
     EXACT_MATCH_ROUTES.has(href) ? pathname === href : pathname.startsWith(href);
 
@@ -163,55 +47,40 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     user.role === UserRole.ADMIN ||
     hasPermission(user.role, item.permission);
 
-  const visibleAdmin = ADMIN_ITEMS.filter(canSee);
+  const visibleItems = section.items.filter(canSee);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto py-4">
-        <nav>
-          {NAV_SECTIONS.map((section) => {
-            const visibleItems = section.items.filter(canSee);
-            if (visibleItems.length === 0) return null;
-            return (
-              <div key={section.title} className="mb-2">
-                <div className="px-5 pt-3 pb-1.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#00D4FF]/70">
-                    {section.title}
-                  </span>
-                </div>
-                <div className="px-2.5 space-y-0.5">
-                  {visibleItems.map((item) => (
-                    <NavLink
-                      key={item.href}
-                      item={item}
-                      active={isActive(item.href)}
-                      onNavigate={onNavigate}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      {/* Eyebrow contextuel — rappelle la section active */}
+      <div className="border-b border-white/5 px-5 pb-3 pt-4">
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#00D4FF]/20 to-[#7B61FF]/15 ring-1 ring-inset ring-[#00D4FF]/25"
+          >
+            <SectionIcon className="h-3.5 w-3.5 text-[#00D4FF]" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#00D4FF]/70">
+              Section
+            </p>
+            <p className="truncate text-sm font-semibold text-white">{section.label}</p>
+          </div>
+        </div>
+      </div>
 
-          {visibleAdmin.length > 0 && (
-            <div className="mb-2">
-              <div className="px-5 pt-3 pb-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7B61FF]/80">
-                  Administration
-                </span>
-              </div>
-              <div className="px-2.5 space-y-0.5">
-                {visibleAdmin.map((item) => (
-                  <NavLink
-                    key={item.href}
-                    item={item}
-                    active={isActive(item.href)}
-                    onNavigate={onNavigate}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+      <div className="flex-1 overflow-y-auto py-3">
+        <nav aria-label={`Navigation ${section.label}`}>
+          <div className="px-2.5 space-y-0.5">
+            {visibleItems.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                active={isActive(item.href)}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
         </nav>
       </div>
 
@@ -255,7 +124,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function Sidebar() {
   // Masquée sous `lg` (<1024px) — sur mobile/tablette le drawer prend le relais.
   return (
-    <aside className="hidden lg:flex w-64 min-h-screen bg-[#0A0E1A]/85 backdrop-blur-xl border-r border-white/10 flex-col overflow-hidden">
+    <aside className="hidden lg:flex w-64 min-h-[calc(100vh-3.5rem)] bg-[#0A0E1A]/85 backdrop-blur-xl border-r border-white/10 flex-col overflow-hidden">
       <SidebarContent />
     </aside>
   );
