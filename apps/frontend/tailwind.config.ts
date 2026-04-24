@@ -71,6 +71,24 @@ const config: Config = {
           danger: 'var(--iox-premium-danger)',
           'neutral-50': 'var(--iox-premium-neutral-50)',
         },
+        // IOX Neon — Dark-premium visual language (Figma HTML template).
+        // Surfaces dark + accents cyan/violet/neon utilisés sur login,
+        // marketplace public et accents dashboard.
+        'iox-neon': {
+          bg: 'var(--iox-neon-bg)',
+          'bg-2': 'var(--iox-neon-bg-2)',
+          surface: 'var(--iox-neon-surface)',
+          'surface-2': 'var(--iox-neon-surface-2)',
+          border: 'var(--iox-neon-border)',
+          'border-strong': 'var(--iox-neon-border-strong)',
+          text: 'var(--iox-neon-text)',
+          'text-muted': 'var(--iox-neon-text-muted)',
+          cyan: 'var(--iox-neon-cyan)',
+          violet: 'var(--iox-neon-violet)',
+          green: 'var(--iox-neon-green)',
+          amber: 'var(--iox-neon-amber)',
+          pink: 'var(--iox-neon-pink)',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -87,15 +105,29 @@ const config: Config = {
         'premium-xl': 'var(--shadow-premium-xl)',
         'glow-accent': 'var(--shadow-premium-glow-accent)',
         'glow-primary': 'var(--shadow-premium-glow-primary)',
+        // Dark-premium glows (template HTML).
+        'glow-cyan': '0 0 30px rgba(0, 212, 255, 0.4)',
+        'glow-cyan-sm': '0 0 16px rgba(0, 212, 255, 0.35)',
+        'glow-cyan-lg': '0 0 60px rgba(0, 212, 255, 0.45)',
+        'glow-violet': '0 0 30px rgba(123, 97, 255, 0.45)',
+        'glow-green': '0 0 30px rgba(0, 245, 160, 0.3)',
+        'glow-amber': '0 0 28px rgba(255, 184, 0, 0.35)',
+        'glow-pink': '0 0 30px rgba(255, 71, 87, 0.35)',
       },
       backgroundImage: {
-        // Gradients premium
+        // Gradients premium (héritage DS-0)
         'gradient-iox-primary': 'var(--gradient-iox-primary)',
         'gradient-iox-accent': 'var(--gradient-iox-accent)',
         'gradient-iox-success': 'var(--gradient-iox-success)',
         'gradient-iox-warning': 'var(--gradient-iox-warning)',
         'gradient-iox-glass': 'var(--gradient-iox-glass)',
         'gradient-iox-overlay': 'var(--gradient-iox-overlay)',
+        // Dark-premium gradients (template HTML).
+        'gradient-iox-neon': 'linear-gradient(135deg, #00D4FF 0%, #7B61FF 100%)',
+        'gradient-iox-neon-success': 'linear-gradient(135deg, #00F5A0 0%, #00D9F5 100%)',
+        'gradient-iox-neon-warning': 'linear-gradient(135deg, #FFB800 0%, #FF6B00 100%)',
+        'gradient-iox-neon-error': 'linear-gradient(135deg, #FF4757 0%, #FF6B9D 100%)',
+        'gradient-iox-night': 'linear-gradient(135deg, #0A0E1A 0%, #1A1F2E 100%)',
       },
       backdropBlur: {
         glass: '12px',

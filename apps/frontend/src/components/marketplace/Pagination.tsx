@@ -34,13 +34,14 @@ export function Pagination({ currentPage, totalPages, basePath, searchParams }: 
   const atEnd = currentPage >= totalPages;
 
   const btnBase =
-    'inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors';
-  const btnActive = 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50';
+    'inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors';
+  const btnActive =
+    'border-white/15 bg-white/5 text-white/80 hover:border-[#00D4FF]/50 hover:bg-[#00D4FF]/10 hover:text-white';
   const btnDisabled =
-    'border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed pointer-events-none';
+    'border-white/5 bg-white/[0.02] text-white/25 cursor-not-allowed pointer-events-none';
 
   return (
-    <nav className="mt-6 flex items-center justify-between gap-4 border-t border-gray-200 pt-4">
+    <nav className="mt-6 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
       <Link
         href={buildHref(prev)}
         aria-disabled={atStart}
@@ -50,8 +51,8 @@ export function Pagination({ currentPage, totalPages, basePath, searchParams }: 
         Précédent
       </Link>
 
-      <p className="text-sm text-gray-600 tabular-nums">
-        Page <strong>{currentPage}</strong> / {totalPages}
+      <p className="text-sm text-white/60 tabular-nums">
+        Page <strong className="text-white">{currentPage}</strong> / {totalPages}
       </p>
 
       <Link

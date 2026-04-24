@@ -34,8 +34,8 @@ export function FavoriteButton({ productSlug, commercialName, variant = 'card' }
         aria-pressed={active}
         className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
           active
-            ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
-            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            ? 'border-[#ff4757]/50 bg-[#ff4757]/15 text-[#ff6b9d] hover:bg-[#ff4757]/25'
+            : 'border-white/15 bg-white/5 text-white/80 hover:border-white/30 hover:bg-white/10 hover:text-white'
         }`}
       >
         <Heart className={`h-4 w-4 ${active ? 'fill-current' : ''}`} />
@@ -50,10 +50,10 @@ export function FavoriteButton({ productSlug, commercialName, variant = 'card' }
       onClick={onClick}
       aria-pressed={active}
       aria-label={active ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-      className={`rounded-full p-1.5 shadow-sm backdrop-blur transition-colors ${
+      className={`rounded-full p-1.5 shadow-lg shadow-black/30 backdrop-blur transition-colors ${
         active
-          ? 'bg-red-500/90 text-white hover:bg-red-600'
-          : 'bg-white/90 text-gray-600 hover:bg-white hover:text-red-500'
+          ? 'bg-[#ff4757] text-white hover:bg-[#ff6b9d]'
+          : 'bg-black/40 text-white/80 ring-1 ring-white/15 hover:bg-black/60 hover:text-[#ff6b9d]'
       }`}
     >
       <Heart className={`h-4 w-4 ${active ? 'fill-current' : ''}`} />

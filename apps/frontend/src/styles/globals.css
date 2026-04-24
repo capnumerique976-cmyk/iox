@@ -79,6 +79,32 @@
   --duration-fast: 200ms;
   --duration-base: 300ms;
   --duration-slow: 500ms;
+
+  /* ─────────────────────────────────────────────────────────
+   * IOX Neon (dark-premium) — Figma HTML template
+   * Source : IOX_Complete_Design_System.html
+   * Surfaces dark + accents cyan/violet/neon. Utilisés sur :
+   *   — /login
+   *   — /marketplace (catalogue, fiche produit, fiche vendeur)
+   *   — accents ponctuels des dashboards (glow, gradients hero)
+   * Les pages métier internes restent en thème light.
+   * ───────────────────────────────────────────────────────── */
+  --iox-neon-bg: #0a0e1a; /* body dark */
+  --iox-neon-bg-2: #12161f; /* panneau latéral / surfaces secondaires */
+  --iox-neon-surface: rgba(18, 22, 31, 0.7); /* glass card fill */
+  --iox-neon-surface-2: rgba(255, 255, 255, 0.05); /* input / subtle */
+  --iox-neon-border: rgba(255, 255, 255, 0.1);
+  --iox-neon-border-strong: rgba(255, 255, 255, 0.18);
+  --iox-neon-text: #ffffff;
+  --iox-neon-text-muted: #b4b9c9;
+  --iox-neon-cyan: #00d4ff;
+  --iox-neon-violet: #7b61ff;
+  --iox-neon-green: #00f5a0;
+  --iox-neon-green-2: #00d9f5;
+  --iox-neon-amber: #ffb800;
+  --iox-neon-orange: #ff6b00;
+  --iox-neon-pink: #ff4757;
+  --iox-neon-pink-2: #ff6b9d;
 }
 
 .dark {
@@ -195,6 +221,79 @@
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* ─────────────────────────────────────────────────────────
+   * IOX Neon — surfaces & effets dark-premium
+   * Utilisés uniquement sur les écrans "neon" (login, marketplace,
+   * hero dashboards). Les composants de l'app shell light restent
+   * indépendants — aucun de ces utilitaires ne leak en cascade.
+   * ───────────────────────────────────────────────────────── */
+  .iox-neon-root {
+    background: var(--iox-neon-bg);
+    color: var(--iox-neon-text);
+    color-scheme: dark;
+  }
+  .iox-glass {
+    background: var(--iox-neon-surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--iox-neon-border);
+  }
+  .iox-glass-strong {
+    background: rgba(18, 22, 31, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--iox-neon-border-strong);
+  }
+  .iox-glow-cyan {
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+  }
+  .iox-glow-violet {
+    box-shadow: 0 0 30px rgba(123, 97, 255, 0.45);
+  }
+  .iox-glow-green {
+    box-shadow: 0 0 30px rgba(0, 245, 160, 0.3);
+  }
+  /* Texte en gradient cyan→violet (équivalent .gradient-text du template). */
+  .iox-text-gradient-neon {
+    background: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  .iox-text-gradient-neon-success {
+    background: linear-gradient(135deg, #00f5a0 0%, #00d9f5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  /* Halo flouté décoratif (utilisé en fond de hero / login). */
+  .iox-halo {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(120px);
+    pointer-events: none;
+    opacity: 0.35;
+  }
+  /* Input dark premium : fond rgba blanc 5%, bord 10%, focus cyan. */
+  .iox-neon-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    transition:
+      border-color var(--duration-base) var(--ease-premium),
+      box-shadow var(--duration-base) var(--ease-premium);
+  }
+  .iox-neon-input::placeholder {
+    color: rgba(180, 185, 201, 0.6);
+  }
+  .iox-neon-input:focus {
+    outline: none;
+    border-color: rgba(0, 212, 255, 0.55);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.18);
   }
 
   /* ─────────────────────────────────────────────────────────

@@ -23,30 +23,30 @@ export default async function CatalogPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Hero du catalogue */}
-      <section className="relative overflow-hidden rounded-2xl border border-gray-200/70 bg-gradient-to-br from-premium-primary via-premium-primary-light to-premium-accent p-5 text-white shadow-premium-lg sm:p-8">
+      {/* Hero du catalogue — dark-premium neon */}
+      <section className="iox-glass-strong relative overflow-hidden rounded-2xl p-5 text-white sm:p-8">
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-3xl"
+          className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#00D4FF]/35 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-premium-accent-light/30 blur-3xl"
+          className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-[#7B61FF]/30 blur-3xl"
         />
         <div className="relative z-10 max-w-2xl">
-          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
-            <Sparkles className="h-3 w-3" aria-hidden />
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
+            <Sparkles className="h-3 w-3 text-[#00D4FF]" aria-hidden />
             Produits de Mayotte sélectionnés
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Catalogue marketplace
+          <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+            Catalogue <span className="iox-text-gradient-neon">marketplace</span>
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-white/80 sm:text-base">
+          <p className="mt-3 max-w-xl text-sm text-white/60 sm:text-base">
             Découvrez les offres d&apos;export des entreprises engagées dans le programme MCH —
             traçabilité garantie, conformité validée.
           </p>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-1.5 text-sm font-medium backdrop-blur-sm">
-            <Package className="h-4 w-4" aria-hidden />
+          <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/85 backdrop-blur-sm">
+            <Package className="h-4 w-4 text-[#00F5A0]" aria-hidden />
             {totalLabel} disponibles
           </div>
         </div>
@@ -65,16 +65,16 @@ export default async function CatalogPage({ searchParams }: PageProps) {
 
         <section>
           {!res ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-premium-sm">
+            <div className="iox-glass rounded-xl border border-[#ff4757]/40 bg-[#ff4757]/10 p-4 text-sm text-[#ffb4bb]">
               Le catalogue n’a pas pu être chargé. Rafraîchissez la page dans un instant ; si le problème persiste, nos équipes sont déjà alertées.
             </div>
           ) : res.data.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200/70 bg-white p-12 text-center shadow-premium-sm">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
-                <Package className="h-6 w-6 text-gray-400" aria-hidden />
+            <div className="iox-glass rounded-2xl p-12 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
+                <Package className="h-6 w-6 text-white/40" aria-hidden />
               </div>
-              <h2 className="text-sm font-semibold text-gray-900">Aucune offre correspondante</h2>
-              <p className="mt-1 text-sm text-gray-500">
+              <h2 className="text-sm font-semibold text-white">Aucune offre correspondante</h2>
+              <p className="mt-1 text-sm text-white/50">
                 Essayez d&apos;élargir vos filtres pour découvrir plus de produits.
               </p>
             </div>

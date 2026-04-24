@@ -19,7 +19,7 @@ export function MobileFiltersTrigger() {
       <SheetTrigger asChild>
         <button
           type="button"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent active:scale-[0.98] md:hidden"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/80 backdrop-blur-sm transition-all duration-base ease-premium hover:border-[#00D4FF]/50 hover:bg-[#00D4FF]/10 hover:text-white active:scale-[0.98] md:hidden"
           aria-label="Ouvrir les filtres"
         >
           <SlidersHorizontal className="h-4 w-4" aria-hidden />

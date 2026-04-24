@@ -70,47 +70,45 @@ export function CatalogFilters() {
     router.push(pathname);
   };
 
+  const fieldCls =
+    'iox-neon-input w-full rounded-lg px-2.5 py-1.5 text-sm text-white';
+  const labelCls = 'mb-1 block text-xs font-medium text-white/60';
+
   return (
     <form
       onSubmit={submit}
-      className="sticky top-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm shadow-sm"
+      className="iox-glass sticky top-4 flex flex-col gap-3 rounded-2xl p-4 text-sm text-white"
     >
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-700">
-          {t('filters.search')}
-        </label>
+        <label className={labelCls}>{t('filters.search')}</label>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t('filters.searchPlaceholder')}
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5 focus:border-blue-500 focus:outline-none"
+          className={fieldCls}
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-700">
-          {t('filters.country')}
-        </label>
+        <label className={labelCls}>{t('filters.country')}</label>
         <input
           value={country}
           onChange={(e) => setCountry(e.target.value.toUpperCase())}
           placeholder="YT, FR, MG…"
           maxLength={3}
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5"
+          className={fieldCls}
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-700">
-          {t('filters.readiness')}
-        </label>
+        <label className={labelCls}>{t('filters.readiness')}</label>
         <select
           value={readiness}
           onChange={(e) => setReadiness(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5"
+          className={fieldCls}
         >
           {READINESS_OPTS.map((o) => (
-            <option key={o.value} value={o.value}>
+            <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
               {o.label}
             </option>
           ))}
@@ -118,16 +116,14 @@ export function CatalogFilters() {
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-700">
-          {t('filters.priceMode')}
-        </label>
+        <label className={labelCls}>{t('filters.priceMode')}</label>
         <select
           value={priceMode}
           onChange={(e) => setPriceMode(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5"
+          className={fieldCls}
         >
           {PRICE_OPTS.map((o) => (
-            <option key={o.value} value={o.value}>
+            <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
               {o.label}
             </option>
           ))}
@@ -135,36 +131,35 @@ export function CatalogFilters() {
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-700">
-          {t('filters.moqMax')}
-        </label>
+        <label className={labelCls}>{t('filters.moqMax')}</label>
         <input
           type="number"
           min={0}
           value={moqMax}
           onChange={(e) => setMoqMax(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5"
+          className={fieldCls}
         />
       </div>
 
-      <label className="flex items-center gap-2 text-xs text-gray-700">
+      <label className="flex items-center gap-2 text-xs text-white/70">
         <input
           type="checkbox"
           checked={availableOnly}
           onChange={(e) => setAvailableOnly(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-white/20 bg-white/10 accent-[#00D4FF]"
         />
         {t('filters.availableOnly')}
       </label>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-700">{t('filters.sort')}</label>
+        <label className={labelCls}>{t('filters.sort')}</label>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5"
+          className={fieldCls}
         >
           {SORT_OPTS.map((o) => (
-            <option key={o.value} value={o.value}>
+            <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
               {o.label}
             </option>
           ))}
@@ -175,13 +170,13 @@ export function CatalogFilters() {
         <button
           type="button"
           onClick={reset}
-          className="text-xs text-gray-500 underline hover:text-gray-700"
+          className="text-xs text-white/50 underline-offset-2 hover:text-white hover:underline"
         >
           {t('filters.reset')}
         </button>
         <button
           type="submit"
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-lg bg-gradient-iox-neon px-3 py-1.5 text-sm font-medium text-white shadow-glow-cyan-sm transition-all duration-base ease-premium hover:brightness-110 hover:shadow-glow-cyan active:scale-[0.98]"
         >
           {t('filters.apply')}
         </button>
