@@ -39,6 +39,21 @@
 # ─────────────────────────────────────────────────────────
 set -u
 
+# Charge un fichier d'env local s'il existe (hors repo, gitignoré).
+# Priorité : --env-file CLI > $SMOKE_ENV_FILE > ~/.iox-smoke.env > scripts/.iox-smoke.env
+for candidate in \
+  "${SMOKE_ENV_FILE:-}" \
+  "${HOME}/.iox-smoke.env" \
+  "$(dirname "$0")/.iox-smoke.env"
+do
+  if [[ -n "$candidate" && -f "$candidate" ]]; then
+    # shellcheck disable=SC1090
+    source "$candidate"
+    echo "📄 env chargé depuis $candidate"
+    break
+  fi
+done
+
 BASE="${BASE_URL:-http://localhost:3000}"
 EMAIL="${SMOKE_EMAIL:-}"
 PASSWORD="${SMOKE_PASSWORD:-}"
@@ -54,12 +69,39 @@ say_fail() { printf "  ${RED}✗${RESET} %s\n" "$1"; failed=$((failed+1)); }
 
 if [[ -z "$EMAIL" || -z "$PASSWORD" ]]; then
   echo "${RED}ERR${RESET}: SMOKE_EMAIL et SMOKE_PASSWORD requis." >&2
-  echo "Exemple : SMOKE_EMAIL=admin@iox.local SMOKE_PASSWORD=... $0" >&2
+  echo "Voir : docs/ops/SMOKE-AUTH.md" >&2
+  echo >&2
+  echo "Exemples :" >&2
+  echo "  # local (compte seed)" >&2
+  echo "  SMOKE_EMAIL='admin@iox.mch' SMOKE_PASSWORD='Admin@IOX2026!' $0" >&2
+  echo >&2
+  echo "  # fichier env (recommandé)" >&2
+  echo "  echo \"SMOKE_EMAIL=admin@iox.mch\"        >  ~/.iox-smoke.env" >&2
+  echo "  echo \"SMOKE_PASSWORD='Admin@IOX2026!'\"   >> ~/.iox-smoke.env" >&2
+  echo "  chmod 600 ~/.iox-smoke.env && $0" >&2
   exit 2
 fi
 
+# Garde-fou : détecte les guillemets courbes souvent introduits par les
+# clients macOS (Notes, Messages, Mail) quand on copie-colle un mot de passe.
+# C'est LA cause la plus fréquente de "login impossible" en smoke.
+if printf '%s' "$EMAIL$PASSWORD" | LC_ALL=C grep -q $'[\xe2][\x80][\x98-\x9b]'; then
+  echo "${RED}ERR${RESET}: SMOKE_EMAIL ou SMOKE_PASSWORD contient des guillemets Unicode (’ ‘ “ ”)." >&2
+  echo "       Ré-encode en ASCII (apostrophes droites '  et guillemets \" ). Voir SMOKE-AUTH.md." >&2
+  exit 2
+fi
+
+# Trim d'éventuels espaces (fin de mot de passe) copiés depuis un doc.
+# On ne trim JAMAIS le milieu — seulement leading/trailing.
+EMAIL="${EMAIL#"${EMAIL%%[![:space:]]*}"}"; EMAIL="${EMAIL%"${EMAIL##*[![:space:]]}"}"
+PASSWORD="${PASSWORD#"${PASSWORD%%[![:space:]]*}"}"; PASSWORD="${PASSWORD%"${PASSWORD##*[![:space:]]}"}"
+
 if ! command -v jq >/dev/null 2>&1; then
   echo "${RED}ERR${RESET}: jq requis (brew install jq)" >&2
+  exit 2
+fi
+if ! command -v curl >/dev/null 2>&1; then
+  echo "${RED}ERR${RESET}: curl requis" >&2
   exit 2
 fi
 
@@ -71,23 +113,47 @@ echo
 
 # ── 1. Login ────────────────────────────────────────────────
 total=$((total+1))
-LOGIN_BODY=$(curl -sS -k --max-time "$TIMEOUT" \
+LOGIN_TMP=$(mktemp)
+# On utilise jq pour construire le JSON : robuste aux caractères spéciaux
+# dans le mot de passe (guillemets, backslash, dollar…) que le shell
+# mangerait via une simple interpolation.
+LOGIN_PAYLOAD=$(jq -cn --arg email "$EMAIL" --arg password "$PASSWORD" \
+  '{email: $email, password: $password}')
+
+LOGIN_CODE=$(curl -sS -k --max-time "$TIMEOUT" \
   -X POST "$BASE/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" 2>/dev/null || echo '{}')
+  -d "$LOGIN_PAYLOAD" \
+  -o "$LOGIN_TMP" -w '%{http_code}' 2>/dev/null || echo "000")
+LOGIN_BODY=$(cat "$LOGIN_TMP")
+rm -f "$LOGIN_TMP"
 
-TOKEN=$(printf '%s' "$LOGIN_BODY" | jq -r '.data.accessToken // .accessToken // empty')
-REFRESH=$(printf '%s' "$LOGIN_BODY" | jq -r '.data.refreshToken // .refreshToken // empty')
-USER_ROLE=$(printf '%s' "$LOGIN_BODY" | jq -r '.data.user.role // .user.role // empty')
+TOKEN=$(printf '%s' "$LOGIN_BODY" | jq -r '.data.accessToken // .accessToken // empty' 2>/dev/null || true)
+REFRESH=$(printf '%s' "$LOGIN_BODY" | jq -r '.data.refreshToken // .refreshToken // empty' 2>/dev/null || true)
+USER_ROLE=$(printf '%s' "$LOGIN_BODY" | jq -r '.data.user.role // .user.role // empty' 2>/dev/null || true)
 
 if [[ -z "$TOKEN" ]]; then
-  say_fail "login → pas d'accessToken dans la réponse"
-  echo "${YELLOW}Réponse brute :${RESET} $LOGIN_BODY"
+  say_fail "login → HTTP $LOGIN_CODE, pas d'accessToken"
+  echo "    base      : $BASE"
+  echo "    email     : $EMAIL"
+  echo "    pwd length: ${#PASSWORD} char(s)"
+  echo "${YELLOW}Diagnostic :${RESET}"
+  case "$LOGIN_CODE" in
+    000) echo "  → connexion impossible au backend (DNS, TLS, réseau, proxy)" ;;
+    401) echo "  → credentials invalides (compte inconnu, mauvais mot de passe, compte inactif)" ;;
+    403) echo "  → accès refusé par middleware (CORS, CSRF, geoblock)" ;;
+    404) echo "  → endpoint /api/v1/auth/login introuvable (mauvais BASE_URL ?)" ;;
+    429) echo "  → rate-limit throttler (attendre 1 min)" ;;
+    5*)  echo "  → erreur backend — consulter les logs serveur" ;;
+    *)   echo "  → code inattendu" ;;
+  esac
+  echo "${YELLOW}Réponse brute (500 premiers octets) :${RESET}"
+  echo "  $(printf '%s' "$LOGIN_BODY" | head -c 500)"
   echo
   printf "${RED}✗ smoke-authentifié KO — login impossible${RESET}\n\n"
   exit 1
 fi
-say_ok "login OK (rôle=$USER_ROLE, token=${TOKEN:0:12}…)"
+say_ok "login OK (HTTP $LOGIN_CODE, rôle=$USER_ROLE, token=${TOKEN:0:12}…)"
 
 # ── 2. Helper : appel authentifié + validation payload ─────
 # Args : <label> <method> <path> [<expected_array_field>]
