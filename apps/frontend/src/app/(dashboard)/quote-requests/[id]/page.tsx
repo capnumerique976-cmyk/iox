@@ -208,8 +208,10 @@ export default function QuoteRequestDetailPage() {
 
       <StatusTimeline current={rfq.status} />
 
-      <header className="rounded-lg border border-gray-200 bg-white p-4">
-        <h1 className="text-xl font-bold text-gray-900">{rfq.marketplaceOffer.title}</h1>
+      <header className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm sm:p-5">
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+          {rfq.marketplaceOffer.title}
+        </h1>
         <div className="mt-1 text-sm text-gray-600">
           {rfq.marketplaceOffer.sellerProfile?.publicDisplayName ?? 'Vendeur'}
           {' · '}

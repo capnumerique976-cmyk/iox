@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/auth.context';
 import { authStorage, ROLE_LABELS } from '@/lib/auth';
 import { UserRole } from '@iox/shared';
 import { Plus, Search, Edit2, X, AlertCircle, ShieldCheck, UserX, UserCheck } from 'lucide-react';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface User {
   id: string;
@@ -161,7 +162,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
             >
               {loading ? 'Création…' : 'Créer'}
             </button>
@@ -289,7 +290,7 @@ function EditUserModal({
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
             >
               {loading ? 'Enregistrement…' : 'Enregistrer'}
             </button>
@@ -383,7 +384,7 @@ export default function UsersPage() {
         {isAdmin && (
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white hover:shadow-premium-md"
           >
             <Plus className="h-4 w-4" /> Nouvel utilisateur
           </button>
@@ -410,7 +411,7 @@ export default function UsersPage() {
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && (setPage(1), loadUsers(1, search))}
             placeholder="Rechercher par nom, email…"
-            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
           />
         </div>
         <button
@@ -483,7 +484,7 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}
                     >
                       {u.isActive ? 'Actif' : 'Désactivé'}
                     </span>
@@ -543,29 +544,18 @@ export default function UsersPage() {
         </table>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-500">
-              Page {page} / {totalPages} · {total} utilisateurs
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-40"
-              >
-                ← Préc.
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-40"
-              >
-                Suiv. →
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="px-4 py-3 border-t border-gray-100 empty:hidden">
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            label={
+              <>
+                Page {page} sur {totalPages} · {total} utilisateurs
+              </>
+            }
+          />
+        </div>
       </div>
 
       {/* Modals */}
@@ -613,7 +603,7 @@ function Field({
 }
 
 function inputCls(hasError: boolean) {
-  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 ${
     hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'
   }`;
 }

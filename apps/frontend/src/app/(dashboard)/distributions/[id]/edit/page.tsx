@@ -161,7 +161,7 @@ export default function DistributionEditPage() {
               value={distributionDate}
               onChange={(e) => setDistributionDate(e.target.value)}
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
             />
           </div>
 
@@ -173,7 +173,7 @@ export default function DistributionEditPage() {
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
               placeholder="Observations, conditions particulières…"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 resize-none"
             />
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function DistributionEditPage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             {saving ? 'Enregistrement…' : 'Enregistrer'}

@@ -154,7 +154,7 @@ export default function NewProductBatchPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <nav className="flex items-center gap-1 text-sm text-gray-500">
-        <Link href="/product-batches" className="hover:text-blue-600 flex items-center gap-1">
+        <Link href="/product-batches" className="hover:text-premium-accent flex items-center gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Lots finis
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
@@ -296,7 +296,7 @@ export default function NewProductBatchPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-gradient-iox-primary px-6 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
           >
             {loading ? 'Enregistrement…' : 'Créer le lot'}
           </button>
@@ -326,5 +326,5 @@ function Field({
   );
 }
 function inputCls(e: boolean) {
-  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${e ? 'border-red-400 bg-red-50' : 'border-gray-300'}`;
+  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 ${e ? 'border-red-400 bg-red-50' : 'border-gray-300'}`;
 }

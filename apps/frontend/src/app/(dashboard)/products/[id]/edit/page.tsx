@@ -97,7 +97,7 @@ export default function EditProductPage() {
       const res = await fetch(`/api/v1/products/${params.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(res.status === 404 ? 'Produit introuvable' : 'Erreur serveur');
+      if (!res.ok) throw new Error(res.status === 404 ? 'Produit introuvable' : 'Erreur serveur — réessayez dans quelques instants');
       const json = await res.json();
       const p = json.data;
       setProductCode(p.code);
@@ -208,7 +208,7 @@ export default function EditProductPage() {
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <AlertTriangle className="h-8 w-8 text-red-400" />
         <p className="text-sm text-red-600">{fetchError}</p>
-        <button onClick={() => router.back()} className="text-sm text-blue-600 hover:underline">
+        <button onClick={() => router.back()} className="text-sm text-premium-accent hover:underline">
           Retour
         </button>
       </div>
@@ -217,13 +217,13 @@ export default function EditProductPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <nav className="flex items-center gap-1 text-sm text-gray-500">
-        <Link href="/products" className="hover:text-blue-600 flex items-center gap-1">
+        <Link href="/products" className="hover:text-premium-accent flex items-center gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Produits
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <Link
           href={`/products/${params.id}`}
-          className="hover:text-blue-600 font-mono text-gray-700"
+          className="hover:text-premium-accent font-mono text-gray-700"
         >
           {productCode}
         </Link>
@@ -440,7 +440,7 @@ export default function EditProductPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-gradient-iox-primary px-6 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
           >
             {loading ? 'Enregistrement…' : 'Enregistrer les modifications'}
           </button>
@@ -476,7 +476,7 @@ function FormField({
 }
 
 function inputCls(hasError: boolean) {
-  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 ${
     hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'
   }`;
 }

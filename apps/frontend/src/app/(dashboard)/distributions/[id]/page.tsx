@@ -105,7 +105,7 @@ export default function DistributionDetailPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok)
-        throw new Error(res.status === 404 ? 'Distribution introuvable' : 'Erreur serveur');
+        throw new Error(res.status === 404 ? 'Distribution introuvable' : 'Erreur serveur — réessayez dans quelques instants');
       const json = await res.json();
       setDist(json.data ?? json);
     } catch (err) {
@@ -159,7 +159,7 @@ export default function DistributionDetailPage() {
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <AlertTriangle className="h-8 w-8 text-red-400" />
         <p className="text-sm text-red-600">{error ?? 'Distribution introuvable'}</p>
-        <button onClick={() => router.back()} className="text-sm text-blue-600 hover:underline">
+        <button onClick={() => router.back()} className="text-sm text-premium-accent hover:underline">
           Retour
         </button>
       </div>
@@ -173,30 +173,30 @@ export default function DistributionDetailPage() {
       {/* Breadcrumb */}
       <div>
         <nav className="flex items-center gap-1 text-sm text-gray-500 mb-3">
-          <Link href="/distributions" className="hover:text-blue-600 flex items-center gap-1">
+          <Link href="/distributions" className="hover:text-premium-accent flex items-center gap-1">
             <ArrowLeft className="h-3.5 w-3.5" /> Distributions
           </Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-mono text-gray-700">{dist.code}</span>
         </nav>
 
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
             <div
-              className={`rounded-xl p-3 ${
+              className={`rounded-xl p-3 shadow-premium-sm ${
                 dist.status === DistributionStatus.COMPLETED
                   ? 'bg-green-500'
                   : dist.status === DistributionStatus.CANCELLED
                     ? 'bg-red-400'
                     : dist.status === DistributionStatus.IN_PROGRESS
                       ? 'bg-yellow-500'
-                      : 'bg-blue-500'
+                      : 'bg-gradient-iox-primary'
               }`}
             >
-              <Truck className="h-6 w-6 text-white" />
+              <Truck className="h-6 w-6 text-white" aria-hidden />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{dist.code}</h1>
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{dist.code}</h1>
               <div className="flex items-center gap-3 mt-1.5">
                 <span
                   className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLS[dist.status]}`}
@@ -217,13 +217,13 @@ export default function DistributionDetailPage() {
           </div>
 
           {canWrite && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {dist.status === DistributionStatus.PLANNED && (
                 <Link
                   href={`/distributions/${params.id}/edit`}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
                 >
-                  <Pencil className="h-4 w-4" /> Modifier
+                  <Pencil className="h-4 w-4" aria-hidden /> Modifier
                 </Link>
               )}
               {allowedTransitions.map((s) => {
@@ -263,14 +263,14 @@ export default function DistributionDetailPage() {
       )}
 
       {/* KPI */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
             Lots distribués
           </p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{dist._count.lines}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
             Quantité totale
           </p>
@@ -281,11 +281,11 @@ export default function DistributionDetailPage() {
             )}
           </p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bénéficiaire</p>
           <Link
             href={`/beneficiaries/${dist.beneficiary.id}`}
-            className="text-base font-semibold text-blue-600 hover:underline mt-1 block"
+            className="text-base font-semibold text-premium-accent hover:underline mt-1 block"
           >
             {dist.beneficiary.name}
           </Link>
@@ -297,70 +297,70 @@ export default function DistributionDetailPage() {
 
       {/* Notes */}
       {dist.notes && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
+        <div className="rounded-xl border border-gray-200/70 bg-white p-5 shadow-premium-sm">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Notes</p>
           <p className="text-sm text-gray-800">{dist.notes}</p>
         </div>
       )}
 
       {/* Lignes de distribution */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Détail des lots distribués</h3>
-        </div>
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-gray-900">Détail des lots distribués</h3>
         {dist.lines.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-24 text-gray-400 gap-2">
-            <Package className="h-6 w-6" />
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-gray-200/70 bg-white py-12 text-gray-400 shadow-premium-sm">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-premium-accent/10 text-premium-accent">
+              <Package className="h-5 w-5" aria-hidden />
+            </div>
             <p className="text-sm">Aucune ligne</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Lot fini</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Produit</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">
-                  Quantité distribuée
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Stock lot</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {dist.lines.map((line) => (
-                <tr key={line.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/product-batches/${line.productBatch.id}`}
-                      className="font-mono text-blue-600 hover:underline font-medium"
-                    >
-                      {line.productBatch.code}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">{line.productBatch.product.name}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {Number(line.quantity).toLocaleString('fr-FR')} {line.unit}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">
-                    {Number(line.productBatch.quantity).toLocaleString('fr-FR')}{' '}
-                    {line.productBatch.unit}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{line.notes ?? '—'}</td>
+          <div className="iox-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Lot fini</th>
+                  <th>Produit</th>
+                  <th>Quantité distribuée</th>
+                  <th>Stock lot</th>
+                  <th>Notes</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-gray-50 border-t border-gray-100">
-              <tr>
-                <td colSpan={2} className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
-                  Total
-                </td>
-                <td className="px-4 py-2 font-bold text-gray-900">
-                  {totalQty.toLocaleString('fr-FR')} {dist.lines[0]?.unit ?? ''}
-                </td>
-                <td colSpan={2} />
-              </tr>
-            </tfoot>
-          </table>
+              </thead>
+              <tbody>
+                {dist.lines.map((line) => (
+                  <tr key={line.id}>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/product-batches/${line.productBatch.id}`}
+                        className="font-mono text-premium-accent hover:underline font-medium"
+                      >
+                        {line.productBatch.code}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">{line.productBatch.product.name}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {Number(line.quantity).toLocaleString('fr-FR')} {line.unit}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {Number(line.productBatch.quantity).toLocaleString('fr-FR')}{' '}
+                      {line.productBatch.unit}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">{line.notes ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-50 border-t border-gray-100">
+                <tr>
+                  <td colSpan={2} className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                    Total
+                  </td>
+                  <td className="px-4 py-2 font-bold text-gray-900">
+                    {totalQty.toLocaleString('fr-FR')} {dist.lines[0]?.unit ?? ''}
+                  </td>
+                  <td colSpan={2} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         )}
       </div>
 
@@ -400,7 +400,7 @@ export default function DistributionDetailPage() {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-premium-sm focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
             {modalError && (
@@ -409,7 +409,7 @@ export default function DistributionDetailPage() {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setModal(false)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
+                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
               >
                 Annuler
               </button>

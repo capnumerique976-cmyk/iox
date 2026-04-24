@@ -73,7 +73,7 @@ export default function ContractDetailPage() {
       const res = await fetch(`/api/v1/supply-contracts/${params.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(res.status === 404 ? 'Contrat introuvable' : 'Erreur serveur');
+      if (!res.ok) throw new Error(res.status === 404 ? 'Contrat introuvable' : 'Erreur serveur — réessayez dans quelques instants');
       const json = await res.json();
       setContract(json.data);
     } catch (err) {
@@ -137,31 +137,31 @@ export default function ContractDetailPage() {
       {/* Breadcrumb */}
       <div>
         <nav className="flex items-center gap-1 text-sm text-gray-500 mb-3">
-          <Link href="/supply-contracts" className="hover:text-blue-600 flex items-center gap-1">
+          <Link href="/supply-contracts" className="flex items-center gap-1 hover:text-premium-accent">
             <ArrowLeft className="h-3.5 w-3.5" /> Contrats
           </Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-mono text-gray-700">{contract.code}</span>
         </nav>
 
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
-            <div className="rounded-xl bg-indigo-500 p-3">
-              <FileText className="h-6 w-6 text-white" />
+            <div className="rounded-xl bg-gradient-iox-primary p-3 shadow-premium-sm">
+              <FileText className="h-6 w-6 text-white" aria-hidden />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{contract.code}</h1>
-              <div className="flex items-center gap-3 mt-1.5">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{contract.code}</h1>
+              <div className="mt-1.5 flex flex-wrap items-center gap-3">
                 <StatusBadge status={contract.status} type="supplyContract" />
                 <span className="text-sm text-gray-500">· {contract.supplier.name}</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {canChangeStatus && allowedTransitions.length > 0 && (
               <button
                 onClick={() => setStatusModal(true)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
               >
                 Changer le statut
               </button>
@@ -169,9 +169,9 @@ export default function ContractDetailPage() {
             {canEdit && (
               <Link
                 href={`/supply-contracts/${contract.id}/edit`}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press"
               >
-                <Edit2 className="h-4 w-4" /> Modifier
+                <Edit2 className="h-4 w-4" aria-hidden /> Modifier
               </Link>
             )}
           </div>
@@ -179,22 +179,22 @@ export default function ContractDetailPage() {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
           { label: 'Lots entrants', value: contract._count.inboundBatches },
           { label: 'Produits couverts', value: contract.products.length },
           { label: 'Documents', value: contract._count.documents },
         ].map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-gray-200 bg-white p-4">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <div key={label} className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{value}</p>
           </div>
         ))}
       </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="flex -mb-px">
+        <nav className="-mb-px flex overflow-x-auto">
           {(
             [
               { key: 'info', label: 'Informations' },
@@ -206,10 +206,10 @@ export default function ContractDetailPage() {
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors duration-fast ease-premium ${
                 activeTab === key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-premium-accent text-premium-accent'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
               }`}
             >
               {label}
@@ -222,7 +222,7 @@ export default function ContractDetailPage() {
         <DocumentsPanel linkedEntityType="SUPPLY_CONTRACT" linkedEntityId={contract.id} />
       )}
       <div
-        className={`rounded-lg border border-gray-200 bg-white p-6 ${activeTab === 'docs' ? 'hidden' : ''}`}
+        className={`rounded-xl border border-gray-200/70 bg-white p-6 shadow-premium-sm ${activeTab === 'docs' ? 'hidden' : ''}`}
       >
         {activeTab === 'info' && (
           <div className="grid grid-cols-2 gap-6">
@@ -287,7 +287,7 @@ export default function ContractDetailPage() {
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => router.push(`/inbound-batches/${b.id}`)}
                   >
-                    <td className="py-3 font-mono text-blue-600">{b.code}</td>
+                    <td className="py-3 font-mono text-premium-accent">{b.code}</td>
                     <td className="py-3">
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
                         {b.status}
@@ -327,7 +327,7 @@ export default function ContractDetailPage() {
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => router.push(`/products/${p.id}`)}
                   >
-                    <td className="py-3 font-mono text-blue-600">{p.code}</td>
+                    <td className="py-3 font-mono text-premium-accent">{p.code}</td>
                     <td className="py-3 text-gray-900">{p.name}</td>
                     <td className="py-3">
                       <StatusBadge status={p.status} type="product" />
@@ -354,10 +354,10 @@ export default function ContractDetailPage() {
                   <button
                     key={s}
                     onClick={() => setNewStatus(s)}
-                    className={`flex items-center gap-3 rounded-lg border-2 px-4 py-3 text-sm text-left transition-colors ${
+                    className={`flex items-center gap-3 rounded-lg border-2 px-4 py-3 text-left text-sm transition-colors duration-fast ease-premium ${
                       newStatus === s
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-premium-accent/60 bg-premium-accent/5'
+                        : 'border-gray-200 hover:border-premium-accent/30'
                     }`}
                   >
                     <span className={`h-2.5 w-2.5 rounded-full ${c?.dot ?? 'bg-gray-400'}`} />
@@ -391,7 +391,7 @@ export default function ContractDetailPage() {
               <button
                 onClick={handleChangeStatus}
                 disabled={!newStatus || statusLoading}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press disabled:opacity-50"
               >
                 {statusLoading ? 'Enregistrement…' : 'Confirmer'}
               </button>

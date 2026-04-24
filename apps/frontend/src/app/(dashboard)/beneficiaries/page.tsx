@@ -7,7 +7,9 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
 import { StatusBadge, BENEFICIARY_STATUS_CONFIG } from '@/components/ui/status-badge';
-import { Download } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { Download, Users } from 'lucide-react';
 import { UserRole } from '@iox/shared';
 
 interface Beneficiary {
@@ -95,34 +97,32 @@ export default function BeneficiariesPage() {
 
   return (
     <div className="space-y-6">
-      {/* En-tête */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bénéficiaires</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {result?.meta.total ?? '—'} bénéficiaires enregistrés
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={downloadCsv}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Download className="h-4 w-4" /> Exporter CSV
-          </button>
-          {canCreate && (
-            <Link
-              href="/beneficiaries/new"
-              className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
+      <PageHeader
+        icon={<Users className="h-5 w-5" aria-hidden />}
+        title="Bénéficiaires"
+        subtitle={`${result?.meta.total ?? '—'} bénéficiaires enregistrés`}
+        actions={
+          <>
+            <button
+              onClick={downloadCsv}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
             >
-              + Nouveau bénéficiaire
-            </Link>
-          )}
-        </div>
-      </div>
+              <Download className="h-4 w-4" /> Exporter CSV
+            </button>
+            {canCreate && (
+              <Link
+                href="/beneficiaries/new"
+                className="inline-flex items-center rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-base ease-premium hover:shadow-premium-md"
+              >
+                + Nouveau bénéficiaire
+              </Link>
+            )}
+          </>
+        }
+      />
 
       {/* Filtres */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex flex-wrap gap-2 sm:gap-3">
         <input
           type="text"
           placeholder="Rechercher (nom, code, ville, filière)..."
@@ -131,7 +131,7 @@ export default function BeneficiariesPage() {
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="flex-1 min-w-48 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="min-w-0 flex-1 basis-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-premium-sm transition-colors duration-fast ease-premium focus:border-premium-accent focus:outline-none focus:ring-2 focus:ring-premium-accent/40 sm:basis-48"
         />
         <select
           value={statusFilter}
@@ -139,7 +139,7 @@ export default function BeneficiariesPage() {
             setStatusFilter(e.target.value);
             setPage(1);
           }}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-premium-sm transition-colors duration-fast ease-premium focus:border-premium-accent focus:outline-none focus:ring-2 focus:ring-premium-accent/40"
         >
           <option value="">Tous les statuts</option>
           {Object.entries(BENEFICIARY_STATUS_CONFIG).map(([key, { label }]) => (
@@ -153,19 +153,19 @@ export default function BeneficiariesPage() {
       {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">{error}</p>}
 
       {/* Tableau */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="iox-table-wrap">
+        <table>
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Code</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Bénéficiaire</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Statut</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Maturité</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Référent</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Produits / Actions</th>
+            <tr>
+              <th>Code</th>
+              <th>Bénéficiaire</th>
+              <th>Statut</th>
+              <th>Maturité</th>
+              <th>Référent</th>
+              <th>Produits / Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-gray-400">
@@ -234,26 +234,12 @@ export default function BeneficiariesPage() {
 
         {/* Pagination */}
         {result && result.meta.totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-            <span className="text-xs text-gray-500">
-              Page {result.meta.page} / {result.meta.totalPages}
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1 text-xs border border-gray-300 rounded disabled:opacity-40 hover:bg-gray-50"
-              >
-                Précédent
-              </button>
-              <button
-                disabled={page === result.meta.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1 text-xs border border-gray-300 rounded disabled:opacity-40 hover:bg-gray-50"
-              >
-                Suivant
-              </button>
-            </div>
+          <div className="px-4 py-3 border-t border-gray-200">
+            <PaginationControls
+              page={result.meta.page}
+              totalPages={result.meta.totalPages}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

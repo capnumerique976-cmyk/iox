@@ -15,6 +15,7 @@ import {
   setPrimaryMembership,
 } from '@/lib/memberships';
 import { AlertCircle, Link2, Plus, Search, Star, Trash2, UserPlus, X } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface UserHit {
   id: string;
@@ -98,25 +99,22 @@ export default function MembershipsAdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Link2 className="h-6 w-6 text-blue-500" /> Rattachements utilisateurs ↔ entreprises
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {total} rattachement{total > 1 ? 's' : ''} · ownership marketplace V2
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setPrefillUserId(null);
-            setShowCreate(true);
-          }}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" /> Nouveau membership
-        </button>
-      </div>
+      <PageHeader
+        icon={<Link2 className="h-5 w-5" aria-hidden />}
+        title="Rattachements utilisateurs ↔ entreprises"
+        subtitle={`${total} rattachement${total > 1 ? 's' : ''} · ownership marketplace V2`}
+        actions={
+          <button
+            onClick={() => {
+              setPrefillUserId(null);
+              setShowCreate(true);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press"
+          >
+            <Plus className="h-4 w-4" aria-hidden /> Nouveau membership
+          </button>
+        }
+      />
 
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-600 flex items-center justify-between">
@@ -130,13 +128,13 @@ export default function MembershipsAdminPage() {
       )}
 
       {diag && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <Stat label="Sellers" value={diag.totalSellerUsers} />
           <Stat label="Avec membership" value={diag.sellersWithMembership} tone="green" />
           <Stat
             label="Sans membership"
             value={diag.sellersWithoutMembership}
-            tone={diag.sellersWithoutMembership > 0 ? 'red' : 'gray'}
+            tone={diag.sellersWithoutMembership > 0 ? 'orange' : 'gray'}
           />
           <Stat label="Memberships total" value={diag.totalMemberships} />
           <Stat
@@ -188,31 +186,31 @@ export default function MembershipsAdminPage() {
 
       {/* Search */}
       <div className="flex gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher par email / code entreprise…"
-            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
           />
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="iox-table-wrap">
+        <table>
+          <thead>
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Utilisateur</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Entreprise</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">SellerProfile</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Primary</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+              <th>Utilisateur</th>
+              <th>Entreprise</th>
+              <th>SellerProfile</th>
+              <th>Primary</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
@@ -434,7 +432,7 @@ function CreateMembershipModal({
               </span>
               <button
                 onClick={() => setSelectedUser(null)}
-                className="text-blue-600 text-xs hover:underline"
+                className="text-premium-accent text-xs hover:underline"
               >
                 Changer
               </button>
@@ -446,7 +444,7 @@ function CreateMembershipModal({
                 value={userQuery}
                 onChange={(e) => setUserQuery(e.target.value)}
                 placeholder="Rechercher (min. 2 caractères)…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
               {users.length > 0 && (
                 <ul className="mt-1 max-h-40 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -480,7 +478,7 @@ function CreateMembershipModal({
               </span>
               <button
                 onClick={() => setSelectedCompany(null)}
-                className="text-blue-600 text-xs hover:underline"
+                className="text-premium-accent text-xs hover:underline"
               >
                 Changer
               </button>
@@ -492,7 +490,7 @@ function CreateMembershipModal({
                 value={companyQuery}
                 onChange={(e) => setCompanyQuery(e.target.value)}
                 placeholder="Rechercher (min. 2 caractères)…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
               {companies.length > 0 && (
                 <ul className="mt-1 max-h-40 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -539,7 +537,7 @@ function CreateMembershipModal({
           <button
             disabled={loading}
             onClick={submit}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press disabled:opacity-50"
           >
             {loading ? 'Création…' : 'Créer'}
           </button>

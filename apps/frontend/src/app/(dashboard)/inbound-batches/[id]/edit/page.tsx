@@ -106,11 +106,11 @@ export default function EditInboundBatchPage() {
     <div className="max-w-2xl space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-gray-500">
-        <Link href="/inbound-batches" className="hover:text-blue-600 flex items-center gap-1">
+        <Link href="/inbound-batches" className="hover:text-premium-accent flex items-center gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Lots entrants
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
-        <Link href={`/inbound-batches/${id}`} className="hover:text-blue-600 font-mono">
+        <Link href={`/inbound-batches/${id}`} className="hover:text-premium-accent font-mono">
           {code}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
@@ -140,7 +140,7 @@ export default function EditInboundBatchPage() {
                 step="0.001"
                 min="0.001"
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
             <div>
@@ -150,7 +150,7 @@ export default function EditInboundBatchPage() {
                 onChange={set('unit')}
                 required
                 placeholder="kg, tonne, litre…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
             <div className="col-span-2">
@@ -159,7 +159,7 @@ export default function EditInboundBatchPage() {
                 value={form.origin}
                 onChange={set('origin')}
                 placeholder="Ex. Mayotte — Petite-Terre"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
             <div className="col-span-2">
@@ -169,7 +169,7 @@ export default function EditInboundBatchPage() {
                 onChange={set('notes')}
                 rows={3}
                 placeholder="Remarques sur la réception, l'état du lot…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 resize-none"
               />
             </div>
           </div>
@@ -192,7 +192,7 @@ export default function EditInboundBatchPage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-6 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}

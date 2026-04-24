@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Download, Truck, Search, Filter } from 'lucide-react';
+import { Plus, Download, Truck, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { DistributionStatus, UserRole } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
+import { PageHeader } from '@/components/ui/page-header';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 /* ── Config statuts ──────────────────────────────────────────────────── */
 const STATUS_CLS: Record<DistributionStatus, string> = {
@@ -104,38 +106,38 @@ export default function DistributionsPage() {
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / 20));
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Distributions</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Suivi des remises de lots finis aux bénéficiaires
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={downloadCsv}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Download className="h-4 w-4" /> Exporter CSV
-          </button>
-          {canWrite && (
-            <Link
-              href="/distributions/new"
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+      <PageHeader
+        icon={<Truck className="h-5 w-5" aria-hidden />}
+        title="Distributions"
+        subtitle="Suivi des remises de lots finis aux bénéficiaires"
+        actions={
+          <>
+            <button
+              onClick={downloadCsv}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
             >
-              <Plus className="h-4 w-4" /> Nouvelle distribution
-            </Link>
-          )}
-        </div>
-      </div>
+              <Download className="h-4 w-4" aria-hidden /> Exporter CSV
+            </button>
+            {canWrite && (
+              <Link
+                href="/distributions/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press"
+              >
+                <Plus className="h-4 w-4" aria-hidden /> Nouvelle distribution
+              </Link>
+            )}
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="relative min-w-48 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
           <input
             type="text"
             placeholder="Code, bénéficiaire…"
@@ -144,7 +146,7 @@ export default function DistributionsPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
           />
         </div>
         <select
@@ -153,7 +155,7 @@ export default function DistributionsPage() {
             setStatus(e.target.value);
             setPage(1);
           }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
         >
           <option value="">Tous les statuts</option>
           {Object.values(DistributionStatus).map((s) => (
@@ -165,68 +167,73 @@ export default function DistributionsPage() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {Object.values(DistributionStatus).map((s) => {
           const count = distributions.filter((d) => d.status === s).length;
+          const active = status === s;
           return (
             <button
               key={s}
               onClick={() => {
-                setStatus(status === s ? '' : s);
+                setStatus(active ? '' : s);
                 setPage(1);
               }}
-              className={`rounded-lg border-2 p-3 text-left transition-colors ${
-                status === s
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+              className={`rounded-xl border p-3 text-left shadow-premium-sm transition-all duration-fast ease-premium ${
+                active
+                  ? 'border-premium-accent/60 bg-premium-accent/5'
+                  : 'border-gray-200/70 bg-white hover:border-premium-accent/30 hover:shadow-premium-md'
               }`}
             >
-              <p className="text-xs text-gray-500 mb-1">{STATUS_LABEL[s]}</p>
-              <p className="text-xl font-bold text-gray-900">{count}</p>
+              <p className="mb-1 text-xs text-gray-500">{STATUS_LABEL[s]}</p>
+              <p className="text-xl font-bold text-gray-900 tabular-nums">{count}</p>
             </button>
           );
         })}
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        {loading ? (
-          <div className="py-16 text-center text-sm text-gray-400">Chargement…</div>
-        ) : distributions.length === 0 ? (
-          <div className="py-16 flex flex-col items-center gap-3 text-gray-400">
-            <Truck className="h-10 w-10" />
-            <p className="text-sm">Aucune distribution trouvée</p>
-            {canWrite && (
-              <Link
-                href="/distributions/new"
-                className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4" /> Créer la première distribution
-              </Link>
-            )}
+      {loading ? (
+        <div className="rounded-xl border border-gray-200/70 bg-white py-16 text-center text-sm text-gray-400 shadow-premium-sm">
+          Chargement…
+        </div>
+      ) : distributions.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-gray-200/70 bg-white py-16 text-gray-400 shadow-premium-sm">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-premium-accent/10 text-premium-accent">
+            <Truck className="h-6 w-6" aria-hidden />
           </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+          <p className="text-sm">Aucune distribution trouvée</p>
+          {canWrite && (
+            <Link
+              href="/distributions/new"
+              className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press"
+            >
+              <Plus className="h-4 w-4" aria-hidden /> Créer la première distribution
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="iox-table-wrap">
+          <table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Code</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Bénéficiaire</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Statut</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Date</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Lots</th>
+                <th>Code</th>
+                <th>Bénéficiaire</th>
+                <th>Statut</th>
+                <th>Date</th>
+                <th>Lots</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {distributions.map((d) => (
                 <tr
                   key={d.id}
                   onClick={() => router.push(`/distributions/${d.id}`)}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="cursor-pointer"
                 >
-                  <td className="px-4 py-3 font-mono text-blue-600 font-medium">{d.code}</td>
+                  <td className="px-4 py-3 font-mono font-medium text-premium-accent">{d.code}</td>
                   <td className="px-4 py-3">
                     <span className="font-medium text-gray-900">{d.beneficiary.name}</span>
-                    <span className="ml-1.5 text-xs text-gray-400 font-mono">
+                    <span className="ml-1.5 font-mono text-xs text-gray-400">
                       {d.beneficiary.code}
                     </span>
                   </td>
@@ -251,33 +258,15 @@ export default function DistributionsPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {total > 20 && (
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span>
-            {total} distribution{total > 1 ? 's' : ''}
-          </span>
-          <div className="flex gap-2">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              ← Préc.
-            </button>
-            <button
-              disabled={page * 20 >= total}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Suiv. →
-            </button>
-          </div>
         </div>
       )}
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        label={`${total} distribution${total > 1 ? 's' : ''}`}
+      />
     </div>
   );
 }

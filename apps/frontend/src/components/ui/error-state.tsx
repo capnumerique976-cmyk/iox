@@ -29,8 +29,8 @@ export interface ErrorStateProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function ErrorState({
-  title = 'Une erreur est survenue',
-  message = 'Impossible de charger les données pour le moment.',
+  title = 'Chargement interrompu',
+  message = 'Les données n\u2019ont pas pu être récupérées. Réessayez ; si le problème persiste, signalez-le avec la référence ci-dessous.',
   requestId,
   code,
   onRetry,

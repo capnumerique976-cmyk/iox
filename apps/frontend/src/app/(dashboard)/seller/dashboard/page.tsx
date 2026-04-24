@@ -19,6 +19,7 @@ import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
 import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * Cockpit vendeur marketplace — vue synthétique 1 écran.
@@ -234,35 +235,30 @@ export default function SellerDashboardPage() {
 
   if (user && !CAN_VIEW.includes(user.role as (typeof CAN_VIEW)[number])) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-        Votre rôle ne permet pas d&apos;accéder au cockpit vendeur.
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        Votre rôle ne permet pas d&apos;accéder au cockpit vendeur. Contactez un administrateur si vous pensez que c&apos;est une erreur.
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <Store className="h-6 w-6 text-emerald-600" />
-            Cockpit vendeur marketplace
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Synthèse de votre activité marketplace : publications, demandes de devis, conformité
-            documentaire.
-          </p>
-        </div>
-        <button
-          onClick={load}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-        >
-          <RefreshCw className="h-4 w-4" /> Rafraîchir
-        </button>
-      </header>
+      <PageHeader
+        icon={<Store className="h-5 w-5" aria-hidden />}
+        title="Cockpit vendeur marketplace"
+        subtitle="Synthèse de votre activité marketplace : publications, demandes de devis, conformité documentaire."
+        actions={
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
+          >
+            <RefreshCw className="h-4 w-4" /> Rafraîchir
+          </button>
+        }
+      />
 
       {/* Profil vendeur */}
-      <section>
+      <section className="space-y-2">
         <h2 className="mb-2 text-sm font-semibold text-gray-700">Profil vendeur</h2>
         {profile.status === 'loading' && <Skeleton h="h-20" />}
         {profile.status === 'error' && <ErrorLine message={profile.message} />}
@@ -273,7 +269,7 @@ export default function SellerDashboardPage() {
           </div>
         )}
         {profile.status === 'ok' && profile.value && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4">
+          <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm sm:flex-row sm:items-center">
             <div className="min-w-0">
               <p className="font-medium text-gray-900">{profile.value.publicDisplayName}</p>
               <p className="text-xs text-gray-500">
@@ -299,7 +295,7 @@ export default function SellerDashboardPage() {
 
       {/* Score de complétude du profil vendeur */}
       {completion && (
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <section className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">Complétude du profil vendeur</h2>
             <span className="text-xs font-semibold tabular-nums text-gray-600">
@@ -341,7 +337,7 @@ export default function SellerDashboardPage() {
       )}
 
       {/* Cartes analytics */}
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           icon={<Package className="h-5 w-5 text-blue-600" />}
           title="Produits"
@@ -384,16 +380,16 @@ export default function SellerDashboardPage() {
       {/* Contenus rejetés : produits / offres (si > 0) */}
       {(rejectedProducts.length > 0 || rejectedOffers.length > 0) && (
         <section>
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-red-700">
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-800">
             <AlertCircle className="h-4 w-4" /> Contenus rejetés à retravailler
           </h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {rejectedProducts.length > 0 && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-800">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800">
                   Produits rejetés ({rejectedProducts.length})
                 </p>
-                <ul className="space-y-1 text-xs text-red-900">
+                <ul className="space-y-1 text-xs text-amber-900">
                   {rejectedProducts.slice(0, 5).map((p) => (
                     <li key={p.id} className="flex items-center justify-between">
                       <span className="truncate font-medium">{p.commercialName}</span>
@@ -412,11 +408,11 @@ export default function SellerDashboardPage() {
               </div>
             )}
             {rejectedOffers.length > 0 && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-800">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800">
                   Offres rejetées ({rejectedOffers.length})
                 </p>
-                <ul className="space-y-1 text-xs text-red-900">
+                <ul className="space-y-1 text-xs text-amber-900">
                   {rejectedOffers.slice(0, 5).map((o) => (
                     <li key={o.id} className="flex items-center justify-between">
                       <span className="truncate font-medium">{o.title}</span>
@@ -535,9 +531,9 @@ export default function SellerDashboardPage() {
       </section>
 
       {/* Raccourcis */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <section className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Raccourcis</h2>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
           <QuickLink href="/quote-requests" label="Demandes de devis" />
           <QuickLink href="/seller/documents" label="Documents marketplace" />
           <QuickLink href="/marketplace" label="Voir le catalogue public" />
@@ -610,17 +606,17 @@ function StatCard({
   cta?: { href: string; label: string };
 }) {
   return (
-    <div className="flex flex-col rounded-lg border border-gray-200 bg-white p-4">
+    <div className="flex flex-col rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm transition-shadow duration-base ease-premium hover:shadow-premium-md">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
           {icon} {title}
         </div>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium tabular-nums text-gray-700">
+        <span className="rounded-full bg-premium-accent/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-premium-accent">
           {state.status === 'ok' ? total : '…'}
         </span>
       </div>
 
-      {state.status === 'loading' && <div className="h-16 animate-pulse rounded bg-gray-100" />}
+      {state.status === 'loading' && <div className="h-16 animate-pulse rounded-lg bg-gray-100" />}
       {state.status === 'error' && <ErrorLine message={state.message} />}
       {state.status === 'ok' && total === 0 && <p className="text-xs text-gray-400">{emptyHint}</p>}
       {state.status === 'ok' && total > 0 && (
@@ -628,7 +624,7 @@ function StatCard({
           {lines.map(([label, n]) => (
             <li key={label} className="flex items-center justify-between">
               <span className="text-gray-500">{label}</span>
-              <span className="font-medium tabular-nums">{n}</span>
+              <span className="font-semibold tabular-nums">{n}</span>
             </li>
           ))}
         </ul>
@@ -637,7 +633,7 @@ function StatCard({
       {cta && (
         <Link
           href={cta.href}
-          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+          className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-premium-accent transition-colors duration-fast ease-premium hover:text-premium-primary"
         >
           {cta.label} <ArrowRight className="h-3 w-3" />
         </Link>
@@ -691,7 +687,7 @@ function QuickLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-between gap-1 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+      className="inline-flex items-center justify-between gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
     >
       {label} <ArrowRight className="h-3 w-3" />
     </Link>

@@ -76,8 +76,8 @@ export default function SellerDocumentsHubPage() {
 
   if (user && !CAN_VIEW.includes(user.role)) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-        Votre rôle ne permet pas d'accéder à la gestion documentaire marketplace.
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        Votre rôle ne permet pas d'accéder à la gestion documentaire marketplace. Contactez un administrateur si vous pensez que c'est une erreur.
       </div>
     );
   }

@@ -162,7 +162,7 @@ export default function NewMarketReleaseDecisionPage() {
               <button
                 type="button"
                 onClick={() => setBatchId('')}
-                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                className="text-xs text-premium-accent hover:text-blue-800 underline"
               >
                 Changer
               </button>
@@ -176,7 +176,7 @@ export default function NewMarketReleaseDecisionPage() {
                   value={batchSearch}
                   onChange={(e) => setBatchSearch(e.target.value)}
                   placeholder="Code lot ou produit…"
-                  className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
                 />
               </div>
               <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
@@ -236,7 +236,7 @@ export default function NewMarketReleaseDecisionPage() {
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               placeholder="Observations libres…"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
             />
           </div>
 
@@ -288,7 +288,7 @@ export default function NewMarketReleaseDecisionPage() {
           <button
             type="submit"
             disabled={loading || !batchId}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+            className="rounded-lg bg-gradient-iox-primary px-5 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-40"
           >
             {loading ? 'Enregistrement…' : 'Créer la décision'}
           </button>

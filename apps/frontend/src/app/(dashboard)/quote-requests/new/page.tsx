@@ -221,7 +221,7 @@ export default function NewQuoteRequestPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded bg-gradient-iox-primary px-4 py-2 text-sm font-semibold text-white hover:shadow-premium-md disabled:opacity-50"
           >
             {submitting ? 'Envoi…' : 'Envoyer la demande'}
           </button>

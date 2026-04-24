@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Tag, Search, Filter, CheckCircle2, XCircle, Eye, Download, Plus } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 import { useAuth } from '@/contexts/auth.context';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { UserRole } from '@iox/shared';
 
 const CAN_CREATE: UserRole[] = [
@@ -116,7 +117,7 @@ export default function LabelValidationsPage() {
       const res = await fetch(`/api/v1/label-validations?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Erreur de chargement');
+      if (!res.ok) throw new Error('Chargement des validations label impossible — réessayez dans un instant.');
       const json = await res.json();
       setValidations(json.data?.data ?? json.data ?? []);
       setMeta(json.data?.meta ?? null);
@@ -397,29 +398,18 @@ export default function LabelValidationsPage() {
       </div>
 
       {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
-            {meta.total > 1 ? 's' : ''}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={meta.page <= 1}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Précédent
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={meta.page >= meta.totalPages}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Suivant
-            </button>
-          </div>
-        </div>
+      {meta && (
+        <PaginationControls
+          page={meta.page}
+          totalPages={meta.totalPages}
+          onPageChange={setPage}
+          label={
+            <>
+              Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
+              {meta.total > 1 ? 's' : ''}
+            </>
+          }
+        />
       )}
 
       {/* Tip */}

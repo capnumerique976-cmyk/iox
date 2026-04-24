@@ -19,6 +19,7 @@ import { authStorage } from '@/lib/auth';
 import { useAuth } from '@/contexts/auth.context';
 import { SellerProfileRow, sellerProfilesApi } from '@/lib/seller-profiles';
 import { SellerProfileStatus, UserRole } from '@iox/shared';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * Admin — gestion des profils vendeurs marketplace.
@@ -122,42 +123,38 @@ export default function AdminSellersPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Store className="h-6 w-6 text-indigo-500" />
-            Profils vendeurs marketplace
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {total} profil{total > 1 ? 's' : ''} · validation, suspension, mise en avant
-          </p>
-        </div>
-        <button
-          onClick={load}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Rafraîchir
-        </button>
-      </header>
+      <PageHeader
+        icon={<Store className="h-5 w-5" aria-hidden />}
+        title="Profils vendeurs marketplace"
+        subtitle={`${total} profil${total > 1 ? 's' : ''} · validation, suspension, mise en avant`}
+        actions={
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            Rafraîchir
+          </button>
+        }
+      />
 
       {/* Filtres + recherche */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher par nom public / slug…"
-            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as SellerProfileStatus | '')}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
         >
           <option value="">Tous les statuts</option>
           {Object.entries(STATUS_LABEL).map(([k, label]) => (
@@ -183,18 +180,18 @@ export default function AdminSellersPage() {
       {actionError && <Alert onClose={() => setActionError(null)}>{actionError}</Alert>}
 
       {/* Table */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="iox-table-wrap">
+        <table>
+          <thead>
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Vendeur</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Statut</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Pays / région</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Offres</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+              <th>Vendeur</th>
+              <th>Statut</th>
+              <th>Pays / région</th>
+              <th>Offres</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
@@ -455,7 +452,7 @@ function ReasonModal({
             onChange={(e) => setReason(e.target.value)}
             rows={4}
             minLength={3}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
             placeholder="Motif (min. 3 caractères)…"
           />
         </label>
@@ -469,7 +466,7 @@ function ReasonModal({
           <button
             disabled={!valid || loading}
             onClick={() => onConfirm(reason.trim())}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:bg-red-700 hover:shadow-premium-md active-press disabled:opacity-50"
           >
             {loading ? 'Envoi…' : confirmLabel}
           </button>

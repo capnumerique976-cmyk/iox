@@ -122,12 +122,12 @@ export default function EditTransformationOpPage() {
       <nav className="flex items-center gap-1 text-sm text-gray-500">
         <Link
           href="/transformation-operations"
-          className="hover:text-blue-600 flex items-center gap-1"
+          className="hover:text-premium-accent flex items-center gap-1"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Transformations
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
-        <Link href={`/transformation-operations/${id}`} className="hover:text-blue-600 font-mono">
+        <Link href={`/transformation-operations/${id}`} className="hover:text-premium-accent font-mono">
           {code}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
@@ -155,7 +155,7 @@ export default function EditTransformationOpPage() {
                 value={form.name}
                 onChange={set('name')}
                 placeholder="Cuisson et mise en conserve"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
 
@@ -168,7 +168,7 @@ export default function EditTransformationOpPage() {
                 required
                 value={form.operationDate}
                 onChange={set('operationDate')}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
 
@@ -178,7 +178,7 @@ export default function EditTransformationOpPage() {
                 value={form.site}
                 onChange={set('site')}
                 placeholder="Atelier MCH — Mamoudzou"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
 
@@ -189,7 +189,7 @@ export default function EditTransformationOpPage() {
                 onChange={set('description')}
                 rows={3}
                 placeholder="Décrivez les étapes ou spécificités de l'opération…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 resize-none"
               />
             </div>
           </div>
@@ -215,7 +215,7 @@ export default function EditTransformationOpPage() {
                   min="0"
                   max="100"
                   placeholder="Ex. 72.5"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
                   %
@@ -232,7 +232,7 @@ export default function EditTransformationOpPage() {
                 onChange={set('operatorNotes')}
                 rows={3}
                 placeholder="Observations pendant l'opération, incidents mineurs, ajustements…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 resize-none"
               />
             </div>
           </div>
@@ -255,7 +255,7 @@ export default function EditTransformationOpPage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-6 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}

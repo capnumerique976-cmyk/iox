@@ -78,7 +78,7 @@ export default function CompanyDetailPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok)
-        throw new Error(res.status === 404 ? 'Entreprise introuvable' : 'Erreur serveur');
+        throw new Error(res.status === 404 ? 'Entreprise introuvable' : 'Erreur serveur — réessayez dans quelques instants');
       const json = await res.json();
       setCompany(json.data);
     } catch (err) {

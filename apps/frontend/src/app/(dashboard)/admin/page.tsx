@@ -20,6 +20,7 @@ import { getMembershipsDiagnostic, MembershipsDiagnostic } from '@/lib/membershi
 import { sellerProfilesApi } from '@/lib/seller-profiles';
 import { quoteRequestsApi } from '@/lib/quote-requests';
 import { SellerProfileStatus, QuoteRequestStatus } from '@iox/shared';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * Tableau de bord administrateur.
@@ -268,30 +269,30 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShieldAlert className="h-6 w-6 text-blue-500" />
-            Tableau de bord administrateur
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
+      <PageHeader
+        icon={<ShieldAlert className="h-5 w-5" aria-hidden />}
+        title="Tableau de bord administrateur"
+        subtitle={
+          <>
             Vue agrégée sur la santé de la plateforme IOX. Dernier refresh :{' '}
             <time dateTime={lastRefresh.toISOString()}>
               {lastRefresh.toLocaleTimeString('fr-FR')}
             </time>
-          </p>
-        </div>
-        <button
-          onClick={load}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Rafraîchir
-        </button>
-      </header>
+          </>
+        }
+        actions={
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Rafraîchir
+          </button>
+        }
+      />
 
       {/* Cartes principales — chaque bloc tolère une erreur locale. */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card
           title="Rattachements utilisateurs"
           icon={<Link2 className="h-5 w-5 text-blue-500" />}
@@ -305,7 +306,7 @@ export default function AdminDashboardPage() {
               <Row
                 label="Sans membership"
                 value={v.sellersWithoutMembership}
-                tone={v.sellersWithoutMembership > 0 ? 'red' : 'gray'}
+                tone={v.sellersWithoutMembership > 0 ? 'orange' : 'gray'}
               />
               <Row
                 label="Memberships sans sellerProfile"
@@ -331,7 +332,7 @@ export default function AdminDashboardPage() {
                 tone={v.pendingReview > 0 ? 'orange' : 'gray'}
               />
               <Row label="Approuvés" value={v.approved} tone="green" />
-              <Row label="Suspendus" value={v.suspended} tone={v.suspended > 0 ? 'red' : 'gray'} />
+              <Row label="Suspendus" value={v.suspended} tone={v.suspended > 0 ? 'orange' : 'gray'} />
               <Row label="Mis en avant" value={v.featured} />
             </>
           )}
@@ -400,7 +401,7 @@ export default function AdminDashboardPage() {
                 </p>
                 <Link
                   href="/admin/review-queue?status=PENDING"
-                  className="text-[11px] text-blue-600 hover:text-blue-800"
+                  className="text-[11px] text-premium-accent hover:text-blue-800"
                 >
                   Ouvrir la file →
                 </Link>
@@ -439,7 +440,7 @@ export default function AdminDashboardPage() {
                 </p>
                 <Link
                   href="/admin/diagnostics"
-                  className="text-[11px] text-blue-600 hover:text-blue-800"
+                  className="text-[11px] text-premium-accent hover:text-blue-800"
                 >
                   Diagnostics →
                 </Link>
@@ -547,7 +548,7 @@ function Card<T>({
         </h3>
         <Link
           href={href}
-          className="text-xs font-medium text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+          className="text-xs font-medium text-premium-accent hover:text-blue-800 inline-flex items-center gap-1"
           aria-label={`Ouvrir ${title}`}
         >
           Ouvrir <ArrowRight className="h-3 w-3" />

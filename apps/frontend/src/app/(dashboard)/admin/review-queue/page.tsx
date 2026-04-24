@@ -11,6 +11,8 @@ import {
   MarketplaceReviewType,
 } from '@iox/shared';
 import { ClipboardList, Check, X, AlertCircle, Filter, ImageIcon } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface ReviewItem {
   id: string;
@@ -273,15 +275,11 @@ export default function ReviewQueuePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <ClipboardList className="h-6 w-6 text-blue-500" /> File de revue marketplace
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {counts.total} en attente · Publications {counts.byType.publication} · Médias{' '}
-          {counts.byType.media} · Documents {counts.byType.document}
-        </p>
-      </div>
+      <PageHeader
+        icon={<ClipboardList className="h-5 w-5" aria-hidden />}
+        title="File de revue marketplace"
+        subtitle={`${counts.total} en attente · Publications ${counts.byType.publication} · Médias ${counts.byType.media} · Documents ${counts.byType.document}`}
+      />
 
       {actionError && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-600 flex items-center justify-between">
@@ -301,7 +299,7 @@ export default function ReviewQueuePage() {
             setPage(1);
             setStatusFilter(e.target.value as MarketplaceReviewStatus | '');
           }}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
         >
           <option value="">Tous statuts</option>
           <option value={MarketplaceReviewStatus.PENDING}>En attente</option>
@@ -314,7 +312,7 @@ export default function ReviewQueuePage() {
             setPage(1);
             setTypeFilter(e.target.value as MarketplaceReviewType | '');
           }}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
         >
           <option value="">Tous types</option>
           <option value={MarketplaceReviewType.PUBLICATION}>Publication</option>
@@ -349,9 +347,9 @@ export default function ReviewQueuePage() {
 
       {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="iox-table-wrap">
+        <table>
+          <thead>
             <tr>
               {canDecide && (
                 <th className="px-3 py-3 w-8">
@@ -512,29 +510,18 @@ export default function ReviewQueuePage() {
           </tbody>
         </table>
 
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-500">
-              Page {page} / {totalPages} · {total} items
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-40"
-              >
-                ← Préc.
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-40"
-              >
-                Suiv. →
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="px-4 py-3 border-t border-gray-100">
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            label={
+              <>
+                Page {page} sur {totalPages} · {total} items
+              </>
+            }
+          />
+        </div>
       </div>
 
       {rejectTarget && (

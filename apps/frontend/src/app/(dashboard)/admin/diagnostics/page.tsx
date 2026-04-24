@@ -237,7 +237,7 @@ export default function AdminDiagnosticsPage() {
             <Stat
               label="Sellers suspendus"
               value={ops.value.sellers.suspended}
-              tone={ops.value.sellers.suspended > 0 ? 'red' : 'gray'}
+              tone={ops.value.sellers.suspended > 0 ? 'orange' : 'gray'}
             />
             <Stat
               label="Produits publiés"
@@ -262,7 +262,7 @@ export default function AdminDiagnosticsPage() {
             <Stat
               label="Docs rejetés"
               value={ops.value.documents.rejected}
-              tone={ops.value.documents.rejected > 0 ? 'red' : 'gray'}
+              tone={ops.value.documents.rejected > 0 ? 'orange' : 'gray'}
             />
             <Stat
               label="Docs en attente"
@@ -304,7 +304,7 @@ export default function AdminDiagnosticsPage() {
             <Stat
               label="Sans membership"
               value={diag.value.sellersWithoutMembership}
-              tone={diag.value.sellersWithoutMembership > 0 ? 'red' : 'gray'}
+              tone={diag.value.sellersWithoutMembership > 0 ? 'orange' : 'gray'}
             />
             <Stat label="Memberships total" value={diag.value.totalMemberships} />
             <Stat
@@ -496,7 +496,7 @@ function Section({
         {actionHref && actionLabel && (
           <Link
             href={actionHref}
-            className="text-xs font-medium text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+            className="text-xs font-medium text-premium-accent hover:text-blue-800 inline-flex items-center gap-1"
           >
             {actionLabel} <ArrowRight className="h-3 w-3" />
           </Link>

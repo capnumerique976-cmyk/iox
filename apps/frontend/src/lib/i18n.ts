@@ -20,7 +20,8 @@ const DICT: Record<Lang, Record<string, string>> = {
     'nav.proArea': 'Espace pro',
     'catalog.title': 'Catalogue marketplace',
     'catalog.empty': 'Aucune offre ne correspond à vos filtres.',
-    'catalog.unavailable': 'Le catalogue est temporairement indisponible.',
+    'catalog.unavailable':
+      'Le catalogue n’a pas pu être chargé. Rafraîchissez la page dans un instant ; si le problème persiste, nos équipes sont déjà alertées.',
     'product.ask': 'Demander un devis',
     'product.loginRequired': 'Connexion requise pour envoyer une demande',
     'product.primaryOffer': 'Offre principale',

@@ -272,15 +272,15 @@ export default function IncidentDetailPage() {
         {canEdit && !isClosed && (
           <Link
             href={`/incidents/${id}/edit`}
-            className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
           >
-            <Pencil className="h-3.5 w-3.5" /> Modifier
+            <Pencil className="h-3.5 w-3.5" aria-hidden /> Modifier
           </Link>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg border border-gray-200 bg-white p-0.5 w-fit">
+      <div className="flex w-fit gap-1 rounded-lg border border-gray-200/70 bg-white p-0.5 shadow-premium-sm">
         {[
           { key: 'info' as Tab, label: 'Informations', icon: AlertTriangle },
           {
@@ -292,11 +292,11 @@ export default function IncidentDetailPage() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-              tab === key ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-fast ease-premium ${
+              tab === key ? 'bg-gradient-iox-primary text-white shadow-premium-sm' : 'text-gray-600 hover:text-premium-accent'
             }`}
           >
-            <Icon className="h-3.5 w-3.5" /> {label}
+            <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
           </button>
         ))}
       </div>
@@ -307,13 +307,13 @@ export default function IncidentDetailPage() {
           {/* Colonne principale */}
           <div className="lg:col-span-2 space-y-5">
             {/* Description */}
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="rounded-xl border border-gray-200/70 bg-white p-5 shadow-premium-sm">
               <h2 className="text-sm font-semibold text-gray-700 mb-3">Description</h2>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">{incident.description}</p>
             </div>
 
             {/* Résolution & actions */}
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="rounded-xl border border-gray-200/70 bg-white p-5 shadow-premium-sm">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-700">
                   Résolution & actions correctives
@@ -321,7 +321,7 @@ export default function IncidentDetailPage() {
                 {canEdit && !isClosed && !editing && (
                   <button
                     onClick={() => setEditing(true)}
-                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-premium-accent hover:underline"
                   >
                     <Edit2 className="h-3.5 w-3.5" /> Modifier
                   </button>
@@ -339,7 +339,7 @@ export default function IncidentDetailPage() {
                       onChange={(e) => setEditForm((p) => ({ ...p, resolution: e.target.value }))}
                       rows={3}
                       placeholder="Décrivez la résolution apportée…"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
                     />
                   </div>
                   <div>
@@ -351,7 +351,7 @@ export default function IncidentDetailPage() {
                       onChange={(e) => setEditForm((p) => ({ ...p, actionsTaken: e.target.value }))}
                       rows={3}
                       placeholder="Listez les actions correctives mises en place…"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
                     />
                   </div>
                   {editError && <p className="text-xs text-red-500">{editError}</p>}
@@ -359,7 +359,7 @@ export default function IncidentDetailPage() {
                     <button
                       onClick={saveEdit}
                       disabled={saving}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-iox-primary px-3 py-1.5 text-xs font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press disabled:opacity-50"
                     >
                       <Save className="h-3.5 w-3.5" /> {saving ? 'Sauvegarde…' : 'Sauvegarder'}
                     </button>
@@ -406,7 +406,7 @@ export default function IncidentDetailPage() {
 
             {/* Transitions */}
             {canEdit && nextOptions.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="rounded-xl border border-gray-200/70 bg-white p-5 shadow-premium-sm">
                 <h2 className="text-sm font-semibold text-gray-700 mb-3">Avancer le statut</h2>
                 <div className="space-y-3">
                   <textarea
@@ -414,7 +414,7 @@ export default function IncidentDetailPage() {
                     onChange={(e) => setStatusNotes(e.target.value)}
                     rows={2}
                     placeholder="Notes optionnelles pour ce changement de statut…"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
                   />
                   {transError && <p className="text-xs text-red-500">{transError}</p>}
                   <div className="flex flex-wrap gap-2">
@@ -451,7 +451,7 @@ export default function IncidentDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-4">
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="rounded-xl border border-gray-200/70 bg-white p-5 shadow-premium-sm">
               <h2 className="text-sm font-semibold text-gray-700 mb-3">Détails</h2>
               <div className="divide-y divide-gray-50">
                 <DetailRow label="Code">{incident.code}</DetailRow>
@@ -487,7 +487,7 @@ export default function IncidentDetailPage() {
             </div>
 
             {(incident.linkedEntityType || incident.linkedEntityId) && (
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="rounded-xl border border-gray-200/70 bg-white p-5 shadow-premium-sm">
                 <h2 className="text-sm font-semibold text-gray-700 mb-3">Entité concernée</h2>
                 <p className="text-xs text-gray-500">{incident.linkedEntityType}</p>
                 <p className="text-sm font-mono text-gray-800 mt-0.5">{incident.linkedEntityId}</p>

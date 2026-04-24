@@ -80,7 +80,7 @@ export default function InboundBatchDetailPage() {
       const res = await fetch(`/api/v1/inbound-batches/${params.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(res.status === 404 ? 'Lot introuvable' : 'Erreur serveur');
+      if (!res.ok) throw new Error(res.status === 404 ? 'Lot introuvable' : 'Erreur serveur — réessayez dans quelques instants');
       const json = await res.json();
       setBatch(json.data);
     } catch (err) {

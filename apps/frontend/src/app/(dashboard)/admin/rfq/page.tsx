@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api';
 import { useAuth } from '@/contexts/auth.context';
 import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
 import { QuoteRequestStatus } from '@iox/shared';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * Admin — supervision des demandes de devis marketplace.
@@ -39,7 +40,7 @@ const STATUS_TONE: Record<QuoteRequestStatus, string> = {
   NEGOTIATING: 'bg-orange-100 text-orange-800',
   WON: 'bg-emerald-100 text-emerald-800',
   LOST: 'bg-gray-100 text-gray-700',
-  CANCELLED: 'bg-red-100 text-red-700',
+  CANCELLED: 'bg-gray-100 text-gray-600',
 };
 
 export default function AdminRfqPage() {
@@ -97,24 +98,20 @@ export default function AdminRfqPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShoppingBag className="h-6 w-6 text-emerald-500" />
-            Supervision demandes de devis
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {total} demande{total > 1 ? 's' : ''} · filtrage et accès direct à la fiche négociation
-          </p>
-        </div>
-        <button
-          onClick={load}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Rafraîchir
-        </button>
-      </header>
+      <PageHeader
+        icon={<ShoppingBag className="h-5 w-5" aria-hidden />}
+        title="Supervision demandes de devis"
+        subtitle={`${total} demande${total > 1 ? 's' : ''} · filtrage et accès direct à la fiche négociation`}
+        actions={
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Rafraîchir
+          </button>
+        }
+      />
 
       {/* Filtres + recherche */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -125,14 +122,14 @@ export default function AdminRfqPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher (offre, acheteur, produit)…"
-            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as QuoteRequestStatus | '')}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
         >
           <option value="">Tous les statuts</option>
           {Object.entries(STATUS_LABEL).map(([k, label]) => (
@@ -162,19 +159,19 @@ export default function AdminRfqPage() {
       )}
 
       {/* Liste */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="iox-table-wrap">
+        <table>
+          <thead>
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Offre</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Acheteur</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Quantité</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Statut</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-500">Créée</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+              <th>Offre</th>
+              <th>Acheteur</th>
+              <th>Quantité</th>
+              <th>Statut</th>
+              <th>Créée</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-gray-400">

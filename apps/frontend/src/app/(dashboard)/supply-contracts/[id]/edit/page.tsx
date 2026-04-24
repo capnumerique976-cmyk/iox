@@ -78,7 +78,7 @@ export default function EditSupplyContractPage() {
       const res = await fetch(`/api/v1/supply-contracts/${params.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(res.status === 404 ? 'Contrat introuvable' : 'Erreur serveur');
+      if (!res.ok) throw new Error(res.status === 404 ? 'Contrat introuvable' : 'Erreur serveur — réessayez dans quelques instants');
       const json = await res.json();
       const c = json.data;
       setContractCode(c.code);
@@ -173,7 +173,7 @@ export default function EditSupplyContractPage() {
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <AlertTriangle className="h-8 w-8 text-red-400" />
         <p className="text-sm text-red-600">{fetchError}</p>
-        <button onClick={() => router.back()} className="text-sm text-blue-600 hover:underline">
+        <button onClick={() => router.back()} className="text-sm text-premium-accent hover:underline">
           Retour
         </button>
       </div>
@@ -182,13 +182,13 @@ export default function EditSupplyContractPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <nav className="flex items-center gap-1 text-sm text-gray-500">
-        <Link href="/supply-contracts" className="hover:text-blue-600 flex items-center gap-1">
+        <Link href="/supply-contracts" className="hover:text-premium-accent flex items-center gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Contrats
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <Link
           href={`/supply-contracts/${params.id}`}
-          className="hover:text-blue-600 font-mono text-gray-700"
+          className="hover:text-premium-accent font-mono text-gray-700"
         >
           {contractCode}
         </Link>
@@ -292,7 +292,7 @@ export default function EditSupplyContractPage() {
                   key={p.id}
                   className={`flex items-center gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
                     form.productIds.includes(p.id)
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-premium-accent/60 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -300,17 +300,17 @@ export default function EditSupplyContractPage() {
                     type="checkbox"
                     checked={form.productIds.includes(p.id)}
                     onChange={() => toggleProduct(p.id)}
-                    className="rounded text-blue-600"
+                    className="rounded text-premium-accent"
                   />
                   <span className="text-xs">
-                    <span className="font-mono text-blue-600">{p.code}</span>
+                    <span className="font-mono text-premium-accent">{p.code}</span>
                     <span className="ml-1.5 text-gray-700">{p.name}</span>
                   </span>
                 </label>
               ))}
             </div>
             {form.productIds.length > 0 && (
-              <p className="text-xs text-blue-600">
+              <p className="text-xs text-premium-accent">
                 {form.productIds.length} produit{form.productIds.length > 1 ? 's' : ''} sélectionné
                 {form.productIds.length > 1 ? 's' : ''}
               </p>
@@ -335,7 +335,7 @@ export default function EditSupplyContractPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-gradient-iox-primary px-6 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
           >
             {loading ? 'Enregistrement…' : 'Enregistrer les modifications'}
           </button>
@@ -366,7 +366,7 @@ function Field({
 }
 
 function inputCls(hasError: boolean) {
-  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 ${
     hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'
   }`;
 }

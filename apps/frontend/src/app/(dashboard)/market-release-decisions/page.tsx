@@ -8,6 +8,7 @@ import { ShieldCheck, ShieldAlert, ShieldX, Filter, Search, Download, Plus } fro
 import { MarketReleaseDecision, UserRole } from '@iox/shared';
 import { authStorage } from '@/lib/auth';
 import { useAuth } from '@/contexts/auth.context';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 const CAN_CREATE: UserRole[] = [UserRole.ADMIN, UserRole.COORDINATOR, UserRole.QUALITY_MANAGER];
 
@@ -113,7 +114,7 @@ export default function MarketReleaseDecisionsPage() {
       const res = await fetch(`/api/v1/market-release-decisions?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Erreur de chargement');
+      if (!res.ok) throw new Error('Chargement des décisions de mise sur marché impossible — réessayez dans un instant.');
       const json = await res.json();
       setDecisions(json.data?.data ?? json.data ?? []);
       setMeta(json.data?.meta ?? null);
@@ -440,29 +441,18 @@ export default function MarketReleaseDecisionsPage() {
       </div>
 
       {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
-            {meta.total > 1 ? 's' : ''}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={meta.page <= 1}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Précédent
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={meta.page >= meta.totalPages}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Suivant
-            </button>
-          </div>
-        </div>
+      {meta && (
+        <PaginationControls
+          page={meta.page}
+          totalPages={meta.totalPages}
+          onPageChange={setPage}
+          label={
+            <>
+              Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
+              {meta.total > 1 ? 's' : ''}
+            </>
+          }
+        />
       )}
 
       {/* Tip */}

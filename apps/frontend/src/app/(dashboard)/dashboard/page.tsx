@@ -300,9 +300,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Tableau de bord</h1>
           {lastUpdated && (
             <p className="text-xs text-gray-400 mt-1">
               Mis à jour{' '}
@@ -403,7 +403,7 @@ export default function DashboardPage() {
 
       {/* KPI Row 3 — distributions */}
       {stats.distributions && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <KpiCard
             icon={GitMerge}
             label="Distributions"
@@ -412,11 +412,11 @@ export default function DashboardPage() {
             sub={`${stats.distributions.completedLast30Days} complétée(s) (30j)`}
             href="/distributions"
           />
-          <div className="rounded-xl border border-gray-200 bg-white p-5 col-span-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 md:col-span-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
               Pipeline distributions
             </p>
-            <div className="grid grid-cols-4 gap-4 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-center">
               {[
                 {
                   label: 'Planifiées',

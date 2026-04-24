@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Search, GitBranch, QrCode, ArrowRight } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 import { TraceabilityPanel } from '@/components/traceability/timeline';
+import { PageHeader } from '@/components/ui/page-header';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -134,26 +135,21 @@ export default function TraceabilityPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <GitBranch className="h-6 w-6 text-blue-600" />
-          Traçabilité
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Recherchez un lot fini pour visualiser sa chaîne de traçabilité complète
-        </p>
-      </div>
+      <PageHeader
+        icon={<GitBranch className="h-5 w-5" aria-hidden />}
+        title="Traçabilité"
+        subtitle="Recherchez un lot fini pour visualiser sa chaîne de traçabilité complète"
+      />
 
       {/* Barre de recherche */}
       <form
         onSubmit={handleSubmit}
-        className="rounded-xl border border-gray-200 bg-white p-5 space-y-3"
+        className="space-y-3 rounded-xl border border-gray-200/70 bg-white p-5 shadow-premium-sm"
       >
         <label className="text-sm font-medium text-gray-700">Code du lot fini</label>
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="flex flex-wrap gap-3">
+          <div className="relative min-w-48 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
             <input
               type="text"
               value={query}
@@ -164,23 +160,23 @@ export default function TraceabilityPage() {
                 }
               }}
               placeholder="Ex: PB-2024-001"
-              className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               autoFocus
             />
           </div>
           <button
             type="submit"
             disabled={!query.trim() || searching}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-5 py-2.5 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press disabled:opacity-50"
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-4 w-4" aria-hidden />
             {searching ? 'Recherche…' : 'Rechercher'}
           </button>
           {batchId && (
             <button
               type="button"
               onClick={reset}
-              className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-600 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
             >
               Réinitialiser
             </button>
@@ -201,8 +197,8 @@ export default function TraceabilityPage() {
 
       {/* Résultats de recherche */}
       {results.length > 0 && !batchId && (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+        <div className="overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-premium-sm">
+          <div className="border-b border-gray-100 bg-gray-50/80 px-4 py-3">
             <p className="text-sm font-medium text-gray-700">
               {results.length} lot{results.length > 1 ? 's' : ''} trouvé
               {results.length > 1 ? 's' : ''}
@@ -213,13 +209,13 @@ export default function TraceabilityPage() {
               <li key={b.id}>
                 <button
                   onClick={() => selectBatch(b)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left group"
+                  className="group flex w-full items-center justify-between px-4 py-3 text-left transition-colors duration-fast ease-premium hover:bg-premium-accent/5"
                 >
                   <div className="flex items-center gap-3">
-                    <QrCode className="h-4 w-4 text-gray-300 group-hover:text-blue-400 transition-colors" />
+                    <QrCode className="h-4 w-4 text-gray-300 transition-colors group-hover:text-premium-accent" aria-hidden />
                     <div>
-                      <span className="font-mono font-medium text-blue-600">{b.code}</span>
-                      <div className="text-xs text-gray-500 mt-0.5">
+                      <span className="font-mono font-medium text-premium-accent">{b.code}</span>
+                      <div className="mt-0.5 text-xs text-gray-500">
                         {b.product.name} · {b.quantity} {b.unit}
                       </div>
                     </div>
@@ -230,7 +226,7 @@ export default function TraceabilityPage() {
                     >
                       {BATCH_STATUS_LABELS[b.status] ?? b.status}
                     </span>
-                    <ArrowRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                    <ArrowRight className="h-3.5 w-3.5 text-gray-400 transition-colors group-hover:text-premium-accent" aria-hidden />
                   </div>
                 </button>
               </li>
@@ -240,7 +236,7 @@ export default function TraceabilityPage() {
       )}
 
       {results.length === 0 && !batchId && query && !searching && (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">
+        <div className="rounded-xl border border-gray-200/70 bg-white p-8 text-center text-sm text-gray-400 shadow-premium-sm">
           Aucun lot fini trouvé pour « {query} »
         </div>
       )}
@@ -249,12 +245,12 @@ export default function TraceabilityPage() {
       {batchId && batchInfo && (
         <div className="space-y-4">
           {/* Entête lot */}
-          <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <QrCode className="h-5 w-5 text-blue-600" />
+          <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-premium-accent/30 bg-premium-accent/5 px-5 py-4 shadow-premium-sm sm:flex-row sm:items-center">
+            <div className="flex flex-wrap items-center gap-3">
+              <QrCode className="h-5 w-5 text-premium-accent" aria-hidden />
               <div>
-                <p className="font-mono font-semibold text-blue-800">{batchInfo.code}</p>
-                <p className="text-xs text-blue-600 mt-0.5">
+                <p className="font-mono font-semibold text-premium-primary">{batchInfo.code}</p>
+                <p className="mt-0.5 text-xs text-premium-accent">
                   {batchInfo.product.name} · {batchInfo.quantity} {batchInfo.unit}
                 </p>
               </div>
@@ -266,9 +262,9 @@ export default function TraceabilityPage() {
             </div>
             <Link
               href={`/product-batches/${batchId}`}
-              className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline font-medium"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-premium-accent hover:underline"
             >
-              Voir la fiche complète <ArrowRight className="h-3 w-3" />
+              Voir la fiche complète <ArrowRight className="h-3 w-3" aria-hidden />
             </Link>
           </div>
 
@@ -279,10 +275,12 @@ export default function TraceabilityPage() {
 
       {/* État vide initial */}
       {!batchId && results.length === 0 && !query && (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center space-y-3">
-          <GitBranch className="h-12 w-12 text-gray-200 mx-auto" />
+        <div className="space-y-3 rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center shadow-premium-sm">
+          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-premium-accent/10 text-premium-accent">
+            <GitBranch className="h-6 w-6" aria-hidden />
+          </div>
           <p className="text-sm font-medium text-gray-500">Aucun lot sélectionné</p>
-          <p className="text-xs text-gray-400 max-w-sm mx-auto">
+          <p className="mx-auto max-w-sm text-xs text-gray-400">
             Entrez le code d'un lot fini pour visualiser sa traçabilité complète : lot entrant,
             transformation, décisions qualité, distributions.
           </p>

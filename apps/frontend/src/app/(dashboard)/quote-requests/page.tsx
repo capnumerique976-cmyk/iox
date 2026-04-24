@@ -6,6 +6,7 @@ import { MessageSquare, Search, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
 import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
 import { UserRole, QuoteRequestStatus } from '@iox/shared';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * Liste RFQ V2 — enrichissements (rétro-compatibles V1) :
@@ -105,14 +106,21 @@ export default function QuoteRequestsListPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        {isBuyer && (
-          <Link href="/marketplace" className="text-sm text-blue-700 hover:text-blue-800">
-            Parcourir le catalogue →
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        icon={<ShoppingBag className="h-5 w-5" aria-hidden />}
+        title={title}
+        subtitle={`${items.length} demande${items.length > 1 ? 's' : ''}`}
+        actions={
+          isBuyer ? (
+            <Link
+              href="/marketplace"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
+            >
+              Parcourir le catalogue →
+            </Link>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <button
@@ -168,20 +176,20 @@ export default function QuoteRequestsListPage() {
       ) : filtered.length === 0 ? (
         <EmptyState isBuyer={isBuyer} isSeller={isSeller} hasAny={items.length > 0} />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+        <div className="iox-table-wrap">
+          <table>
+            <thead>
               <tr>
-                <th className="px-4 py-2 text-left">Offre</th>
-                <th className="px-4 py-2 text-left">Vendeur</th>
-                <th className="px-4 py-2 text-left">Acheteur</th>
-                <th className="px-4 py-2 text-left">Quantité</th>
-                <th className="px-4 py-2 text-left">Statut</th>
-                <th className="px-4 py-2 text-left">Créée</th>
-                <th className="px-4 py-2"></th>
+                <th>Offre</th>
+                <th>Vendeur</th>
+                <th>Acheteur</th>
+                <th>Quantité</th>
+                <th>Statut</th>
+                <th>Créée</th>
+                <th></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {filtered.map((q) => (
                 <tr key={q.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2 text-gray-900">

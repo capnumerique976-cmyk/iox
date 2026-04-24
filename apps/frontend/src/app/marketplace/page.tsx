@@ -2,6 +2,7 @@ import { Sparkles, Package } from 'lucide-react';
 import { fetchCatalog } from '@/lib/marketplace/api';
 import { ProductCard } from '@/components/marketplace/ProductCard';
 import { CatalogFilters } from '@/components/marketplace/CatalogFilters';
+import { MobileFiltersTrigger } from '@/components/marketplace/MobileFiltersTrigger';
 import { Pagination } from '@/components/marketplace/Pagination';
 
 export const dynamic = 'force-dynamic';
@@ -21,9 +22,9 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   const totalLabel = res ? `${res.meta.total} offre${res.meta.total > 1 ? 's' : ''}` : 'Chargement…';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Hero du catalogue */}
-      <section className="relative overflow-hidden rounded-2xl border border-gray-200/70 bg-gradient-to-br from-premium-primary via-premium-primary-light to-premium-accent p-6 text-white shadow-premium-lg sm:p-8">
+      <section className="relative overflow-hidden rounded-2xl border border-gray-200/70 bg-gradient-to-br from-premium-primary via-premium-primary-light to-premium-accent p-5 text-white shadow-premium-lg sm:p-8">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-3xl"
@@ -51,9 +52,12 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         </div>
       </section>
 
+      {/* Trigger filtres mobile — visible < md */}
+      <MobileFiltersTrigger />
+
       {/* Grille : filtres + résultats */}
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-[280px_1fr]">
-        <aside>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_1fr] md:gap-8 lg:grid-cols-[280px_1fr]">
+        <aside className="hidden md:block">
           <div className="sticky top-24">
             <CatalogFilters />
           </div>
@@ -62,7 +66,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         <section>
           {!res ? (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-premium-sm">
-              Le catalogue est temporairement indisponible.
+              Le catalogue n’a pas pu être chargé. Rafraîchissez la page dans un instant ; si le problème persiste, nos équipes sont déjà alertées.
             </div>
           ) : res.data.length === 0 ? (
             <div className="rounded-2xl border border-gray-200/70 bg-white p-12 text-center shadow-premium-sm">

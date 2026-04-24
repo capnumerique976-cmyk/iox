@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 import { useAuth } from '@/contexts/auth.context';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { UserRole } from '@iox/shared';
 
 const CAN_UPLOAD: UserRole[] = [
@@ -125,7 +126,7 @@ const MIME_LABELS: Record<string, string> = {
 const STATUS_CLS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700',
   ARCHIVED: 'bg-gray-100 text-gray-500',
-  EXPIRED: 'bg-red-100 text-red-600',
+  EXPIRED: 'bg-amber-100 text-amber-700',
   PENDING: 'bg-yellow-100 text-yellow-700',
 };
 
@@ -178,7 +179,7 @@ export default function DocumentsPage() {
       const res = await fetch(`/api/v1/documents?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Erreur de chargement');
+      if (!res.ok) throw new Error('Chargement des documents impossible — vérifiez votre connexion et réessayez.');
       const json = await res.json();
       setDocs(json.data?.data ?? json.data ?? []);
       setMeta(json.data?.meta ?? null);
@@ -401,7 +402,7 @@ export default function DocumentsPage() {
                     {/* Expiration */}
                     <td className="px-4 py-3 text-xs">
                       {doc.expiresAt ? (
-                        <span className={isExpired ? 'text-red-500 font-medium' : 'text-gray-500'}>
+                        <span className={isExpired ? 'text-amber-700 font-medium' : 'text-gray-500'}>
                           {new Date(doc.expiresAt).toLocaleDateString('fr-FR')}
                           {isExpired && ' ⚠'}
                         </span>
@@ -445,29 +446,18 @@ export default function DocumentsPage() {
       </div>
 
       {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
-            {meta.total > 1 ? 's' : ''}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={meta.page <= 1}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Précédent
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={meta.page >= meta.totalPages}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Suivant
-            </button>
-          </div>
-        </div>
+      {meta && (
+        <PaginationControls
+          page={meta.page}
+          totalPages={meta.totalPages}
+          onPageChange={setPage}
+          label={
+            <>
+              Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
+              {meta.total > 1 ? 's' : ''}
+            </>
+          }
+        />
       )}
 
       {/* Note upload */}

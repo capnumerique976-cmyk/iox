@@ -19,10 +19,10 @@ export default function GlobalError({
       <div className="max-w-md w-full text-center space-y-6">
         <div className="space-y-2">
           <p className="text-7xl font-black text-red-100 select-none">!</p>
-          <h1 className="text-2xl font-bold text-gray-900">Une erreur est survenue</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Cette page n&apos;a pas pu être affichée</h1>
           <p className="text-sm text-gray-500">
-            Une erreur inattendue s&apos;est produite. Si le problème persiste, contactez votre
-            administrateur.
+            Un incident technique a interrompu le rendu. Réessayer suffit généralement ; si l&apos;erreur
+            se reproduit, communiquez la référence ci-dessous à votre administrateur IOX.
           </p>
           {error.digest && (
             <p className="text-xs font-mono text-gray-400 bg-gray-100 rounded px-2 py-1 inline-block">

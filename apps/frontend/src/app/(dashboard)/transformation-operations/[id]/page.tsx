@@ -73,7 +73,7 @@ export default function TransformationOpDetailPage() {
       const res = await fetch(`/api/v1/transformation-operations/${params.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(res.status === 404 ? 'Opération introuvable' : 'Erreur serveur');
+      if (!res.ok) throw new Error(res.status === 404 ? 'Opération introuvable' : 'Erreur serveur — réessayez dans quelques instants');
       const json = await res.json();
       setOp(json.data);
     } catch (err) {
@@ -110,39 +110,39 @@ export default function TransformationOpDetailPage() {
         <nav className="flex items-center gap-1 text-sm text-gray-500 mb-3">
           <Link
             href="/transformation-operations"
-            className="hover:text-blue-600 flex items-center gap-1"
+            className="flex items-center gap-1 hover:text-premium-accent"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Transformations
           </Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-mono text-gray-700">{op.code}</span>
         </nav>
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
-            <div className="rounded-xl bg-purple-500 p-3">
-              <Wrench className="h-6 w-6 text-white" />
+            <div className="rounded-xl bg-gradient-iox-primary p-3 shadow-premium-sm">
+              <Wrench className="h-6 w-6 text-white" aria-hidden />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{op.name}</h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{op.name}</h1>
+              <p className="mt-1 text-sm text-gray-500">
                 {op.code} · {op.inboundBatch.product.name} ·{' '}
                 {new Date(op.operationDate).toLocaleDateString('fr-FR')}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/transformation-operations/${op.id}/edit`}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
             >
               Modifier
             </Link>
             {canCreateBatch && (
               <Link
                 href={`/product-batches/new?transformationOpId=${op.id}&productId=${op.inboundBatch.product.id}`}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press"
               >
-                <Plus className="h-4 w-4" /> Créer un lot fini
+                <Plus className="h-4 w-4" aria-hidden /> Créer un lot fini
               </Link>
             )}
           </div>
@@ -150,7 +150,7 @@ export default function TransformationOpDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-0.5 rounded-lg border border-gray-200 bg-white p-0.5 w-fit">
+      <div className="flex w-fit gap-0.5 rounded-lg border border-gray-200/70 bg-white p-0.5 shadow-premium-sm">
         {[
           { key: 'info' as const, label: 'Informations', icon: Wrench },
           { key: 'docs' as const, label: 'Documents', icon: FileText },
@@ -158,11 +158,11 @@ export default function TransformationOpDetailPage() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-              tab === key ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+            className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-fast ease-premium ${
+              tab === key ? 'bg-gradient-iox-primary text-white shadow-premium-sm' : 'text-gray-600 hover:text-premium-accent'
             }`}
           >
-            <Icon className="h-3.5 w-3.5" /> {label}
+            <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
           </button>
         ))}
       </div>
@@ -174,8 +174,8 @@ export default function TransformationOpDetailPage() {
       {tab === 'info' && (
         <>
           {/* KPI */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 Taux de transformation
               </p>
@@ -183,13 +183,13 @@ export default function TransformationOpDetailPage() {
                 {op.yieldRate != null ? `${op.yieldRate} %` : '—'}
               </p>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 Lots finis produits
               </p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{op._count.productBatches}</p>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 Matière source
               </p>
@@ -200,15 +200,15 @@ export default function TransformationOpDetailPage() {
           </div>
 
           {/* Info cards */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="rounded-lg border border-gray-200 bg-white p-6 space-y-4">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="space-y-4 rounded-xl border border-gray-200/70 bg-white p-6 shadow-premium-sm">
               <h3 className="text-sm font-semibold text-gray-900">Lot entrant source</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Code</span>
                   <Link
                     href={`/inbound-batches/${op.inboundBatch.id}`}
-                    className="font-mono text-blue-600 hover:underline"
+                    className="font-mono text-premium-accent hover:underline"
                   >
                     {op.inboundBatch.code}
                   </Link>
@@ -228,7 +228,7 @@ export default function TransformationOpDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-200 bg-white p-6 space-y-4">
+            <div className="space-y-4 rounded-xl border border-gray-200/70 bg-white p-6 shadow-premium-sm">
               <h3 className="text-sm font-semibold text-gray-900">Détails de l'opération</h3>
               <div className="space-y-2 text-sm">
                 {op.site && (
@@ -254,50 +254,50 @@ export default function TransformationOpDetailPage() {
           </div>
 
           {/* Lots finis */}
-          <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Lots finis issus de cette opération
-              </h3>
-            </div>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Lots finis issus de cette opération
+            </h3>
             {op.productBatches.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-gray-400 gap-2">
-                <Package className="h-8 w-8" />
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-gray-200/70 bg-white py-12 text-gray-400 shadow-premium-sm">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-premium-accent/10 text-premium-accent">
+                  <Package className="h-5 w-5" aria-hidden />
+                </div>
                 <p className="text-sm">Aucun lot fini créé</p>
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Code</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Statut</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Quantité</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">
-                      Date de production
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {op.productBatches.map((b) => (
-                    <tr
-                      key={b.id}
-                      onClick={() => router.push(`/product-batches/${b.id}`)}
-                      className="hover:bg-gray-50 cursor-pointer"
-                    >
-                      <td className="px-4 py-3 font-mono text-blue-600">{b.code}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={b.status} type="batch" />
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {b.quantity} {b.unit}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {new Date(b.productionDate).toLocaleDateString('fr-FR')}
-                      </td>
+              <div className="iox-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Statut</th>
+                      <th>Quantité</th>
+                      <th>Date de production</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {op.productBatches.map((b) => (
+                      <tr
+                        key={b.id}
+                        onClick={() => router.push(`/product-batches/${b.id}`)}
+                        className="cursor-pointer"
+                      >
+                        <td className="px-4 py-3 font-mono text-premium-accent">{b.code}</td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={b.status} type="batch" />
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {b.quantity} {b.unit}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">
+                          {new Date(b.productionDate).toLocaleDateString('fr-FR')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </>

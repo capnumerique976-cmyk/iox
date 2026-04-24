@@ -128,11 +128,11 @@ export default function EditIncidentPage() {
     <div className="max-w-2xl space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-gray-500">
-        <Link href="/incidents" className="hover:text-blue-600 flex items-center gap-1">
+        <Link href="/incidents" className="hover:text-premium-accent flex items-center gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Incidents
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
-        <Link href={`/incidents/${id}`} className="hover:text-blue-600 font-mono">
+        <Link href={`/incidents/${id}`} className="hover:text-premium-accent font-mono">
           {code}
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
@@ -158,7 +158,7 @@ export default function EditIncidentPage() {
                 onChange={set('title')}
                 maxLength={200}
                 placeholder="Résumé concis de l'incident"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
 
@@ -170,7 +170,7 @@ export default function EditIncidentPage() {
                 onChange={set('description')}
                 rows={5}
                 placeholder="Décrivez précisément l'incident, ses circonstances, les personnes impliquées…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 resize-none"
               />
             </div>
 
@@ -184,7 +184,7 @@ export default function EditIncidentPage() {
                   required
                   value={form.incidentDate}
                   onChange={set('incidentDate')}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
                 />
               </div>
             </div>
@@ -237,7 +237,7 @@ export default function EditIncidentPage() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-6 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}

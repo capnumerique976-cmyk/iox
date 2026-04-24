@@ -5,6 +5,7 @@ import { Search, Filter, Eye, Clock } from 'lucide-react';
 import { UserRole } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface AuditLog {
   id: string;
@@ -349,28 +350,12 @@ export default function AuditLogsPage() {
       </div>
 
       {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Page {meta.page} sur {meta.totalPages}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={meta.page <= 1}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Précédent
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={meta.page >= meta.totalPages}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Suivant
-            </button>
-          </div>
-        </div>
+      {meta && (
+        <PaginationControls
+          page={meta.page}
+          totalPages={meta.totalPages}
+          onPageChange={setPage}
+        />
       )}
     </div>
   );

@@ -142,7 +142,7 @@ export default function NewDistributionPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <nav className="flex items-center gap-1 text-sm text-gray-500">
-        <Link href="/distributions" className="hover:text-blue-600 flex items-center gap-1">
+        <Link href="/distributions" className="hover:text-premium-accent flex items-center gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Distributions
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
@@ -168,7 +168,7 @@ export default function NewDistributionPage() {
               <select
                 value={beneficiaryId}
                 onChange={(e) => setBeneficiaryId(e.target.value)}
-                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${!beneficiaryId ? 'border-gray-300' : 'border-gray-300'}`}
+                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 ${!beneficiaryId ? 'border-gray-300' : 'border-gray-300'}`}
               >
                 <option value="">— Sélectionner un bénéficiaire —</option>
                 {beneficiaries.map((b) => (
@@ -186,7 +186,7 @@ export default function NewDistributionPage() {
                 type="date"
                 value={distributionDate}
                 onChange={(e) => setDistributionDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
             <div>
@@ -196,7 +196,7 @@ export default function NewDistributionPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Remarques éventuelles…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
               />
             </div>
           </div>
@@ -247,7 +247,7 @@ export default function NewDistributionPage() {
                         onChange={(e) => updateLine(idx, 'quantity', e.target.value)}
                         min={0.01}
                         step={0.01}
-                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-premium-accent/30"
                       />
                     </div>
                     <div>
@@ -256,7 +256,7 @@ export default function NewDistributionPage() {
                         type="text"
                         value={line.unit}
                         onChange={(e) => updateLine(idx, 'unit', e.target.value)}
-                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-premium-accent/30"
                       />
                     </div>
                     <div>
@@ -266,7 +266,7 @@ export default function NewDistributionPage() {
                         value={line.notes}
                         onChange={(e) => updateLine(idx, 'notes', e.target.value)}
                         placeholder="Optionnel"
-                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-premium-accent/30"
                       />
                     </div>
                   </div>
@@ -286,7 +286,7 @@ export default function NewDistributionPage() {
                   value={batchSearch}
                   onChange={(e) => setBatchSearch(e.target.value)}
                   placeholder="Rechercher…"
-                  className="w-full rounded-lg border border-gray-300 pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
                 />
               </div>
             </div>
@@ -304,7 +304,7 @@ export default function NewDistributionPage() {
                     className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5 text-left hover:border-blue-400 hover:bg-blue-50 transition-colors"
                   >
                     <div>
-                      <p className="font-mono text-xs font-semibold text-blue-600">{b.code}</p>
+                      <p className="font-mono text-xs font-semibold text-premium-accent">{b.code}</p>
                       <p className="text-xs text-gray-600 truncate">{b.product.name}</p>
                     </div>
                     <div className="text-right ml-2">
@@ -343,7 +343,7 @@ export default function NewDistributionPage() {
             <button
               type="submit"
               disabled={loading || lines.length === 0 || !beneficiaryId}
-              className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-lg bg-gradient-iox-primary px-6 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
             >
               {loading ? 'Création…' : 'Créer la distribution'}
             </button>

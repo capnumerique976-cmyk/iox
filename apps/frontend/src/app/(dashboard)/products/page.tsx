@@ -8,6 +8,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Search, Package, Filter, Download } from 'lucide-react';
 import { ProductStatus, UserRole } from '@iox/shared';
 import { StatusBadge, PRODUCT_STATUS_CONFIG } from '@/components/ui/status-badge';
+import { PageHeader } from '@/components/ui/page-header';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
 
@@ -116,34 +118,34 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Produits</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {meta ? `${meta.total} produit${meta.total > 1 ? 's' : ''} au total` : 'Chargement…'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={downloadCsv}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Download className="h-4 w-4" /> Exporter CSV
-          </button>
-          {canCreate && (
-            <Link
-              href="/products/new"
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+      <PageHeader
+        icon={<Package className="h-5 w-5" aria-hidden />}
+        title="Produits"
+        subtitle={
+          meta ? `${meta.total} produit${meta.total > 1 ? 's' : ''} au total` : 'Chargement…'
+        }
+        actions={
+          <>
+            <button
+              onClick={downloadCsv}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
             >
-              <Plus className="h-4 w-4" /> Nouveau produit
-            </Link>
-          )}
-        </div>
-      </div>
+              <Download className="h-4 w-4" /> Exporter CSV
+            </button>
+            {canCreate && (
+              <Link
+                href="/products/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-base ease-premium hover:shadow-premium-md"
+              >
+                <Plus className="h-4 w-4" /> Nouveau produit
+              </Link>
+            )}
+          </>
+        }
+      />
 
       {/* Filters */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-gray-200/70 bg-white p-3 shadow-premium-sm sm:p-4">
         <form onSubmit={handleSearch} className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -194,37 +196,41 @@ export default function ProductsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-48 text-sm text-gray-500">
-            Chargement…
+      {loading ? (
+        <div className="rounded-xl border border-gray-200/70 bg-white p-12 text-center text-sm text-gray-500 shadow-premium-sm">
+          Chargement…
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 shadow-premium-sm">
+          {error}
+        </div>
+      ) : products.length === 0 ? (
+        <div className="rounded-xl border border-gray-200/70 bg-white p-12 text-center shadow-premium-sm">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
+            <Package className="h-6 w-6 text-gray-400" aria-hidden />
           </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-48 text-sm text-red-500">{error}</div>
-        ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-400 gap-2">
-            <Package className="h-10 w-10" />
-            <p className="text-sm">Aucun produit trouvé</p>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+          <p className="text-sm font-semibold text-gray-900">Aucun produit trouvé</p>
+        </div>
+      ) : (
+        <div className="iox-table-wrap">
+          <table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Code</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Nom</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Catégorie</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Bénéficiaire</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Statut</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Version</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Lots</th>
+                <th>Code</th>
+                <th>Nom</th>
+                <th>Catégorie</th>
+                <th>Bénéficiaire</th>
+                <th>Statut</th>
+                <th>Version</th>
+                <th>Lots</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {products.map((p) => (
                 <tr
                   key={p.id}
                   onClick={() => router.push(`/products/${p.id}`)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="cursor-pointer"
                 >
                   <td className="px-4 py-3 font-mono text-blue-600 font-medium">{p.code}</td>
                   <td className="px-4 py-3">
@@ -247,33 +253,22 @@ export default function ProductsPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
-            {meta.total > 1 ? 's' : ''}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={meta.page <= 1}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Précédent
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={meta.page >= meta.totalPages}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Suivant
-            </button>
-          </div>
-        </div>
+      {meta && (
+        <PaginationControls
+          page={meta.page}
+          totalPages={meta.totalPages}
+          onPageChange={setPage}
+          label={
+            <>
+              Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
+              {meta.total > 1 ? 's' : ''}
+            </>
+          }
+        />
       )}
     </div>
   );

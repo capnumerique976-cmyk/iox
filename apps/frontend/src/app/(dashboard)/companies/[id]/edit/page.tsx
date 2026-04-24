@@ -65,7 +65,7 @@ export default function EditCompanyPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok)
-        throw new Error(res.status === 404 ? 'Entreprise introuvable' : 'Erreur serveur');
+        throw new Error(res.status === 404 ? 'Entreprise introuvable' : 'Erreur serveur — réessayez dans quelques instants');
       const json = await res.json();
       const c = json.data;
       setCompanyCode(c.code);
@@ -166,7 +166,7 @@ export default function EditCompanyPage() {
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <AlertTriangle className="h-8 w-8 text-red-400" />
         <p className="text-sm text-red-600">{fetchError}</p>
-        <button onClick={() => router.back()} className="text-sm text-blue-600 hover:underline">
+        <button onClick={() => router.back()} className="text-sm text-premium-accent hover:underline">
           Retour
         </button>
       </div>
@@ -175,13 +175,13 @@ export default function EditCompanyPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <nav className="flex items-center gap-1 text-sm text-gray-500">
-        <Link href="/companies" className="hover:text-blue-600 flex items-center gap-1">
+        <Link href="/companies" className="hover:text-premium-accent flex items-center gap-1">
           <ArrowLeft className="h-3.5 w-3.5" /> Entreprises
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <Link
           href={`/companies/${params.id}`}
-          className="hover:text-blue-600 font-mono text-gray-700"
+          className="hover:text-premium-accent font-mono text-gray-700"
         >
           {companyCode}
         </Link>
@@ -222,7 +222,7 @@ export default function EditCompanyPage() {
                   onClick={() => toggleType(t)}
                   className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                     form.types.includes(t)
-                      ? 'border-blue-500 bg-blue-600 text-white'
+                      ? 'border-premium-accent/60 bg-gradient-iox-primary text-white'
                       : 'border-gray-300 text-gray-600 hover:border-blue-400'
                   }`}
                 >
@@ -238,7 +238,7 @@ export default function EditCompanyPage() {
             <button
               type="button"
               onClick={() => setForm((p) => ({ ...p, isActive: !p.isActive }))}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-blue-600' : 'bg-gray-300'}`}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-gradient-iox-primary' : 'bg-gray-300'}`}
             >
               <span
                 className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${form.isActive ? 'translate-x-4.5' : 'translate-x-0.5'}`}
@@ -342,7 +342,7 @@ export default function EditCompanyPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-gradient-iox-primary px-6 py-2 text-sm font-medium text-white hover:shadow-premium-md disabled:opacity-50"
           >
             {loading ? 'Enregistrement…' : 'Enregistrer les modifications'}
           </button>
@@ -373,7 +373,7 @@ function Field({
 }
 
 function inputCls(hasError: boolean) {
-  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+  return `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30 ${
     hasError ? 'border-red-400 bg-red-50' : 'border-gray-300'
   }`;
 }

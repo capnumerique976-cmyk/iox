@@ -9,6 +9,8 @@ import { Plus, Search, AlertTriangle, Filter, Download } from 'lucide-react';
 import { IncidentStatus, IncidentSeverity, UserRole } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
+import { PageHeader } from '@/components/ui/page-header';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 /* ------------------------------------------------------------------ */
 /*  Types & constantes                                                  */
@@ -100,7 +102,7 @@ export default function IncidentsPage() {
       const res = await fetch(`/api/v1/incidents?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Erreur de chargement');
+      if (!res.ok) throw new Error('Chargement des incidents impossible — vérifiez votre connexion et réessayez.');
       const json = await res.json();
       setIncidents(json.data?.data ?? json.data ?? []);
       setMeta(json.data?.meta ?? null);
@@ -141,33 +143,34 @@ export default function IncidentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Incidents & Non-conformités</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {meta ? `${meta.total} incident${meta.total > 1 ? 's' : ''} au total` : 'Chargement…'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={downloadCsv}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Download className="h-4 w-4" /> Exporter CSV
-          </button>
-          {canCreate && (
-            <Link
-              href="/incidents/new"
-              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+      <PageHeader
+        icon={<AlertTriangle className="h-5 w-5" aria-hidden />}
+        title="Incidents & Non-conformités"
+        subtitle={
+          meta ? `${meta.total} incident${meta.total > 1 ? 's' : ''} au total` : 'Chargement…'
+        }
+        actions={
+          <>
+            <button
+              onClick={downloadCsv}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
             >
-              <Plus className="h-4 w-4" /> Déclarer un incident
-            </Link>
-          )}
-        </div>
-      </div>
+              <Download className="h-4 w-4" aria-hidden /> Exporter CSV
+            </button>
+            {canCreate && (
+              <Link
+                href="/incidents/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-gradient-iox-primary px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:shadow-premium-md active-press"
+              >
+                <Plus className="h-4 w-4" aria-hidden /> Déclarer un incident
+              </Link>
+            )}
+          </>
+        }
+      />
 
       {/* Filtres */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -176,14 +179,14 @@ export default function IncidentsPage() {
           }}
           className="flex flex-wrap gap-3"
         >
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="relative min-w-48 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher code, titre…"
-              className="w-full rounded-md border border-gray-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
             />
           </div>
           <select
@@ -192,7 +195,7 @@ export default function IncidentsPage() {
               setStatus(e.target.value);
               setPage(1);
             }}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
           >
             <option value="">Tous les statuts</option>
             {Object.values(IncidentStatus).map((s) => (
@@ -207,7 +210,7 @@ export default function IncidentsPage() {
               setSeverity(e.target.value);
               setPage(1);
             }}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-premium-sm transition-all duration-fast ease-premium focus:border-premium-accent/40 focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
           >
             <option value="">Toutes sévérités</option>
             {Object.values(IncidentSeverity).map((s) => (
@@ -218,48 +221,52 @@ export default function IncidentsPage() {
           </select>
           <button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-premium-sm transition-all duration-fast ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
           >
-            <Filter className="h-4 w-4" /> Filtrer
+            <Filter className="h-4 w-4" aria-hidden /> Filtrer
           </button>
         </form>
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-48 text-sm text-gray-500">
-            Chargement…
+      {loading ? (
+        <div className="rounded-xl border border-gray-200/70 bg-white py-16 text-center text-sm text-gray-400 shadow-premium-sm">
+          Chargement…
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 py-16 text-center text-sm text-red-600 shadow-premium-sm">
+          {error}
+        </div>
+      ) : incidents.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-gray-200/70 bg-white py-16 text-gray-400 shadow-premium-sm">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-premium-accent/10 text-premium-accent">
+            <AlertTriangle className="h-6 w-6" aria-hidden />
           </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-48 text-sm text-red-500">{error}</div>
-        ) : incidents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-400 gap-2">
-            <AlertTriangle className="h-10 w-10" />
-            <p className="text-sm">Aucun incident trouvé</p>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+          <p className="text-sm">Aucun incident trouvé</p>
+        </div>
+      ) : (
+        <div className="iox-table-wrap">
+          <table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Code</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Titre</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Sévérité</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Statut</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Date incident</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Docs</th>
+                <th>Code</th>
+                <th>Titre</th>
+                <th>Sévérité</th>
+                <th>Statut</th>
+                <th>Date incident</th>
+                <th>Docs</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {incidents.map((inc) => (
                 <tr
                   key={inc.id}
                   onClick={() => router.push(`/incidents/${inc.id}`)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="cursor-pointer"
                 >
-                  <td className="px-4 py-3 font-mono text-red-600 font-medium">{inc.code}</td>
+                  <td className="px-4 py-3 font-mono font-medium text-premium-accent">{inc.code}</td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900 line-clamp-1">{inc.title}</p>
+                    <p className="line-clamp-1 font-medium text-gray-900">{inc.title}</p>
                     {inc.linkedEntityType && (
                       <p className="text-xs text-gray-400">
                         {inc.linkedEntityType} · {inc.linkedEntityId}
@@ -280,43 +287,26 @@ export default function IncidentsPage() {
                       {STATUS_LABEL[inc.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="px-4 py-3 text-xs text-gray-500">
                     {new Date(inc.incidentDate).toLocaleDateString('fr-FR')}
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs text-center">
+                  <td className="px-4 py-3 text-center text-xs text-gray-400">
                     {inc._count.documents > 0 ? inc._count.documents : '—'}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Page {meta.page} sur {meta.totalPages} — {meta.total} résultat
-            {meta.total > 1 ? 's' : ''}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={meta.page <= 1}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Précédent
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={meta.page >= meta.totalPages}
-              className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50 disabled:opacity-40"
-            >
-              Suivant
-            </button>
-          </div>
         </div>
+      )}
+
+      {meta && (
+        <PaginationControls
+          page={meta.page}
+          totalPages={meta.totalPages}
+          onPageChange={setPage}
+          label={`Page ${meta.page} sur ${meta.totalPages} — ${meta.total} résultat${meta.total > 1 ? 's' : ''}`}
+        />
       )}
     </div>
   );

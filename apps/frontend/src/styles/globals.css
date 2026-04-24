@@ -196,6 +196,39 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* ─────────────────────────────────────────────────────────
+   * IOX — table wrapper responsive
+   * Usage : envelopper un <table> pour forcer le scroll horizontal
+   * sur mobile plutôt que de casser le layout de la page.
+   * Sous `sm` : bord-à-bord (negative margin) + coins droits.
+   * À partir de `sm` : carte bordée coins arrondis.
+   * ───────────────────────────────────────────────────────── */
+  .iox-table-wrap {
+    @apply -mx-4 overflow-x-auto border-y border-gray-200/70 bg-white shadow-premium-sm sm:mx-0 sm:rounded-xl sm:border;
+    @apply dark:border-gray-700/60 dark:bg-gray-900;
+  }
+  .iox-table-wrap > table {
+    @apply w-full min-w-[640px] text-sm;
+  }
+  .iox-table-wrap thead {
+    @apply bg-gray-50/80 dark:bg-gray-800/60;
+  }
+  .iox-table-wrap thead th {
+    @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400;
+  }
+  .iox-table-wrap tbody tr {
+    @apply border-t border-gray-100 transition-colors duration-fast ease-premium dark:border-gray-800;
+  }
+  .iox-table-wrap tbody tr:hover {
+    background-color: rgba(45, 156, 219, 0.05);
+  }
+  .dark .iox-table-wrap tbody tr:hover {
+    background-color: rgba(45, 156, 219, 0.12);
+  }
+  .iox-table-wrap tbody tr:first-child {
+    @apply border-t-0;
+  }
 }
 
 /* ─── Keyframes (enregistrées aussi dans tailwind.config pour `animate-*`) */
