@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { useRouter } from 'next/navigation';
 import { authStorage, AuthUser, AuthTokens } from '@/lib/auth';
 import { api } from '@/lib/api';
+import { installAuthInterceptor } from '@/lib/auth-interceptor';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -38,8 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restaure la session depuis le localStorage au montage
+  // Restaure la session + installe l'intercepteur 401 → /login.
+  // L'intercepteur garantit qu'un JWT expiré (TTL 15 min) ne laisse pas
+  // l'utilisateur bloqué sur un shell connecté inutilisable.
   useEffect(() => {
+    installAuthInterceptor();
     const storedUser = authStorage.getUser();
     const storedToken = authStorage.getAccessToken();
     if (storedUser && storedToken) {
