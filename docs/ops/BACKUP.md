@@ -1,6 +1,6 @@
 # IOX — Stratégie de backup
 
-> Dernière mise à jour : 2026-04-24 — phase post production-readiness.
+> Dernière mise à jour : 2026-04-25 — Lot 9 / L9-6.
 > Ce document complète `docs/ops/PRE-DEPLOY.md` et
 > `docs/ops/ROLLBACK.md`.
 
@@ -112,9 +112,52 @@ Documentée dans `deploy/vps/restore.sh`. Résumé :
 
 **À faire au moins une fois par trimestre** : _disaster recovery drill_.
 
-1. Lancer un backup manuel.
+### DR drill automatisé (L9-6)
+
+`deploy/vps/dr-drill.sh` industrialise la chaîne complète sans toucher
+à la base active :
+
+1. `pg_dump -Fc` du container source vers un dump temporaire local.
+2. `docker run` d'un Postgres jetable (image `postgres:15-alpine`,
+   port `55432` par défaut, container `iox_dr_drill`).
+3. `pg_restore` du dump dans le jetable.
+4. Requêtes de validation : `tables_count` (≥ 5 attendu),
+   `users_count`, dernière migration `_prisma_migrations`.
+5. Tear-down du container jetable et du dump (sauf `IOX_DRILL_KEEP=1`).
+
+Variables utiles :
+
+| Var                    | Défaut                 | Rôle                                     |
+| ---------------------- | ---------------------- | ---------------------------------------- |
+| `IOX_PG_CONTAINER`     | `iox_postgres`         | Container source                         |
+| `IOX_PG_DB`            | `iox`                  | Base à dumper (`iox_dev` en local)       |
+| `IOX_PG_USER`          | `iox`                  | User Postgres                            |
+| `IOX_DRILL_CONTAINER`  | `iox_dr_drill`         | Container jetable                        |
+| `IOX_DRILL_PORT`       | `55432`                | Port hôte du jetable                     |
+| `IOX_DRILL_KEEP`       | `0`                    | `1` pour conserver dump + container      |
+
+Exemples :
+
+```bash
+# DR drill local (dev DB iox_dev)
+IOX_PG_DB=iox_dev ./deploy/vps/dr-drill.sh
+
+# DR drill via SSH sur le VPS (en passant par tunnel ou run distant)
+ssh rahiss-vps 'cd /opt/apps/iox && ./deploy/vps/dr-drill.sh'
+
+# Conserver le container pour inspection manuelle
+IOX_DRILL_KEEP=1 ./deploy/vps/dr-drill.sh
+```
+
+Exit codes : `0` OK, `1` pg_dump KO, `2` spawn KO, `3` pg_restore KO,
+`4` validation queries KO. Idempotent : nettoie un éventuel container
+jetable orphelin avant de spawner.
+
+### Manuel (procédure de référence)
+
+1. Lancer un backup manuel via `deploy/vps/backup.sh`.
 2. Copier un dump sur une machine séparée (pas le VPS prod).
-3. Restaurer sur une base Postgres jetable.
+3. Restaurer sur une base Postgres jetable (`dr-drill.sh` automatise).
 4. Vérifier :
    - `SELECT count(*) FROM sellers;` ≈ la valeur courante prod
    - 5 documents seller choisis au hasard, leur hash vérifié
@@ -122,6 +165,32 @@ Documentée dans `deploy/vps/restore.sh`. Résumé :
 
 Noter le temps total dans un changelog interne. Tant que RTO
 observé < 30 min, OK.
+
+### Preuve runtime L9-6 (2026-04-25)
+
+Premier DR drill exécuté sur la dev DB locale `iox_dev` :
+
+```
+== IOX DR drill ==
+  source     : container iox_postgres (db=iox_dev user=iox)
+  jetable    : container iox_dr_drill (postgres:15-alpine) port 55432
+  ✓ dump : /tmp/.../iox-20260425T150337Z.dump (104K)
+  ✓ ready après 3s
+  ✓ restore terminé
+  tables_count|30
+  users_count|4
+  last_migration|20260424180500_add_marketplace
+✅ DR drill OK — 4s
+```
+
+RTO observé : **4 s** sur 104K de dump (30 tables, 4 users) — bien en
+dessous de la cible 30 min. La base source reste intacte (drill 100 %
+isolé sur container jetable).
+
+> ⚠ Cette preuve a été faite sur dev DB. Avant de considérer le drill
+> comme validé "préprod", relancer le même script sur le VPS de test
+> (`ssh rahiss-vps './deploy/vps/dr-drill.sh'`) une fois les migrations
+> L9-3 et L9-4 appliquées via `prisma migrate deploy`.
 
 ## Alarmes sur l'absence de backup
 
@@ -156,7 +225,10 @@ effectivement déployé.
 
 - [x] Script `backup.sh` livré et testé syntaxiquement
 - [x] Script `restore.sh` livré
-- [x] Doc BACKUP.md publiée
-- [ ] **Cron activé sur le VPS** — action manuelle (hors dépôt)
-- [ ] **Premier DR drill** — à planifier
+- [x] Script `dr-drill.sh` livré (L9-6) — automatise le drill isolé
+- [x] Doc BACKUP.md publiée + maj L9-6
+- [x] **Premier DR drill effectué** — 2026-04-25, RTO 4 s sur dev DB
+- [ ] **Cron activé sur le VPS de test** — action manuelle (hors dépôt)
+- [ ] **DR drill rejoué sur VPS test** — à faire après `prisma migrate deploy`
+      des migrations L9-3 / L9-4
 - [ ] Alarme Prometheus "backup stale" — optionnelle (cf. ci-dessus)
