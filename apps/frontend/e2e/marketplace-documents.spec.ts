@@ -342,8 +342,14 @@ test.describe('P12-E — Seller détache un document', () => {
     await page.goto(SELLER_DOC_PATH, { timeout: 60_000 });
     await expect(page.getByTestId(`md-row-${doc.id}`)).toBeVisible({ timeout: 30_000 });
 
-    // Accepte la confirm() native
-    page.once('dialog', (d) => d.accept());
+    // L9-2 : la confirmation native a été remplacée par un ConfirmDialog
+    // Radix. On clique sur l'icône poubelle, on attend la modale, puis on
+    // confirme via son bouton "Détacher".
+    await page.getByTestId(`md-delete-${doc.id}`).click();
+    const confirmDialog = page.getByRole('dialog');
+    await expect(
+      confirmDialog.getByRole('heading', { name: /Détacher ce document de la marketplace/i }),
+    ).toBeVisible();
 
     const [delResp] = await Promise.all([
       page.waitForResponse(
@@ -351,7 +357,7 @@ test.describe('P12-E — Seller détache un document', () => {
           r.url().endsWith(`/api/v1/marketplace/documents/${doc.id}`) &&
           r.request().method() === 'DELETE',
       ),
-      page.getByTestId(`md-delete-${doc.id}`).click(),
+      confirmDialog.getByRole('button', { name: /^Détacher$/ }).click(),
     ]);
     expect(delResp.status()).toBe(200);
 
