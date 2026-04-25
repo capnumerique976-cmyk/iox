@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, ChevronRight, AlertCircle, AlertTriangle } from 'lucide-react';
 import { CompanyType } from '@iox/shared';
 import { authStorage } from '@/lib/auth';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const COMPANY_TYPE_LABELS: Record<CompanyType, string> = {
   [CompanyType.SUPPLIER]: 'Fournisseur',
@@ -47,6 +48,7 @@ const EMPTY: FormState = {
 export default function EditCompanyPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const confirm = useConfirm();
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -237,7 +239,21 @@ export default function EditCompanyPage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setForm((p) => ({ ...p, isActive: !p.isActive }))}
+              onClick={async () => {
+                // Confirmation uniquement quand on passe d'actif → inactif.
+                // La réactivation ne demande pas de confirmation (opération sûre).
+                if (form.isActive) {
+                  const ok = await confirm({
+                    title: 'Désactiver cette entreprise ?',
+                    description:
+                      "L'entreprise n'apparaîtra plus dans les sélecteurs (création de lots, contrats, distributions). Les données existantes restent inchangées et l'entreprise peut être réactivée à tout moment.",
+                    confirmLabel: 'Désactiver',
+                    tone: 'danger',
+                  });
+                  if (!ok) return;
+                }
+                setForm((p) => ({ ...p, isActive: !p.isActive }));
+              }}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isActive ? 'bg-gradient-iox-primary' : 'bg-gray-300'}`}
             >
               <span

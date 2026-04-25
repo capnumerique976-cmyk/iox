@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import {
   MarketplaceDocumentVisibility,
@@ -16,6 +17,12 @@ vi.mock('@/contexts/auth.context', () => ({
 }));
 
 import { MarketplaceDocumentsPanel } from './MarketplaceDocumentsPanel';
+import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog';
+
+// Wrapper systématique : MarketplaceDocumentsPanel utilise useConfirm()
+// (L9-2), donc tous les renders doivent être dans le provider.
+const render = (ui: ReactElement) =>
+  rtlRender(<ConfirmDialogProvider>{ui}</ConfirmDialogProvider>);
 
 const PRODUCT_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -288,17 +295,12 @@ describe('MarketplaceDocumentsPanel', () => {
     });
   });
 
-  it('DELETE /marketplace/documents/:id sur action "détacher" avec confirmation', async () => {
+  it('DELETE /marketplace/documents/:id sur action "détacher" avec ConfirmDialog (L9-2)', async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockResolvedValueOnce(envelope([docRow()]));
     fetchMock.mockResolvedValueOnce(envelope([]));
     fetchMock.mockResolvedValueOnce(envelopeRaw({ id: 'md-1', deleted: true }));
     fetchMock.mockResolvedValueOnce(envelope([]));
-
-    vi.stubGlobal(
-      'confirm',
-      vi.fn(() => true),
-    );
 
     render(
       <MarketplaceDocumentsPanel
@@ -309,6 +311,10 @@ describe('MarketplaceDocumentsPanel', () => {
     );
 
     await userEvent.click(await screen.findByTestId('md-delete-md-1'));
+
+    // ConfirmDialog standardisé (L9-2) : on confirme via le bouton "Détacher".
+    const confirmBtn = await screen.findByRole('button', { name: 'Détacher' });
+    await userEvent.click(confirmBtn);
 
     await waitFor(() => {
       const del = fetchMock.mock.calls.find(
@@ -341,17 +347,25 @@ describe('MarketplaceDocumentsPanel — permissions buyer', () => {
       useAuth: () => ({ user: { id: 'b-1', role: UserRole.MARKETPLACE_BUYER, email: 'b@ex.com' } }),
     }));
     const { MarketplaceDocumentsPanel: Panel } = await import('./MarketplaceDocumentsPanel');
+    // Après vi.resetModules() le module ConfirmDialog est rechargé : on
+    // doit ré-importer son Provider pour partager le même Context que le
+    // hook utilisé par le panel fraîchement importé.
+    const { ConfirmDialogProvider: FreshProvider } = await import(
+      '@/components/ui/confirm-dialog'
+    );
 
     const fetchMock = vi.mocked(globalThis.fetch);
     fetchMock.mockResolvedValueOnce(envelope([docRow()]));
     fetchMock.mockResolvedValueOnce(envelope([]));
 
-    render(
-      <Panel
-        relatedType={MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT}
-        relatedId={PRODUCT_ID}
-        sourceEntityType="MARKETPLACE_PRODUCT"
-      />,
+    rtlRender(
+      <FreshProvider>
+        <Panel
+          relatedType={MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT}
+          relatedId={PRODUCT_ID}
+          sourceEntityType="MARKETPLACE_PRODUCT"
+        />
+      </FreshProvider>,
     );
 
     await screen.findByText('Certificat Ecocert');
