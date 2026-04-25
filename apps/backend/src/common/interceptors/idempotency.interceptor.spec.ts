@@ -170,9 +170,7 @@ describe('IdempotencyInterceptor', () => {
     const key = 'a'.repeat(32);
     const cachedEnvelope = { success: true, data: { id: 'pb-cached' }, timestamp: 'x' };
     // Recompute hash pour simuler une vraie requête identique
-    const InterceptorAny = interceptor as unknown as {
-      // accès à la méthode privée via cast — pas idéal mais isole le test
-    };
+    const InterceptorAny = interceptor as unknown as object;
     void InterceptorAny;
 
     // Pour obtenir le hash attendu on appelle l'interceptor une 1re fois
