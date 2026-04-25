@@ -1213,3 +1213,32 @@ model MarketplaceReviewQueue {
   @@index([reviewedByUserId])
   @@map("marketplace_review_queue")
 }
+
+// ─── IDEMPOTENCY KEYS (L9-3) ─────────────────────────────────────────────────
+// Cache de réponses indexé par header `Idempotency-Key` pour empêcher la
+// double-soumission sur les mutations sensibles (POST/PATCH/PUT). TTL 24h
+// par défaut, nettoyage manuel/cron hors scope L9-3.
+//
+//  - `requestHash` : sha256(method + path + body normalisé). Si la même clé
+//    revient avec un hash différent → 422 (le client a réutilisé la clé pour
+//    un autre payload, c'est une erreur d'usage).
+//  - `userId` nullable : prêt pour de futurs endpoints publics ; pour
+//    l'instant tous nos endpoints protégés sont authentifiés.
+//  - `responseStatus` + `responseBody` : on ne cache que les 2xx ; les
+//    erreurs ne doivent pas être rejouées.
+model IdempotencyKey {
+  id             String   @id @default(uuid())
+  key            String   @unique
+  userId         String?  @map("user_id")
+  method         String
+  path           String
+  requestHash    String   @map("request_hash")
+  responseStatus Int      @map("response_status")
+  responseBody   Json     @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at")
+  expiresAt      DateTime @map("expires_at")
+
+  @@index([expiresAt])
+  @@index([userId])
+  @@map("idempotency_keys")
+}

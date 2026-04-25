@@ -123,4 +123,65 @@ describe('api client', () => {
     // Le client attend { data } — un 204 sans corps tombe sur INVALID_RESPONSE.
     await expect(api.get('/foo')).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
   });
+
+  // ─── L9-3 — Idempotency-Key auto-injection ─────────────────────────────
+  it('POST : injecte automatiquement un header Idempotency-Key', async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      mockFetchResponse({ success: true, data: { id: 'pb-1' } }),
+    );
+    await api.post('/product-batches', { foo: 'bar' });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const init = call[1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+    expect(headers['Idempotency-Key']).toBeDefined();
+    expect(headers['Idempotency-Key']).toMatch(/^[A-Za-z0-9_-]{16,128}$/);
+  });
+
+  it('PATCH : injecte aussi un Idempotency-Key', async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      mockFetchResponse({ success: true, data: {} }),
+    );
+    await api.patch('/foo/1', { x: 1 });
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const headers = (call[1] as RequestInit).headers as Record<string, string>;
+    expect(headers['Idempotency-Key']).toBeDefined();
+  });
+
+  it("GET : n'injecte PAS de Idempotency-Key", async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      mockFetchResponse({ success: true, data: {} }),
+    );
+    await api.get('/foo');
+    const headers = (
+      (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit
+    ).headers as Record<string, string>;
+    expect(headers['Idempotency-Key']).toBeUndefined();
+  });
+
+  it("DELETE : n'injecte PAS de Idempotency-Key (idempotent métier)", async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      mockFetchResponse({ success: true, data: {} }),
+    );
+    await api.delete('/foo/1');
+    const headers = (
+      (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit
+    ).headers as Record<string, string>;
+    expect(headers['Idempotency-Key']).toBeUndefined();
+  });
+
+  it('deux POST consécutifs → deux clés différentes', async () => {
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValue(mockFetchResponse({ success: true, data: {} }));
+    await api.post('/foo', {});
+    await api.post('/foo', {});
+    const k1 = ((fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>)[
+      'Idempotency-Key'
+    ];
+    const k2 = ((fetchMock.mock.calls[1][1] as RequestInit).headers as Record<string, string>)[
+      'Idempotency-Key'
+    ];
+    expect(k1).toBeDefined();
+    expect(k2).toBeDefined();
+    expect(k1).not.toBe(k2);
+  });
 });
