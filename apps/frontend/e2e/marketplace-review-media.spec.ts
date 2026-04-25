@@ -139,7 +139,8 @@ test.describe('P9-B — Admin rejette un média, seller resubmit, 2ᵉ review ap
     const row = page.locator('tbody tr').first();
     await row.getByRole('button', { name: /Rejeter/i }).click();
 
-    const modal = page.getByRole('heading', { name: /Rejeter l'item de revue/i });
+    // L9-2 : titre standardisé via ConfirmDialog → "Rejeter cet item de revue".
+    const modal = page.getByRole('heading', { name: /Rejeter cet item de revue/i });
     await expect(modal).toBeVisible();
 
     await page.getByPlaceholder(/Expliquer pourquoi/i).fill('Image floue, fond inapproprié');
