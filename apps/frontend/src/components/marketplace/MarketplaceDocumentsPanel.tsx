@@ -28,6 +28,8 @@ import {
   MarketplaceDocumentRow,
   ReviewQueueItem,
 } from '@/lib/marketplace-documents';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { notifyError, notifySuccess } from '@/lib/notify';
 
 interface Props {
   relatedType: MarketplaceRelatedEntityType;
@@ -140,6 +142,7 @@ function formatDate(iso: string | null): string {
 export function MarketplaceDocumentsPanel({ relatedType, relatedId, sourceEntityType }: Props) {
   const { user } = useAuth();
   const canManage = user ? CAN_MANAGE.includes(user.role) : false;
+  const confirm = useConfirm();
 
   const [rows, setRows] = useState<MarketplaceDocumentRow[]>([]);
   const [reviews, setReviews] = useState<Record<string, ReviewQueueItem | null>>({});
@@ -191,14 +194,22 @@ export function MarketplaceDocumentsPanel({ relatedType, relatedId, sourceEntity
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Détacher ce document de la marketplace ? (le fichier source sera conservé)'))
-      return;
+    const ok = await confirm({
+      title: 'Détacher ce document de la marketplace ?',
+      description:
+        'Le document ne sera plus visible côté acheteurs. Le fichier source reste conservé et peut être ré-attaché ultérieurement.',
+      confirmLabel: 'Détacher',
+      tone: 'warning',
+    });
+    if (!ok) return;
     try {
       const token = authStorage.getAccessToken() ?? '';
       await marketplaceDocumentsApi.remove(id, token);
+      notifySuccess('Document détaché');
       refresh();
     } catch (e) {
       setError((e as Error).message);
+      notifyError(e, 'Action impossible');
     }
   };
 

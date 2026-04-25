@@ -16,6 +16,8 @@ import {
 } from '@/lib/memberships';
 import { AlertCircle, Link2, Plus, Search, Star, Trash2, UserPlus, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { notifyError, notifySuccess } from '@/lib/notify';
 
 interface UserHit {
   id: string;
@@ -40,6 +42,7 @@ export default function MembershipsAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [prefillUserId, setPrefillUserId] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,13 +80,22 @@ export default function MembershipsAdminPage() {
   });
 
   const remove = async (id: string) => {
-    if (!confirm('Supprimer ce rattachement ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce rattachement ?',
+      description:
+        "L'utilisateur perdra immédiatement l'accès à cette entreprise. Action irréversible — il faudra recréer le rattachement pour rétablir l'accès.",
+      confirmLabel: 'Supprimer',
+      tone: 'danger',
+    });
+    if (!ok) return;
     const token = authStorage.getAccessToken() ?? '';
     try {
       await deleteMembership(token, id);
+      notifySuccess('Rattachement supprimé');
       load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Suppression impossible');
+      notifyError(e, 'Action impossible');
     }
   };
 

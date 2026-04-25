@@ -5,13 +5,14 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
 import { notifyError, notifySuccess } from '@/lib/notify';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   UserRole,
   MarketplaceRelatedEntityType,
   MarketplaceReviewStatus,
   MarketplaceReviewType,
 } from '@iox/shared';
-import { ClipboardList, Check, X, AlertCircle, Filter, ImageIcon } from 'lucide-react';
+import { ClipboardList, Check, X, Filter, ImageIcon } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 
@@ -85,7 +86,7 @@ export default function ReviewQueuePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<ReviewItem | null>(null);
+  const confirm = useConfirm();
   const [mediaPreviews, setMediaPreviews] = useState<Record<string, MediaPreview | null>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkProgress, setBulkProgress] = useState<{ total: number; done: number } | null>(null);
@@ -272,7 +273,19 @@ export default function ReviewQueuePage() {
     });
   };
 
-  const reject = async (item: ReviewItem, reason: string) => {
+  const reject = async (item: ReviewItem) => {
+    const result = await confirm({
+      title: "Rejeter cet item de revue",
+      description: `${ENTITY_LABEL[item.entityType] ?? item.entityType} · ${item.reviewType}. Le motif sera transmis au vendeur — soyez précis et actionnable.`,
+      confirmLabel: 'Confirmer le rejet',
+      tone: 'danger',
+      requireReason: {
+        label: 'Motif du rejet',
+        minLength: 10,
+        placeholder: "Expliquer pourquoi cet item est rejeté…",
+      },
+    });
+    if (!result) return;
     setActionError(null);
     try {
       const token = authStorage.getAccessToken();
@@ -285,13 +298,12 @@ export default function ReviewQueuePage() {
       const res = await fetch(url, {
         method: item.reviewType === MarketplaceReviewType.MEDIA ? 'PATCH' : 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: result.reason }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message ?? 'Erreur');
       }
-      setRejectTarget(null);
       notifySuccess('Élément rejeté');
       load();
     } catch (e) {
@@ -519,7 +531,7 @@ export default function ReviewQueuePage() {
                               <Check className="h-3 w-3" /> Approuver
                             </button>
                             <button
-                              onClick={() => setRejectTarget(it)}
+                              onClick={() => reject(it)}
                               className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
                             >
                               <X className="h-3 w-3" /> Rejeter
@@ -551,89 +563,6 @@ export default function ReviewQueuePage() {
         </div>
       </div>
 
-      {rejectTarget && (
-        <RejectModal
-          item={rejectTarget}
-          onClose={() => setRejectTarget(null)}
-          onConfirm={(reason) => reject(rejectTarget, reason)}
-        />
-      )}
-    </div>
-  );
-}
-
-function RejectModal({
-  item,
-  onClose,
-  onConfirm,
-}: {
-  item: ReviewItem;
-  onClose: () => void;
-  onConfirm: (reason: string) => void;
-}) {
-  const [reason, setReason] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reason.trim()) return;
-    setLoading(true);
-    try {
-      await onConfirm(reason.trim());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Rejeter l&apos;item de revue</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-          <AlertCircle className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium">
-              {ENTITY_LABEL[item.entityType] ?? item.entityType} · {item.reviewType}
-            </p>
-            <p className="text-xs text-gray-400 font-mono">{item.entityId}</p>
-          </div>
-        </div>
-        <form onSubmit={submit} className="space-y-4">
-          <label className="block text-sm font-medium text-gray-700">
-            Motif du rejet *
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={4}
-              autoFocus
-              required
-              placeholder="Expliquer pourquoi cet item est rejeté…"
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </label>
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !reason.trim()}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-            >
-              {loading ? 'Rejet…' : 'Confirmer le rejet'}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }

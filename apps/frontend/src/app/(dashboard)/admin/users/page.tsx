@@ -6,6 +6,8 @@ import { authStorage, ROLE_LABELS } from '@/lib/auth';
 import { UserRole } from '@iox/shared';
 import { Plus, Search, Edit2, X, AlertCircle, ShieldCheck, UserX, UserCheck } from 'lucide-react';
 import { PaginationControls } from '@/components/ui/pagination-controls';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { notifyError, notifySuccess } from '@/lib/notify';
 
 interface User {
   id: string;
@@ -304,6 +306,7 @@ function EditUserModal({
 /* ── Page principale ─────────────────────────────────────────────────── */
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
+  const confirm = useConfirm();
 
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
@@ -355,6 +358,18 @@ export default function UsersPage() {
   }, [loadUsers, page, search]);
 
   const toggleActive = async (u: User) => {
+    // Confirmation uniquement sur la désactivation (la réactivation est
+    // une opération sûre et fréquente — pas la peine de l'alourdir).
+    if (u.isActive) {
+      const ok = await confirm({
+        title: `Désactiver ${u.firstName} ${u.lastName} ?`,
+        description:
+          "L'utilisateur perdra immédiatement l'accès à la plateforme (sa session active sera invalidée au prochain refresh JWT). Vous pouvez le réactiver à tout moment.",
+        confirmLabel: 'Désactiver',
+        tone: 'danger',
+      });
+      if (!ok) return;
+    }
     setActionError(null);
     try {
       const token = authStorage.getAccessToken();
@@ -365,11 +380,14 @@ export default function UsersPage() {
       });
       if (!res.ok) {
         setActionError('Action impossible');
+        notifyError(new Error(`HTTP ${res.status}`), 'Action impossible');
         return;
       }
+      notifySuccess(u.isActive ? 'Utilisateur désactivé' : 'Utilisateur réactivé');
       loadUsers(page, search);
-    } catch {
+    } catch (err) {
       setActionError('Action impossible');
+      notifyError(err, 'Action impossible');
     }
   };
 
