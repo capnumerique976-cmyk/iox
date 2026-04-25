@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
+import { notifyError, notifySuccess } from '@/lib/notify';
 import {
   UserRole,
   MarketplaceRelatedEntityType,
@@ -204,9 +205,11 @@ export default function ReviewQueuePage() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message ?? 'Erreur');
       }
+      notifySuccess('Élément approuvé');
       load();
     } catch (e) {
       setActionError((e as Error).message);
+      notifyError(e, "Approbation impossible");
     }
   };
 
@@ -241,7 +244,11 @@ export default function ReviewQueuePage() {
     setBulkProgress(null);
     setSelected(new Set());
     if (failed > 0) {
-      setActionError(`${failed} approbation(s) ont échoué. Les autres ont été appliquées.`);
+      const msg = `${failed} approbation(s) ont échoué. Les autres ont été appliquées.`;
+      setActionError(msg);
+      notifyError(new Error(msg), 'Approbation en lot partielle');
+    } else if (targets.length > 0) {
+      notifySuccess(`${targets.length} élément(s) approuvé(s)`);
     }
     load();
   };
@@ -285,9 +292,11 @@ export default function ReviewQueuePage() {
         throw new Error(err.message ?? 'Erreur');
       }
       setRejectTarget(null);
+      notifySuccess('Élément rejeté');
       load();
     } catch (e) {
       setActionError((e as Error).message);
+      notifyError(e, 'Rejet impossible');
     }
   };
 

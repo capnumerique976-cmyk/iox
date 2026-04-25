@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -56,7 +57,7 @@ export default function NewTransformationOpPage() {
     })
       .then((r) => r.json())
       .then((j) => setBatches(j.data?.data ?? []))
-      .catch(() => toast.error('Chargement des données de référence impossible'));
+      .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
   }, []);
 
   const set =

@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -74,7 +75,7 @@ export default function NewProductBatchPage() {
     })
       .then((r) => r.json())
       .then((j) => setProducts(j.data?.data ?? []))
-      .catch(() => toast.error('Chargement des données de référence impossible'));
+      .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
 
     // Load transformation ops
     fetch('/api/v1/transformation-operations?limit=100', {
@@ -82,7 +83,7 @@ export default function NewProductBatchPage() {
     })
       .then((r) => r.json())
       .then((j) => setOps(j.data?.data ?? []))
-      .catch(() => toast.error('Chargement des données de référence impossible'));
+      .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
 
     // If prefilled op, fetch its details to display context
     if (prefilledOpId) {
@@ -93,7 +94,7 @@ export default function NewProductBatchPage() {
         .then((j) => {
           if (j.data) setPrefilledOp(j.data);
         })
-        .catch(() => toast.error('Chargement des données de référence impossible'));
+        .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
     }
   }, [prefilledOpId]);
 

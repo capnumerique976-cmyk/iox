@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { authStorage, AuthUser, AuthTokens } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { installApiClient } from '@/lib/api-client';
+import { installGlobalErrorHandler } from '@/lib/notify';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -45,6 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Tous les `fetch('/api/v1/...')` existants en profitent automatiquement.
   useEffect(() => {
     installApiClient();
+    // L9-1 : capture les promesses rejetées non interceptées (toaster
+    // global de dernier recours) — sans ça, un `void someAsync()` qui
+    // plante laisse l'utilisateur devant un écran muet.
+    installGlobalErrorHandler();
     const storedUser = authStorage.getUser();
     const storedToken = authStorage.getAccessToken();
     if (storedUser && storedToken) {
