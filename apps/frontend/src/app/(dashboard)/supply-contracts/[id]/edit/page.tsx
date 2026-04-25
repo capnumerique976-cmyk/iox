@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -63,11 +64,11 @@ export default function EditSupplyContractPage() {
     })
       .then((r) => r.json())
       .then((j) => setSuppliers(j.data?.data ?? []))
-      .catch(() => toast.error('Chargement des données de référence impossible'));
+      .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
     fetch('/api/v1/products?limit=100', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((j) => setProducts(j.data?.data ?? []))
-      .catch(() => toast.error('Chargement des données de référence impossible'));
+      .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
   }, []);
 
   const loadContract = useCallback(async () => {

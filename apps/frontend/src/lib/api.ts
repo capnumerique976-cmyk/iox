@@ -30,6 +30,25 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Méthodes HTTP pour lesquelles on injecte automatiquement un
+ * `Idempotency-Key` (L9-3). GET/DELETE n'en ont pas besoin :
+ *   - GET est nullipotent par définition.
+ *   - DELETE est idempotent métier (re-DELETE = 404 ou no-op selon
+ *     l'endpoint), pas de bénéfice à dédupliquer côté HTTP.
+ */
+const IDEMPOTENT_METHODS = new Set(['POST', 'PATCH', 'PUT']);
+
+function generateIdempotencyKey(): string {
+  // crypto.randomUUID est dispo dans tous les browsers modernes + Node 16+.
+  // Fallback simple si jamais on tourne dans un env exotique.
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback pseudo-uuid v4 — uniquement pour environnements sans crypto.
+  return 'iox-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -38,6 +57,16 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Idempotency-Key (L9-3) : protège contre la double-soumission réseau
+  // sur les mutations. Le bouton `disabled={loading}` (L9-2) suffit pour
+  // le double-clic synchrone, mais cette clé rattrape les retries
+  // automatiques (extensions, replay HTTP/2, redémarrage onglet).
+  // L'appelant peut surcharger en passant son propre header.
+  const method = (options.method ?? 'GET').toUpperCase();
+  if (IDEMPOTENT_METHODS.has(method) && !headers['Idempotency-Key']) {
+    headers['Idempotency-Key'] = generateIdempotencyKey();
   }
 
   const response = await fetch(`${API_BASE}${path}`, {

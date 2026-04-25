@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { authStorage, AuthUser, AuthTokens } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { installApiClient } from '@/lib/api-client';
+import { installGlobalErrorHandler } from '@/lib/notify';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -45,6 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Tous les `fetch('/api/v1/...')` existants en profitent automatiquement.
   useEffect(() => {
     installApiClient();
+    // L9-1 : capture les promesses rejetées non interceptées (toaster
+    // global de dernier recours) — sans ça, un `void someAsync()` qui
+    // plante laisse l'utilisateur devant un écran muet.
+    installGlobalErrorHandler();
     const storedUser = authStorage.getUser();
     const storedToken = authStorage.getAccessToken();
     if (storedUser && storedToken) {
@@ -73,7 +78,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     try {
       if (token) {
-        await api.post('/auth/logout', {}, token);
+        // L9-4 : on envoie le refresh token au backend pour qu'il
+        // soit ajouté à la liste de révocation. Sans ça, le token reste
+        // valide jusqu'à expiration JWT (7j). `refreshToken` est
+        // optionnel côté backend (compat ascendante).
+        const refreshToken = authStorage.getRefreshToken() ?? undefined;
+        await api.post('/auth/logout', refreshToken ? { refreshToken } : {}, token);
       }
     } finally {
       authStorage.clear();

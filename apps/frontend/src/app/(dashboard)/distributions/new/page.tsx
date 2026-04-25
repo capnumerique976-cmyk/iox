@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -52,14 +53,14 @@ export default function NewDistributionPage() {
     })
       .then((r) => r.json())
       .then((j) => setBeneficiaries(j.data?.data ?? []))
-      .catch(() => toast.error('Chargement des données de référence impossible'));
+      .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
 
     fetch('/api/v1/product-batches?limit=100&status=AVAILABLE', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
       .then((j) => setAvailableBatches(j.data?.data ?? []))
-      .catch(() => toast.error('Chargement des données de référence impossible'));
+      .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
   }, []);
 
   const filteredBatches = availableBatches.filter(

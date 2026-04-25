@@ -20,6 +20,8 @@ import { useAuth } from '@/contexts/auth.context';
 import { SellerProfileRow, sellerProfilesApi } from '@/lib/seller-profiles';
 import { SellerProfileStatus, UserRole } from '@iox/shared';
 import { PageHeader } from '@/components/ui/page-header';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { notifyError, notifySuccess } from '@/lib/notify';
 
 /**
  * Admin — gestion des profils vendeurs marketplace.
@@ -55,11 +57,6 @@ const STATUS_TONE: Record<SellerProfileStatus, string> = {
 
 const DECIDE_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.QUALITY_MANAGER];
 
-type ModalState =
-  | { kind: 'none' }
-  | { kind: 'reject'; row: SellerProfileRow }
-  | { kind: 'suspend'; row: SellerProfileRow };
-
 export default function AdminSellersPage() {
   const { user } = useAuth();
   const canDecide = !!user && DECIDE_ROLES.includes(user.role);
@@ -73,7 +70,7 @@ export default function AdminSellersPage() {
 
   const [statusFilter, setStatusFilter] = useState<SellerProfileStatus | ''>('');
   const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<ModalState>({ kind: 'none' });
+  const confirm = useConfirm();
 
   const load = useCallback(async () => {
     const token = authStorage.getAccessToken() ?? '';
@@ -98,19 +95,61 @@ export default function AdminSellersPage() {
     load();
   }, [load]);
 
-  const act = async (row: SellerProfileRow, fn: (token: string) => Promise<unknown>) => {
+  const act = async (
+    row: SellerProfileRow,
+    fn: (token: string) => Promise<unknown>,
+    successMsg?: string,
+  ) => {
     const token = authStorage.getAccessToken() ?? '';
     setActingId(row.id);
     setActionError(null);
     try {
       await fn(token);
+      if (successMsg) notifySuccess(successMsg);
       await load();
-      setModal({ kind: 'none' });
     } catch (e) {
       setActionError(e instanceof ApiError ? e.message : 'Action impossible');
+      notifyError(e, 'Action impossible');
     } finally {
       setActingId(null);
     }
+  };
+
+  /**
+   * Reject / suspend : motif obligatoire (min 3 chars côté backend, on
+   * remonte à 10 côté UI pour des motifs lisibles). On passe par le
+   * dialogue standard (L9-2) au lieu d'une modale ad hoc.
+   */
+  const requestReject = async (row: SellerProfileRow) => {
+    const result = await confirm({
+      title: 'Rejeter ce profil vendeur',
+      description: `${row.publicDisplayName ?? row.slug} (${row.slug}). Le motif sera communiqué au vendeur.`,
+      confirmLabel: 'Rejeter',
+      tone: 'danger',
+      requireReason: {
+        label: 'Motif de rejet (communiqué au vendeur)',
+        minLength: 10,
+        placeholder: 'Documents manquants, informations incohérentes, …',
+      },
+    });
+    if (!result) return;
+    await act(row, (t) => sellerProfilesApi.reject(row.id, result.reason, t), 'Profil rejeté');
+  };
+
+  const requestSuspend = async (row: SellerProfileRow) => {
+    const result = await confirm({
+      title: 'Suspendre ce profil vendeur',
+      description: `${row.publicDisplayName ?? row.slug} (${row.slug}). Le profil ne sera plus visible côté acheteurs jusqu'à réactivation.`,
+      confirmLabel: 'Suspendre',
+      tone: 'danger',
+      requireReason: {
+        label: 'Motif de suspension (audit interne)',
+        minLength: 10,
+        placeholder: 'Manquement contractuel, plainte acheteur, …',
+      },
+    });
+    if (!result) return;
+    await act(row, (t) => sellerProfilesApi.suspend(row.id, result.reason, t), 'Profil suspendu');
   };
 
   const counts = useMemo(() => {
@@ -272,7 +311,7 @@ export default function AdminSellersPage() {
                             }
                             tone="green"
                             onClick={() =>
-                              act(r, (token) => sellerProfilesApi.approve(r.id, token))
+                              act(r, (token) => sellerProfilesApi.approve(r.id, token), "Profil approuvé")
                             }
                           >
                             <Check className="h-3 w-3" /> Approuver
@@ -283,7 +322,7 @@ export default function AdminSellersPage() {
                               canDecide ? 'Rejeter ce profil' : 'Action réservée ADMIN/QUALITY'
                             }
                             tone="red"
-                            onClick={() => setModal({ kind: 'reject', row: r })}
+                            onClick={() => requestReject(r)}
                           >
                             <X className="h-3 w-3" /> Rejeter
                           </ActionButton>
@@ -298,7 +337,7 @@ export default function AdminSellersPage() {
                               canDecide ? 'Suspendre ce profil' : 'Action réservée ADMIN/QUALITY'
                             }
                             tone="red"
-                            onClick={() => setModal({ kind: 'suspend', row: r })}
+                            onClick={() => requestSuspend(r)}
                           >
                             <Ban className="h-3 w-3" /> Suspendre
                           </ActionButton>
@@ -307,7 +346,7 @@ export default function AdminSellersPage() {
                               disabled={!canDecide || actingId === r.id}
                               tone="yellow"
                               onClick={() =>
-                                act(r, (token) => sellerProfilesApi.unfeature(r.id, token))
+                                act(r, (token) => sellerProfilesApi.unfeature(r.id, token), "Profil retiré de la mise en avant")
                               }
                             >
                               <StarOff className="h-3 w-3" /> Retirer
@@ -317,7 +356,7 @@ export default function AdminSellersPage() {
                               disabled={!canDecide || actingId === r.id}
                               tone="yellow"
                               onClick={() =>
-                                act(r, (token) => sellerProfilesApi.feature(r.id, token))
+                                act(r, (token) => sellerProfilesApi.feature(r.id, token), "Profil mis en avant")
                               }
                             >
                               <Star className="h-3 w-3" /> Mettre en avant
@@ -331,7 +370,7 @@ export default function AdminSellersPage() {
                           disabled={!canDecide || actingId === r.id}
                           tone="green"
                           onClick={() =>
-                            act(r, (token) => sellerProfilesApi.reinstate(r.id, token))
+                            act(r, (token) => sellerProfilesApi.reinstate(r.id, token), "Profil réactivé")
                           }
                         >
                           <BadgeCheck className="h-3 w-3" /> Réactiver
@@ -346,30 +385,6 @@ export default function AdminSellersPage() {
         </table>
       </div>
 
-      {/* Modal motif obligatoire */}
-      {modal.kind !== 'none' && (
-        <ReasonModal
-          title={modal.kind === 'reject' ? 'Rejeter le profil' : 'Suspendre le profil'}
-          label={
-            modal.kind === 'reject'
-              ? 'Motif de rejet (communiqué au vendeur)'
-              : 'Motif de suspension (audit interne)'
-          }
-          confirmLabel={modal.kind === 'reject' ? 'Rejeter' : 'Suspendre'}
-          onCancel={() => setModal({ kind: 'none' })}
-          onConfirm={(reason) => {
-            if (modal.kind === 'reject') {
-              return act(modal.row, (token) =>
-                sellerProfilesApi.reject(modal.row.id, reason, token),
-              );
-            }
-            return act(modal.row, (token) =>
-              sellerProfilesApi.suspend(modal.row.id, reason, token),
-            );
-          }}
-          loading={actingId === modal.row.id}
-        />
-      )}
     </div>
   );
 }
@@ -419,59 +434,3 @@ function ActionButton({
   );
 }
 
-function ReasonModal({
-  title,
-  label,
-  confirmLabel,
-  onCancel,
-  onConfirm,
-  loading,
-}: {
-  title: string;
-  label: string;
-  confirmLabel: string;
-  onCancel: () => void;
-  onConfirm: (reason: string) => void;
-  loading: boolean;
-}) {
-  const [reason, setReason] = useState('');
-  const valid = reason.trim().length >= 3;
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <label className="block text-sm text-gray-700">
-          {label}
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={4}
-            minLength={3}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-premium-accent/30"
-            placeholder="Motif (min. 3 caractères)…"
-          />
-        </label>
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            onClick={onCancel}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
-          >
-            Annuler
-          </button>
-          <button
-            disabled={!valid || loading}
-            onClick={() => onConfirm(reason.trim())}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-premium-sm transition-all duration-fast ease-premium hover:bg-red-700 hover:shadow-premium-md active-press disabled:opacity-50"
-          >
-            {loading ? 'Envoi…' : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
