@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { UserRole } from '@iox/shared';
 
 export class AuthUserDto {
@@ -15,6 +15,21 @@ export class AuthResponseDto {
   @ApiProperty() refreshToken: string;
   @ApiProperty() expiresIn: number;
   @ApiProperty({ type: AuthUserDto }) user: AuthUserDto;
+}
+
+/**
+ * Logout (L9-4) — `refreshToken` est OPTIONNEL pour rester compatible
+ * avec les clients antérieurs qui n'envoyaient rien dans le body. Quand
+ * il est fourni, le backend l'ajoute à la liste de révocation : la
+ * tentative ultérieure de `POST /auth/refresh` avec le même token
+ * échoue en 401.
+ */
+export class LogoutDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  refreshToken?: string;
 }
 
 export class RefreshDto {

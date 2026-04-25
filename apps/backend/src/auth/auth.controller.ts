@@ -4,7 +4,8 @@ import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
-import { AuthResponseDto, RefreshDto } from './dto/auth-response.dto';
+import { AuthResponseDto, LogoutDto, RefreshDto } from './dto/auth-response.dto';
+import { SkipIdempotency } from '../common/decorators/skip-idempotency.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/roles.decorator';
@@ -32,6 +33,7 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
+  @SkipIdempotency()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renouvellement du access_token via refresh_token' })
@@ -43,9 +45,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Déconnexion' })
-  async logout(@CurrentUser() user: RequestUser, @Req() req: Request) {
-    await this.authService.logout(user.id, req.ip);
+  @ApiOperation({ summary: 'Déconnexion (révoque le refresh token si fourni)' })
+  async logout(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: LogoutDto,
+    @Req() req: Request,
+  ) {
+    await this.authService.logout(user.id, dto.refreshToken, req.ip);
   }
 
   @Get('me')

@@ -78,7 +78,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     try {
       if (token) {
-        await api.post('/auth/logout', {}, token);
+        // L9-4 : on envoie le refresh token au backend pour qu'il
+        // soit ajouté à la liste de révocation. Sans ça, le token reste
+        // valide jusqu'à expiration JWT (7j). `refreshToken` est
+        // optionnel côté backend (compat ascendante).
+        const refreshToken = authStorage.getRefreshToken() ?? undefined;
+        await api.post('/auth/logout', refreshToken ? { refreshToken } : {}, token);
       }
     } finally {
       authStorage.clear();
