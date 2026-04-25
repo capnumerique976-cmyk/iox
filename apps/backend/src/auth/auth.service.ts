@@ -8,6 +8,7 @@ import { JwtPayload, UserRole } from '@iox/shared';
 import { UsersService } from '../users/users.service';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../database/prisma.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { EntityType } from '@iox/shared';
 
 /**
@@ -28,14 +29,25 @@ export class AuthService {
     private config: ConfigService,
     private auditService: AuditService,
     private prisma: PrismaService,
+    private metrics: MetricsService,
   ) {}
 
   async validateUser(email: string, password: string) {
     const user = await this.usersService.findByEmail(email);
-    if (!user || !user.isActive) return null;
+    if (!user || !user.isActive) {
+      // L9-5 : on distingue user inconnu/inactif d'un mot de passe faux pour
+      // que les ops puissent repérer un brute force sur emails valides.
+      this.metrics.incCounter('iox_auth_logins_total', {
+        result: user ? 'inactive' : 'unknown_user',
+      });
+      return null;
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) return null;
+    if (!valid) {
+      this.metrics.incCounter('iox_auth_logins_total', { result: 'bad_password' });
+      return null;
+    }
 
     return user;
   }
@@ -72,6 +84,8 @@ export class AuthService {
       userAgent,
     });
 
+    this.metrics.incCounter('iox_auth_logins_total', { result: 'success' });
+
     return {
       accessToken,
       refreshToken,
@@ -93,6 +107,7 @@ export class AuthService {
         secret: this.config.getOrThrow('JWT_REFRESH_SECRET'),
       });
     } catch {
+      this.metrics.incCounter('iox_auth_refresh_total', { result: 'invalid' });
       throw new UnauthorizedException('Token de rafraîchissement invalide ou expiré');
     }
 
@@ -103,11 +118,15 @@ export class AuthService {
       where: { tokenHash },
     });
     if (revoked) {
+      this.metrics.incCounter('iox_auth_refresh_total', { result: 'revoked' });
       throw new UnauthorizedException('Token de rafraîchissement révoqué');
     }
 
     const user = await this.usersService.findById(payload.sub);
-    if (!user || !user.isActive) throw new UnauthorizedException('Utilisateur invalide');
+    if (!user || !user.isActive) {
+      this.metrics.incCounter('iox_auth_refresh_total', { result: 'inactive' });
+      throw new UnauthorizedException('Utilisateur invalide');
+    }
 
     const newPayload: JwtPayload = {
       sub: user.id,
@@ -119,6 +138,7 @@ export class AuthService {
       expiresIn: this.config.get('JWT_EXPIRES_IN', '15m'),
     });
 
+    this.metrics.incCounter('iox_auth_refresh_total', { result: 'success' });
     return { accessToken, expiresIn: 900 };
   }
 
@@ -184,6 +204,10 @@ export class AuthService {
       entityId: userId,
       userId,
       ipAddress,
+    });
+
+    this.metrics.incCounter('iox_auth_logouts_total', {
+      revoked: refreshToken ? 'true' : 'false',
     });
   }
 }

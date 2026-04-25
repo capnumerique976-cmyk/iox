@@ -9,6 +9,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../database/prisma.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { UserRole } from '@iox/shared';
 
 const mockUser = {
@@ -38,6 +39,7 @@ describe('AuthService', () => {
       create: jest.Mock;
     };
   };
+  let metrics: { incCounter: jest.Mock; setGauge: jest.Mock; observeHistogram: jest.Mock };
 
   beforeAll(async () => {
     mockUser.passwordHash = await bcrypt.hash('Password@123', 12);
@@ -49,6 +51,11 @@ describe('AuthService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({}),
       },
+    };
+    metrics = {
+      incCounter: jest.fn(),
+      setGauge: jest.fn(),
+      observeHistogram: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -82,6 +89,10 @@ describe('AuthService', () => {
         {
           provide: PrismaService,
           useValue: prisma,
+        },
+        {
+          provide: MetricsService,
+          useValue: metrics,
         },
       ],
     }).compile();
@@ -231,6 +242,98 @@ describe('AuthService', () => {
       prisma.revokedRefreshToken.findUnique.mockResolvedValue(null);
       usersService.findById.mockResolvedValue({ ...mockUser, isActive: false });
       await expect(service.refresh('valid')).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe('metrics (L9-5)', () => {
+    it('login success → iox_auth_logins_total{result=success}', async () => {
+      usersService.findById.mockResolvedValue(mockUser);
+      usersService.updateLastLogin.mockResolvedValue(mockUser);
+      auditService.log.mockResolvedValue(undefined);
+      await service.login(mockUser.id, '127.0.0.1');
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_logins_total', {
+        result: 'success',
+      });
+    });
+
+    it('validateUser bad password → iox_auth_logins_total{result=bad_password}', async () => {
+      usersService.findByEmail.mockResolvedValue(mockUser);
+      await service.validateUser('test@iox.mch', 'wrong');
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_logins_total', {
+        result: 'bad_password',
+      });
+    });
+
+    it('validateUser unknown user → iox_auth_logins_total{result=unknown_user}', async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      await service.validateUser('ghost@iox.mch', 'x');
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_logins_total', {
+        result: 'unknown_user',
+      });
+    });
+
+    it('validateUser inactive → iox_auth_logins_total{result=inactive}', async () => {
+      usersService.findByEmail.mockResolvedValue({ ...mockUser, isActive: false });
+      await service.validateUser('test@iox.mch', 'Password@123');
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_logins_total', {
+        result: 'inactive',
+      });
+    });
+
+    it('refresh success → iox_auth_refresh_total{result=success}', async () => {
+      jwtService.verify.mockReturnValue({ sub: mockUser.id, email: mockUser.email, role: mockUser.role });
+      prisma.revokedRefreshToken.findUnique.mockResolvedValue(null);
+      usersService.findById.mockResolvedValue(mockUser);
+      await service.refresh('valid');
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_refresh_total', {
+        result: 'success',
+      });
+    });
+
+    it('refresh révoqué → iox_auth_refresh_total{result=revoked}', async () => {
+      jwtService.verify.mockReturnValue({ sub: mockUser.id, email: mockUser.email, role: mockUser.role });
+      prisma.revokedRefreshToken.findUnique.mockResolvedValue({ tokenHash: 'h', userId: mockUser.id });
+      await expect(service.refresh('t')).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_refresh_total', {
+        result: 'revoked',
+      });
+    });
+
+    it('refresh JWT invalide → iox_auth_refresh_total{result=invalid}', async () => {
+      jwtService.verify.mockImplementation(() => {
+        throw new Error('bad');
+      });
+      await expect(service.refresh('bad')).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_refresh_total', {
+        result: 'invalid',
+      });
+    });
+
+    it('refresh user inactif → iox_auth_refresh_total{result=inactive}', async () => {
+      jwtService.verify.mockReturnValue({ sub: mockUser.id, email: mockUser.email, role: mockUser.role });
+      prisma.revokedRefreshToken.findUnique.mockResolvedValue(null);
+      usersService.findById.mockResolvedValue({ ...mockUser, isActive: false });
+      await expect(service.refresh('v')).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_refresh_total', {
+        result: 'inactive',
+      });
+    });
+
+    it('logout sans refresh token → iox_auth_logouts_total{revoked=false}', async () => {
+      auditService.log.mockResolvedValue(undefined);
+      await service.logout(mockUser.id);
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_logouts_total', {
+        revoked: 'false',
+      });
+    });
+
+    it('logout avec refresh token → iox_auth_logouts_total{revoked=true}', async () => {
+      auditService.log.mockResolvedValue(undefined);
+      jwtService.verify.mockReturnValue({ sub: mockUser.id, exp: 9999999999 });
+      await service.logout(mockUser.id, 'a.b.c');
+      expect(metrics.incCounter).toHaveBeenCalledWith('iox_auth_logouts_total', {
+        revoked: 'true',
+      });
     });
   });
 });
