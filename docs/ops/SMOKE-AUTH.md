@@ -81,12 +81,34 @@ SMOKE_ENV_FILE=./scripts/.iox-smoke.prod.env ./scripts/smoke-authenticated.sh
 
 ## Que teste le script
 
-1. `POST /api/v1/auth/login` — confirme que les creds fonctionnent, extrait `accessToken` / `refreshToken` / `role`.
-2. 9 à 15 endpoints `GET` authentifiés sur le dashboard, les listings métier, et (si rôle ADMIN) les outils admin. Chaque appel :
-   - doit être HTTP 200 ;
-   - ne doit PAS avoir de champ `.error` dans le body (un endpoint peut 200 avec une erreur logique, c'est le piège qui nous a eus en Lot 7).
-3. `POST /api/v1/auth/refresh` — vérifie qu'on peut renouveler l'access token (sanity sur le refresh flow Lot 8).
-4. Pages frontend HTML — 11 routes doivent rendre un HTML 200 (le rendu shell est validé, mais attention : **ça ne valide PAS les fetchs client** — pour ça, il faut la recette manuelle `LOT7BIS-VALIDATION.md`).
+Le script applique un **modèle tiered** :
+
+- **Endpoints obligatoires (Lot 6)** : doivent répondre 200. Un échec = NO-GO.
+- **Endpoints optionnels (Lot 7+)** : un 404/501 est accepté en `⊝ skip`. Tout autre échec (401/403/5xx) reste un ✗.
+- **Auto-détection Lot 7** via probe `GET /referentiel`. Override possible : `SMOKE_LOT7=1` (force présent) ou `SMOKE_LOT7=0` (force absent).
+
+Détail :
+
+1. `POST /api/v1/auth/login` — confirme creds, extrait `accessToken` / `refreshToken` / `role`.
+2. **Endpoints API authentifiés (obligatoires Lot 6)** :
+   - Dashboard : `dashboard/stats`, `dashboard/alerts`, `dashboard/recent-activity`
+   - Listings : `beneficiaries`, `products`, `companies`, `inbound-batches`, `product-batches`, `label-validations`, `distributions`, `incidents`, `documents`, `supply-contracts`, `transformation-operations`
+   - Admin (si rôle ADMIN, **préfixes corrigés**) : `users`, `audit-logs`, `admin/memberships/diagnostic`, `admin/memberships/orphan-sellers`, `admin/memberships/orphan-memberships`, `admin/memberships`, `marketplace/review-queue`, `marketplace/review-queue/stats/pending`, `marketplace/quote-requests`, `marketplace/seller-profiles`
+   - Chaque réponse 200 doit ne PAS contenir un champ `.error` dans le body (200 + erreur logique = ✗).
+3. `POST /api/v1/auth/refresh` — sanity sur le refresh flow.
+4. **Pages frontend HTML** :
+   - **Lot 6 obligatoires** : `/dashboard`, `/admin`, `/beneficiaries`, `/products`, `/companies`, `/inbound-batches`, `/product-batches`, `/transformation-operations`, `/traceability`, `/label-validations`, `/distributions`, `/incidents`, `/documents`, `/supply-contracts`, `/seller/dashboard`, `/admin/users`, `/admin/review-queue`, `/admin/memberships`, `/admin/diagnostics`, `/admin/sellers`, `/admin/rfq`
+   - **Lot 7 conditionnels** : `/referentiel`, `/production`, `/marketplace-hub`, `/distribution`
+5. ⚠️ Le HTML 200 valide le rendu shell mais PAS les fetchs client. Pour ça, recette manuelle `docs/ops/LOT7BIS-VALIDATION.md`.
+
+### Préfixes admin corrigés (vs versions antérieures)
+
+| Avant (faux, 404) | Après (correct) |
+|-------------------|-----------------|
+| `/api/v1/memberships/diagnostic` | `/api/v1/admin/memberships/diagnostic` |
+| `/api/v1/seller-profiles` | `/api/v1/marketplace/seller-profiles` |
+| `/api/v1/review-queue` | `/api/v1/marketplace/review-queue` |
+| `/api/v1/quote-requests` | `/api/v1/marketplace/quote-requests` |
 
 ## Diagnostic des échecs
 

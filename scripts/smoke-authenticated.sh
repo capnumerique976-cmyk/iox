@@ -23,6 +23,16 @@
 #  d'avril 2026 a montré ce trou — on s'assure qu'il ne se
 #  reproduise pas.
 #
+#  Modèle "tiered" (Lot 8) :
+#    - call_required → endpoint qui DOIT répondre 200 sur Lot 6
+#      (baseline prod actuelle). Un échec = NO-GO.
+#    - call_optional → endpoint qui peut être absent (404/501)
+#      sans bloquer la baseline ; tout autre statut reste un ✗.
+#    - HAS_LOT7 (auto-détection via probe /referentiel) :
+#      les routes Lot 7 (/referentiel /production /marketplace-hub
+#      /distribution) sont required si Lot 7 est déployé,
+#      sinon optionnelles. Override : SMOKE_LOT7=1|0.
+#
 #  Usage local :
 #    BASE_URL=http://localhost:3000 \
 #    SMOKE_EMAIL=admin@iox.local \
@@ -61,11 +71,13 @@ TIMEOUT="${SMOKE_TIMEOUT:-10}"
 
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; CYAN=$'\033[36m'; RESET=$'\033[0m'
 failed=0
+skipped=0
 total=0
 
 say_ok()   { printf "  ${GREEN}✔${RESET} %s\n" "$1"; }
 say_warn() { printf "  ${YELLOW}⚠${RESET} %s\n" "$1"; }
 say_fail() { printf "  ${RED}✗${RESET} %s\n" "$1"; failed=$((failed+1)); }
+say_skip() { printf "  ${CYAN}⊝${RESET} %s\n" "$1"; skipped=$((skipped+1)); }
 
 if [[ -z "$EMAIL" || -z "$PASSWORD" ]]; then
   echo "${RED}ERR${RESET}: SMOKE_EMAIL et SMOKE_PASSWORD requis." >&2
@@ -156,11 +168,17 @@ fi
 say_ok "login OK (HTTP $LOGIN_CODE, rôle=$USER_ROLE, token=${TOKEN:0:12}…)"
 
 # ── 2. Helper : appel authentifié + validation payload ─────
-# Args : <label> <method> <path> [<expected_array_field>]
-# Vérifie : status 200 ET pas d'attribut `error` dans le body.
-# Si <expected_array_field> est fourni, vérifie qu'il existe (peut être vide).
-call_auth() {
-  local label="$1" method="$2" path="$3" arrayField="${4:-}"
+# Modes :
+#   call_required <label> <method> <path> [<expected_field>]
+#       → un échec compte dans `failed` (NO-GO baseline)
+#   call_optional <label> <method> <path> [<expected_field>]
+#       → un 200 est tracé en ✔ ; un 404/501 est tracé en ⊝ skip (acceptable
+#       sur Lot 6, on signale juste que la feature n'est pas encore là) ;
+#       tout autre échec (401/403/5xx) reste un ✗ failure.
+# Vérifie : status 200 ET pas d'attribut `.error` dans le body. Si
+# <expected_field> est fourni, vérifie que jq peut l'extraire.
+_call_inner() {
+  local mode="$1" label="$2" method="$3" path="$4" arrayField="${5:-}"
   total=$((total+1))
   local tmp; tmp=$(mktemp)
   local code
@@ -171,6 +189,11 @@ call_auth() {
     -o "$tmp" -w '%{http_code}' 2>/dev/null || echo "000")
 
   if [[ "$code" != "200" ]]; then
+    if [[ "$mode" == "optional" && ( "$code" == "404" || "$code" == "501" ) ]]; then
+      say_skip "$label — $method $path → $code (optionnel, skip)"
+      rm -f "$tmp"
+      return
+    fi
     say_fail "$label — $method $path → $code"
     [[ -s "$tmp" ]] && echo "    body: $(head -c 200 "$tmp")"
     rm -f "$tmp"
@@ -197,34 +220,71 @@ call_auth() {
   say_ok "$label — $method $path → 200"
   rm -f "$tmp"
 }
+call_required() { _call_inner required "$@"; }
+call_optional() { _call_inner optional "$@"; }
+# Compat ascendante avec les anciens scripts qui utiliseraient `call_auth`.
+call_auth()     { _call_inner required "$@"; }
 
-# ── 3. Endpoints dashboard ─────────────────────────────────
+# ── 2 bis. Détection automatique Lot 7 (top nav + landings) ──
+# Lot 7 ajoute /referentiel /production /marketplace-hub /distribution.
+# Si /referentiel répond 200 → Lot 7 considéré présent.
+# Override possible : SMOKE_LOT7=1 (force) ou SMOKE_LOT7=0 (force absence).
+detect_lot7() {
+  if [[ -n "${SMOKE_LOT7:-}" ]]; then
+    [[ "$SMOKE_LOT7" == "1" ]] && return 0 || return 1
+  fi
+  local code
+  code=$(curl -sS -k --max-time "$TIMEOUT" -o /dev/null -w '%{http_code}' \
+    "$BASE/referentiel" 2>/dev/null || echo "000")
+  [[ "$code" == "200" ]]
+}
+if detect_lot7; then
+  HAS_LOT7=1
+  echo "${CYAN}ℹ Lot 7 détecté (routes /referentiel, …) — endpoints Lot 7 vérifiés en ✔/✗${RESET}"
+else
+  HAS_LOT7=0
+  echo "${CYAN}ℹ Lot 7 absent — endpoints Lot 7 traités en optionnels (skip si 404)${RESET}"
+fi
+echo
+
+# ── 3. Endpoints dashboard (Lot 6 obligatoires) ────────────
 echo "${CYAN}— Dashboard${RESET}"
-call_auth "stats globales"      GET "/api/v1/dashboard/stats"            '.data // .'
-call_auth "alerts"              GET "/api/v1/dashboard/alerts"           '.data // .'
-call_auth "activité récente"    GET "/api/v1/dashboard/recent-activity"  '.data // .'
+call_required "stats globales"      GET "/api/v1/dashboard/stats"            '.data // .'
+call_required "alerts"              GET "/api/v1/dashboard/alerts"           '.data // .'
+call_required "activité récente"    GET "/api/v1/dashboard/recent-activity"  '.data // .'
 
-# ── 4. Listings métier ─────────────────────────────────────
+# ── 4. Listings métier (Lot 6 obligatoires) ────────────────
 echo "${CYAN}— Listings métier${RESET}"
-call_auth "bénéficiaires"       GET "/api/v1/beneficiaries?page=1&limit=5"
-call_auth "produits"            GET "/api/v1/products?page=1&limit=5"
-call_auth "entreprises"         GET "/api/v1/companies?page=1&limit=5"
-call_auth "lots entrants"       GET "/api/v1/inbound-batches?page=1&limit=5"
-call_auth "lots finis"          GET "/api/v1/product-batches?page=1&limit=5"
-call_auth "validations label"   GET "/api/v1/label-validations?page=1&limit=5"
-call_auth "distributions"       GET "/api/v1/distributions?page=1&limit=5"
-call_auth "incidents"           GET "/api/v1/incidents?page=1&limit=5"
-call_auth "documents"           GET "/api/v1/documents?page=1&limit=5"
+call_required "bénéficiaires"       GET "/api/v1/beneficiaries?page=1&limit=5"
+call_required "produits"            GET "/api/v1/products?page=1&limit=5"
+call_required "entreprises"         GET "/api/v1/companies?page=1&limit=5"
+call_required "lots entrants"       GET "/api/v1/inbound-batches?page=1&limit=5"
+call_required "lots finis"          GET "/api/v1/product-batches?page=1&limit=5"
+call_required "validations label"   GET "/api/v1/label-validations?page=1&limit=5"
+call_required "distributions"       GET "/api/v1/distributions?page=1&limit=5"
+call_required "incidents"           GET "/api/v1/incidents?page=1&limit=5"
+call_required "documents"           GET "/api/v1/documents?page=1&limit=5"
+call_required "supply-contracts"    GET "/api/v1/supply-contracts?page=1&limit=5"
+call_required "transformations"     GET "/api/v1/transformation-operations?page=1&limit=5"
 
-# ── 5. Endpoints admin (selon rôle) ────────────────────────
+# ── 5. Endpoints admin (rôle ADMIN — préfixes réels backend) ─
+# Préfixes vérifiés dans apps/backend/src/**/controller.ts :
+#   - admin/memberships         (PAS /memberships)
+#   - marketplace/review-queue  (PAS /review-queue)
+#   - marketplace/quote-requests (PAS /quote-requests)
+#   - marketplace/seller-profiles (PAS /seller-profiles)
 if [[ "$USER_ROLE" == "ADMIN" ]]; then
   echo "${CYAN}— Admin (rôle ADMIN détecté)${RESET}"
-  call_auth "diagnostic memberships" GET "/api/v1/memberships/diagnostic"
-  call_auth "users list"             GET "/api/v1/users?page=1&limit=5"
-  call_auth "seller profiles"        GET "/api/v1/seller-profiles?page=1&limit=5"
-  call_auth "review queue"           GET "/api/v1/review-queue?page=1&limit=5"
-  call_auth "rfq admin"              GET "/api/v1/quote-requests?page=1&limit=5"
-  call_auth "audit logs"             GET "/api/v1/audit-logs?page=1&limit=5"
+  call_required "users list"             GET "/api/v1/users?page=1&limit=5"
+  call_required "audit logs"             GET "/api/v1/audit-logs?page=1&limit=5"
+  call_required "memberships diagnostic" GET "/api/v1/admin/memberships/diagnostic"
+  call_required "memberships orphan-sellers"     GET "/api/v1/admin/memberships/orphan-sellers"
+  call_required "memberships orphan-memberships" GET "/api/v1/admin/memberships/orphan-memberships"
+  call_required "memberships list"       GET "/api/v1/admin/memberships?page=1&limit=5"
+  call_required "review queue"           GET "/api/v1/marketplace/review-queue?page=1&limit=5"
+  call_required "review queue stats"     GET "/api/v1/marketplace/review-queue/stats/pending"
+  call_required "rfq admin"              GET "/api/v1/marketplace/quote-requests?page=1&limit=5"
+  call_required "seller profiles"        GET "/api/v1/marketplace/seller-profiles?page=1&limit=5"
 fi
 
 # ── 6. Refresh token roundtrip ─────────────────────────────
@@ -244,22 +304,53 @@ if [[ -n "$REFRESH" ]]; then
 fi
 
 # ── 7. Pages frontend (HTML render) ────────────────────────
-echo "${CYAN}— Pages frontend (HTML)${RESET}"
-for path in /dashboard /referentiel /production /marketplace-hub /distribution /admin /beneficiaries /products /distributions /incidents /label-validations; do
+# Lot 6 obligatoires : routes qui existaient AVANT Lot 7. Un 404 = NO-GO.
+# Lot 7 conditionnels : routes ajoutées par Lot 7 (top nav + landings).
+#   - si Lot 7 détecté présent → traités en obligatoires.
+#   - sinon → 404 acceptable (skip).
+check_html() {
+  local mode="$1" path="$2"
   total=$((total+1))
+  local code
   code=$(curl -sS -k --max-time "$TIMEOUT" -o /dev/null -w '%{http_code}' "$BASE$path" 2>/dev/null || echo "000")
   if [[ "$code" == "200" ]]; then
     say_ok "page HTML $path → 200"
+  elif [[ "$mode" == "optional" && "$code" == "404" ]]; then
+    say_skip "page HTML $path → 404 (Lot 7 absent, skip)"
   else
     say_fail "page HTML $path → $code"
   fi
+}
+
+echo "${CYAN}— Pages frontend (HTML, Lot 6 obligatoires)${RESET}"
+for path in /dashboard /admin /beneficiaries /products /companies \
+            /inbound-batches /product-batches /transformation-operations \
+            /traceability /label-validations /distributions /incidents \
+            /documents /supply-contracts /seller/dashboard \
+            /admin/users /admin/review-queue /admin/memberships \
+            /admin/diagnostics /admin/sellers /admin/rfq; do
+  check_html required "$path"
+done
+
+echo "${CYAN}— Pages frontend (HTML, Lot 7 conditionnel — auto-skip si Lot 7 absent)${RESET}"
+LOT7_MODE=optional
+[[ "$HAS_LOT7" == "1" ]] && LOT7_MODE=required
+for path in /referentiel /production /marketplace-hub /distribution; do
+  check_html "$LOT7_MODE" "$path"
 done
 
 # ── Résumé ──────────────────────────────────────────────────
 echo
+passed=$((total - failed - skipped))
 if [[ "$failed" -eq 0 ]]; then
-  printf "${GREEN}✔ smoke-authentifié OK (%d checks)${RESET}\n\n" "$total"
+  if [[ "$skipped" -gt 0 ]]; then
+    printf "${GREEN}✔ smoke-authentifié OK${RESET} — %d ✔  /  %d ⊝ skipped (Lot 7 absent ou endpoint optionnel)  /  %d total\n\n" \
+      "$passed" "$skipped" "$total"
+  else
+    printf "${GREEN}✔ smoke-authentifié OK${RESET} — %d ✔ sur %d\n\n" "$passed" "$total"
+  fi
   exit 0
 fi
-printf "${RED}✗ smoke-authentifié KO — %d échec(s) sur %d${RESET}\n\n" "$failed" "$total"
+printf "${RED}✗ smoke-authentifié KO${RESET} — %d ✗ failed  /  %d ✔ passed  /  %d ⊝ skipped  /  %d total\n\n" \
+  "$failed" "$passed" "$skipped" "$total"
 exit 1
