@@ -16,6 +16,7 @@ import { ReadinessBadge } from '@/components/marketplace/ReadinessBadge';
 import { PriceTag } from '@/components/marketplace/PriceTag';
 import { FavoriteButton } from '@/components/marketplace/FavoriteButton';
 import { ShareButton } from '@/components/marketplace/ShareButton';
+import { SeasonalityCalendar } from '@/components/marketplace/SeasonalityCalendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -353,6 +354,16 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 )}
               </dl>
             </div>
+          </div>
+
+          {/* FP-1 — Saisonnalité (no-op si rien à afficher) */}
+          <div className="mt-4">
+            <SeasonalityCalendar
+              availabilityMonths={product.availabilityMonths}
+              harvestMonths={product.harvestMonths}
+              isYearRound={product.isYearRound}
+              ariaLabel={`Saisonnalité de ${product.commercialName}`}
+            />
           </div>
         </section>
 

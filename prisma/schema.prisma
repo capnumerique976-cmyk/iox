@@ -840,6 +840,25 @@ enum MarketplaceRelatedEntityType {
   PRODUCT_BATCH
 }
 
+// ─── SAISONNALITÉ PRODUIT (FP-1) ─────────────────────────────────────────────
+// Mois calendaires utilisés pour décrire récolte et disponibilité commerciale
+// d'un MarketplaceProduct. Un enum (vs entier 1..12 ou string) garantit la
+// validation au niveau base et facilite l'usage côté Prisma client.
+enum SeasonalityMonth {
+  JAN
+  FEB
+  MAR
+  APR
+  MAY
+  JUN
+  JUL
+  AUG
+  SEP
+  OCT
+  NOV
+  DEC
+}
+
 // ─── SELLER PROFILE (extension vitrine d'une Company) ─────────────────────────
 
 model SellerProfile {
@@ -947,6 +966,14 @@ model MarketplaceProduct {
 
   defaultUnit              String?                      @map("default_unit")
   minimumOrderQuantity     Decimal?                     @map("minimum_order_quantity") @db.Decimal(12, 3)
+
+  // FP-1 — saisonnalité produit (récolte vs disponibilité commerciale).
+  // `isYearRound = true`  ⇒ availabilityMonths peut être vide (produit dispo 12/12).
+  // `isYearRound = false` ⇒ availabilityMonths attendu non vide à la soumission.
+  // harvestMonths reste optionnel (produits transformés / stockés peuvent ne pas en avoir).
+  harvestMonths            SeasonalityMonth[]           @default([]) @map("harvest_months")
+  availabilityMonths       SeasonalityMonth[]           @default([]) @map("availability_months")
+  isYearRound              Boolean                      @default(false) @map("is_year_round")
 
   mainMediaId              String?                      @map("main_media_id")
   completionScore          Int                          @default(0) @map("completion_score")

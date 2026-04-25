@@ -252,6 +252,10 @@ export class MarketplaceCatalogService {
       minimumOrderQuantity: product.minimumOrderQuantity
         ? Number(product.minimumOrderQuantity)
         : null,
+      // FP-1 — saisonnalité (lecture publique, écriture côté seller).
+      harvestMonths: product.harvestMonths ?? [],
+      availabilityMonths: product.availabilityMonths ?? [],
+      isYearRound: product.isYearRound ?? false,
       exportReadinessStatus: product.exportReadinessStatus,
       category: product.category,
       seller: product.sellerProfile,

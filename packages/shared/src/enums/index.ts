@@ -121,6 +121,37 @@ export enum MarketplaceRelatedEntityType {
   PRODUCT_BATCH = 'PRODUCT_BATCH',
 }
 
+// FP-1 — Saisonnalité produit (récolte / disponibilité). Ordre = ordre calendaire.
+export enum SeasonalityMonth {
+  JAN = 'JAN',
+  FEB = 'FEB',
+  MAR = 'MAR',
+  APR = 'APR',
+  MAY = 'MAY',
+  JUN = 'JUN',
+  JUL = 'JUL',
+  AUG = 'AUG',
+  SEP = 'SEP',
+  OCT = 'OCT',
+  NOV = 'NOV',
+  DEC = 'DEC',
+}
+
+export const SEASONALITY_MONTHS_ORDERED: SeasonalityMonth[] = [
+  SeasonalityMonth.JAN,
+  SeasonalityMonth.FEB,
+  SeasonalityMonth.MAR,
+  SeasonalityMonth.APR,
+  SeasonalityMonth.MAY,
+  SeasonalityMonth.JUN,
+  SeasonalityMonth.JUL,
+  SeasonalityMonth.AUG,
+  SeasonalityMonth.SEP,
+  SeasonalityMonth.OCT,
+  SeasonalityMonth.NOV,
+  SeasonalityMonth.DEC,
+];
+
 // ─── STATUTS BÉNÉFICIAIRES ─────────────────────────────────────────────────
 export enum BeneficiaryStatus {
   DRAFT = 'DRAFT',

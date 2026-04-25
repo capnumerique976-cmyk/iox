@@ -75,6 +75,22 @@ export interface ProductOffer {
   isPrimaryOffer: boolean;
 }
 
+// FP-1 — Saisonnalité produit. Mois calendaires en code court anglais,
+// alignés sur l'enum Prisma `SeasonalityMonth`.
+export type SeasonalityMonth =
+  | 'JAN'
+  | 'FEB'
+  | 'MAR'
+  | 'APR'
+  | 'MAY'
+  | 'JUN'
+  | 'JUL'
+  | 'AUG'
+  | 'SEP'
+  | 'OCT'
+  | 'NOV'
+  | 'DEC';
+
 export interface ProductDetail {
   id: string;
   slug: string;
@@ -94,6 +110,10 @@ export interface ProductDetail {
   allergenInfo: string | null;
   defaultUnit: string | null;
   minimumOrderQuantity: number | null;
+  // FP-1 — saisonnalité projetée par le backend public.
+  harvestMonths: SeasonalityMonth[];
+  availabilityMonths: SeasonalityMonth[];
+  isYearRound: boolean;
   exportReadinessStatus: ReadinessStatus;
   category: { id: string; slug: string; nameFr: string; nameEn: string | null } | null;
   seller: {
