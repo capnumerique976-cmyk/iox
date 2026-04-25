@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Download, Truck, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 import { DistributionStatus, UserRole } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
@@ -69,9 +70,7 @@ export default function DistributionsPage() {
       setDistributions(json.data?.data ?? json.data ?? []);
       setTotal(json.data?.meta?.total ?? json.data?.total ?? 0);
     } catch (err) {
-      toast.error('Impossible de charger les distributions', {
-        description: err instanceof Error ? err.message : undefined,
-      });
+      notifyError(err, 'Impossible de charger les distributions');
     } finally {
       setLoading(false);
     }
@@ -88,7 +87,7 @@ export default function DistributionsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        toast.error('Export CSV indisponible');
+        notifyError(new Error(`HTTP ${res.status}`), 'Export CSV indisponible');
         return;
       }
       const blob = await res.blob();
@@ -100,9 +99,7 @@ export default function DistributionsPage() {
       URL.revokeObjectURL(url);
       toast.success('Export CSV généré');
     } catch (err) {
-      toast.error("Erreur lors de l'export", {
-        description: err instanceof Error ? err.message : undefined,
-      });
+      notifyError(err, "Erreur lors de l'export");
     }
   };
 

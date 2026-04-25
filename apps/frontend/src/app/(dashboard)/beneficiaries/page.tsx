@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
@@ -65,8 +66,8 @@ export default function BeneficiariesPage() {
       a.download = `beneficiaires-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     }
   };
 
@@ -84,7 +85,7 @@ export default function BeneficiariesPage() {
       if (!res.ok) throw new Error();
       const json = await res.json();
       setResult(json.data ?? json);
-    } catch {
+    } catch (err) {
       setError('Impossible de charger les bénéficiaires');
     } finally {
       setLoading(false);

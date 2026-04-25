@@ -10,6 +10,7 @@ import { TopNav } from '@/components/layout/top-nav';
 import { AlertsBell } from '@/components/layout/alerts-bell';
 import { SellerOnboardingBanner } from '@/components/layout/seller-onboarding-banner';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog';
 import { Logo } from '@/components/brand/logo';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -93,13 +94,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </header>
 
       {/* Sidebar contextuelle + contenu */}
-      <div className="relative flex">
-        <Sidebar />
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
-          <SellerOnboardingBanner />
-          <ErrorBoundary>{children}</ErrorBoundary>
-        </main>
-      </div>
+      <ConfirmDialogProvider>
+        <div className="relative flex">
+          <Sidebar />
+          <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
+            <SellerOnboardingBanner />
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </main>
+        </div>
+      </ConfirmDialogProvider>
     </div>
   );
 }

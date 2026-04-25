@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
@@ -219,8 +220,8 @@ export default function DocumentsPage() {
       a.download = filename;
       a.target = '_blank';
       a.click();
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     }
   };
 

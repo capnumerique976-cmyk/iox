@@ -1,7 +1,7 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { validateEnv } from './common/config/env.validation';
 import { DatabaseModule } from './database/database.module';
@@ -37,6 +37,7 @@ import { MarketplaceReviewModule } from './marketplace-review/marketplace-review
 import { MarketplaceDocumentsModule } from './marketplace-documents/marketplace-documents.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
 
 @Module({
   imports: [
@@ -120,6 +121,11 @@ import { RolesGuard } from './auth/guards/roles.guard';
     // Guards appliqués globalement — @Public() pour les routes ouvertes
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Idempotency tokens (L9-3) : intercepte les mutations portant un
+    // header `Idempotency-Key`. Enregistré via APP_INTERCEPTOR pour DI.
+    // S'exécute APRÈS LoggingInterceptor / ResponseInterceptor (déclarés
+    // dans main.ts) → voit `data` brut renvoyé par les handlers.
+    { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
   ],
 })
 export class AppModule implements NestModule {

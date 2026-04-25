@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -730,8 +731,8 @@ function MarketTab({
         const json = await res.json();
         setChecklist(json.data ?? json);
       }
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     } finally {
       setClLoading(false);
     }

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
 import { ApiError } from '@/lib/api';
+import { notifyError } from '@/lib/notify';
 import { Logo } from '@/components/brand/logo';
 
 /**
@@ -42,8 +43,16 @@ function LoginForm() {
     try {
       await login(email, password, redirectTo);
     } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-      else setError('Erreur de connexion au serveur');
+      // Erreurs métier (creds invalides, compte désactivé) → message
+      // inline dans le formulaire — c'est la convention UX d'un login.
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        // Erreur réseau / autre → toast global ET message inline pour
+        // que l'utilisateur sache pourquoi le bouton ne réagit pas.
+        setError('Erreur de connexion au serveur');
+        notifyError(err, 'Erreur de connexion au serveur', { showOn401: true });
+      }
     } finally {
       setLoading(false);
     }

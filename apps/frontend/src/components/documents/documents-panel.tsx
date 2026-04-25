@@ -1,6 +1,7 @@
 'use client';
 
-import { toast } from 'sonner';
+import { notifyError, notifySuccess } from '@/lib/notify';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Upload, FileText, Download, Archive, AlertCircle, X, Plus, Eye } from 'lucide-react';
@@ -62,6 +63,7 @@ function formatBytes(bytes: number) {
 
 export function DocumentsPanel({ linkedEntityType, linkedEntityId }: DocumentsPanelProps) {
   const { user } = useAuth();
+  const confirm = useConfirm();
 
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,23 +156,32 @@ export function DocumentsPanel({ linkedEntityType, linkedEntityId }: DocumentsPa
       if (!res.ok) throw new Error("Impossible d'obtenir le lien de téléchargement");
       const { data } = await res.json();
       window.open(data.url, '_blank');
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     }
   };
 
   const handleArchive = async (docId: string) => {
-    if (!confirm('Archiver ce document ?')) return;
+    const ok = await confirm({
+      title: 'Archiver ce document ?',
+      description:
+        "Le document ne sera plus visible dans la liste active. Il reste consultable dans l'historique d'audit.",
+      confirmLabel: 'Archiver',
+      tone: 'warning',
+    });
+    if (!ok) return;
     try {
       const token = authStorage.getAccessToken();
-      await fetch(`/api/v1/documents/${docId}/status`, {
+      const res = await fetch(`/api/v1/documents/${docId}/status`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'ARCHIVED' }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      notifySuccess('Document archivé');
       fetchDocs();
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     }
   };
 
