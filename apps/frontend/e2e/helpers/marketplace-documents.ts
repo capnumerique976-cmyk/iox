@@ -528,13 +528,17 @@ export async function mockMarketplaceDocumentsRoutes(page: Page, state: Document
     const data = filtered.slice((page_ - 1) * limit, page_ * limit);
 
     const payload = { data, meta: { total, page: page_, limit, totalPages } };
-    // entityId présent = requête du seller panel (api.get → envelope)
-    // sinon = admin fetch brut (raw)
-    const body = entityId ? JSON.stringify(await wrap(payload)) : JSON.stringify(payload);
+    // Le vrai backend (NestJS ResponseInterceptor global) enveloppe TOUTES les
+    // réponses dans { success, data, timestamp }, qu'elles viennent du seller
+    // ou de l'admin. La page admin /admin/review-queue (commit 297017b) fait
+    // un double-unwrap explicite : json.data.data + json.data.meta.
+    // Le helper doit donc wrapper systématiquement, sinon l'admin reçoit un
+    // array où il attend un objet { data, meta } et `setItems([])` est appelé
+    // par défaut → "Aucun item" affiché alors que la queue contient des items.
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body,
+      body: JSON.stringify(await wrap(payload)),
     });
   });
 

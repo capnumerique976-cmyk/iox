@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { useRouter } from 'next/navigation';
 import { authStorage, AuthUser, AuthTokens } from '@/lib/auth';
 import { api } from '@/lib/api';
+import { installApiClient } from '@/lib/api-client';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -38,8 +39,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restaure la session depuis le localStorage au montage
+  // Restaure la session + installe le client API Lot 8.
+  // Le client patche `window.fetch` et gère le cycle JWT court (15 min) via
+  // POST /auth/refresh + retry unique + redirect login si le refresh échoue.
+  // Tous les `fetch('/api/v1/...')` existants en profitent automatiquement.
   useEffect(() => {
+    installApiClient();
     const storedUser = authStorage.getUser();
     const storedToken = authStorage.getAccessToken();
     if (storedUser && storedToken) {

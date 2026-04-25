@@ -218,10 +218,19 @@ export async function mockReviewQueueRoutes(page: Page, state: ReviewQueueState)
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const data = filtered.slice((page_ - 1) * limit, page_ * limit);
 
+    // Le vrai backend (NestJS ResponseInterceptor) enveloppe TOUTES les
+    // réponses dans { success, data, timestamp }. La page admin
+    // /admin/review-queue (commit 297017b) lit explicitement json.data.data +
+    // json.data.meta. Le helper doit donc wrapper, sinon `setItems([])` est
+    // appelé par défaut → le tableau affiche "Aucun item" alors que la
+    // queue contient des items, et l'assertion `toContainText('DOCUMENT')`
+    // échoue. (Idem pour marketplace-documents.ts:533 — fix coordonné.)
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data, meta: { total, page: page_, limit, totalPages } }),
+      body: JSON.stringify(
+        await wrap({ data, meta: { total, page: page_, limit, totalPages } }),
+      ),
     });
   });
 
