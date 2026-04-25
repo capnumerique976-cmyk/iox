@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Upload, FileText, Download, Archive, AlertCircle, X, Plus, Eye } from 'lucide-react';
@@ -154,8 +155,8 @@ export function DocumentsPanel({ linkedEntityType, linkedEntityId }: DocumentsPa
       if (!res.ok) throw new Error("Impossible d'obtenir le lien de téléchargement");
       const { data } = await res.json();
       window.open(data.url, '_blank');
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     }
   };
 
@@ -169,8 +170,8 @@ export function DocumentsPanel({ linkedEntityType, linkedEntityId }: DocumentsPa
         body: JSON.stringify({ status: 'ARCHIVED' }),
       });
       fetchDocs();
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     }
   };
 

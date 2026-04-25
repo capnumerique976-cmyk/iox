@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -101,8 +102,8 @@ export default function LabelValidationsPage() {
       const valid = rv.ok ? ((await rv.json()).data?.meta?.total ?? 0) : 0;
       const invalid = ri.ok ? ((await ri.json()).data?.meta?.total ?? 0) : 0;
       setStats({ total, valid, invalid });
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     }
   }, []);
 
@@ -151,8 +152,8 @@ export default function LabelValidationsPage() {
       a.download = `validations-etiquetage-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      toast.error('Action impossible, réessayez.');
+    } catch (err) {
+      notifyError(err, 'Action impossible, réessayez.');
     }
   };
 

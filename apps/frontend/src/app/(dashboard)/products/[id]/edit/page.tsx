@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -86,7 +87,7 @@ export default function EditProductPage() {
     fetch('/api/v1/beneficiaries?limit=100', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((j) => setBeneficiaries(j.data?.data ?? []))
-      .catch(() => toast.error('Chargement des données de référence impossible'));
+      .catch((err) => notifyError(err, 'Chargement des données de référence impossible'));
   }, []);
 
   const loadProduct = useCallback(async () => {
