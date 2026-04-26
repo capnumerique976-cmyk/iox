@@ -10,18 +10,22 @@ import { runDemoSeed, shouldRun, RunnerOptions } from './runner';
 import { DEMO_DATASET } from './dataset';
 
 interface MockedPrisma {
-  user: { upsert: jest.Mock };
+  user: { upsert: jest.Mock; findUnique: jest.Mock; findFirst: jest.Mock };
   company: { upsert: jest.Mock; findUnique: jest.Mock };
   userCompanyMembership: { upsert: jest.Mock };
   beneficiary: { upsert: jest.Mock; findUnique: jest.Mock };
   product: { upsert: jest.Mock };
   sellerProfile: { upsert: jest.Mock };
-  marketplaceProduct: { upsert: jest.Mock };
+  marketplaceProduct: { upsert: jest.Mock; update: jest.Mock };
   marketplaceOffer: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
   certification: { upsert: jest.Mock };
+  mediaAsset: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
 }
 
-function makePrismaMock(opts: { offerExists?: boolean } = {}): MockedPrisma {
+function makePrismaMock(opts: {
+  offerExists?: boolean;
+  mediaAssetExists?: boolean;
+} = {}): MockedPrisma {
   // Les upserts renvoient un objet avec `id` dérivé de la clé naturelle —
   // suffisant pour que le runner enchaîne les FK.
   const upsertReturning = (idField: 'slug' | 'code' | 'email' = 'slug') =>
@@ -31,7 +35,13 @@ function makePrismaMock(opts: { offerExists?: boolean } = {}): MockedPrisma {
     });
 
   return {
-    user: { upsert: jest.fn().mockResolvedValue({ id: 'mock-user-id' }) },
+    user: {
+      upsert: jest.fn().mockResolvedValue({ id: 'mock-smoke-user-id' }),
+      // SEED-DEMO-FIX : le runner cherche le smoke seller pour devenir
+      // l'uploader des MediaAssets PRIMARY APPROVED.
+      findUnique: jest.fn().mockResolvedValue({ id: 'mock-smoke-user-id' }),
+      findFirst: jest.fn().mockResolvedValue({ id: 'mock-admin-user-id' }),
+    },
     company: {
       upsert: upsertReturning('code'),
       findUnique: jest
@@ -51,7 +61,12 @@ function makePrismaMock(opts: { offerExists?: boolean } = {}): MockedPrisma {
     },
     product: { upsert: upsertReturning('code') },
     sellerProfile: { upsert: upsertReturning('slug') },
-    marketplaceProduct: { upsert: upsertReturning('slug') },
+    marketplaceProduct: {
+      upsert: upsertReturning('slug'),
+      // SEED-DEMO-FIX : le runner met à jour `mainMediaId` après création
+      // du MediaAsset PRIMARY.
+      update: jest.fn().mockResolvedValue({ id: 'mock-mp-id' }),
+    },
     marketplaceOffer: {
       findFirst: jest
         .fn()
@@ -60,6 +75,13 @@ function makePrismaMock(opts: { offerExists?: boolean } = {}): MockedPrisma {
       update: jest.fn().mockResolvedValue({ id: 'existing-offer-id' }),
     },
     certification: { upsert: jest.fn().mockResolvedValue({ id: 'mock-cert-id' }) },
+    mediaAsset: {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(opts.mediaAssetExists ? { id: 'existing-media-id' } : null),
+      create: jest.fn().mockResolvedValue({ id: 'mock-media-id' }),
+      update: jest.fn().mockResolvedValue({ id: 'existing-media-id' }),
+    },
   };
 }
 
@@ -114,6 +136,8 @@ describe('SEED-DEMO runner', () => {
         offers: DEMO_DATASET.products.length,
         certifications: DEMO_DATASET.certifications.length,
         smokeSeller: 'smoke-seller@iox.mch',
+        // SEED-DEMO-FIX : 1 MediaAsset PRIMARY APPROVED par produit demo.
+        mediaAssets: DEMO_DATASET.products.length,
       });
       expect(prismaMock.company.upsert).toHaveBeenCalledTimes(
         DEMO_DATASET.sellers.length,
@@ -146,6 +170,55 @@ describe('SEED-DEMO runner', () => {
       expect(prismaMock.sellerProfile.upsert).toHaveBeenCalledTimes(
         DEMO_DATASET.sellers.length,
       );
+    });
+  });
+
+  describe('SEED-DEMO-FIX — MediaAssets PRIMARY APPROVED', () => {
+    it('crée 1 MediaAsset PRIMARY APPROVED par produit demo (1ʳᵉ exécution)', async () => {
+      const prismaMock = makePrismaMock();
+      const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(summary.mediaAssets).toBe(DEMO_DATASET.products.length);
+      expect(prismaMock.mediaAsset.create).toHaveBeenCalledTimes(
+        DEMO_DATASET.products.length,
+      );
+      expect(prismaMock.mediaAsset.update).not.toHaveBeenCalled();
+
+      // Tous les assets créés sont role=PRIMARY moderationStatus=APPROVED
+      for (const [arg] of prismaMock.mediaAsset.create.mock.calls) {
+        expect(arg.data.role).toBe('PRIMARY');
+        expect(arg.data.moderationStatus).toBe('APPROVED');
+        expect(arg.data.relatedType).toBe('MARKETPLACE_PRODUCT');
+        expect(arg.data.uploadedByUserId).toBe('mock-smoke-user-id');
+      }
+
+      // mainMediaId est lié à l'asset après création
+      expect(prismaMock.marketplaceProduct.update).toHaveBeenCalledTimes(
+        DEMO_DATASET.products.length,
+      );
+      const mpUpdateCall = prismaMock.marketplaceProduct.update.mock.calls[0][0];
+      expect(mpUpdateCall.data.mainMediaId).toBe('mock-media-id');
+    });
+
+    it("idempotent : 2ᵉ exécution avec MediaAssets déjà présents → 0 create, N updates", async () => {
+      const prismaMock = makePrismaMock({ mediaAssetExists: true });
+      const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(summary.mediaAssets).toBe(DEMO_DATASET.products.length);
+      expect(prismaMock.mediaAsset.create).not.toHaveBeenCalled();
+      expect(prismaMock.mediaAsset.update).toHaveBeenCalledTimes(
+        DEMO_DATASET.products.length,
+      );
+    });
+
+    it('si aucun uploader (smoke seller absent et aucun ADMIN) → mediaAssets=0, log warning, pas de throw', async () => {
+      const prismaMock = makePrismaMock();
+      // Force smoke seller introuvable ET aucun admin
+      prismaMock.user.findUnique.mockResolvedValue(null);
+      prismaMock.user.findFirst.mockResolvedValue(null);
+      const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(summary.mediaAssets).toBe(0);
+      expect(prismaMock.mediaAsset.create).not.toHaveBeenCalled();
+      // Le reste du seed s'est bien exécuté
+      expect(summary.products).toBe(DEMO_DATASET.products.length);
     });
   });
 
