@@ -209,6 +209,73 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
     expect(screen.getByTestId('hint-403')).toBeInTheDocument();
   });
 
+  // ── FP-8 — Logistique structurée ──────────────────────────────────────
+
+  it('FP-8 — hydrate les champs logistiques (CSV pour packagingFormats, kg pour grossWeight/netWeight)', async () => {
+    getByIdMock.mockResolvedValue({
+      ...baseProduct,
+      packagingFormats: ['1kg', '5kg', 'carton 10kg'],
+      temperatureRequirements: 'Cool 4-8°C',
+      grossWeight: '1.05',
+      netWeight: 1.0,
+      palletization: '120 cartons / palette EUR-EPAL',
+    });
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('field-packagingFormats')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('field-packagingFormats')).toHaveValue(
+      '1kg, 5kg, carton 10kg',
+    );
+    expect(screen.getByTestId('field-temperatureRequirements')).toHaveValue('Cool 4-8°C');
+    expect(screen.getByTestId('field-grossWeight')).toHaveValue(1.05);
+    expect(screen.getByTestId('field-netWeight')).toHaveValue(1);
+    expect(screen.getByTestId('field-palletization')).toHaveValue(
+      '120 cartons / palette EUR-EPAL',
+    );
+  });
+
+  it('FP-8 — PATCH diff envoie packagingFormats parsé + grossWeight numérique', async () => {
+    getByIdMock.mockResolvedValue({
+      ...baseProduct,
+      packagingFormats: [],
+    });
+    updateMock.mockResolvedValue({
+      ...baseProduct,
+      packagingFormats: ['1kg', '5kg'],
+      grossWeight: '1.2',
+    });
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('field-packagingFormats')).toBeInTheDocument(),
+    );
+
+    await user.type(screen.getByTestId('field-packagingFormats'), '1kg, 5kg, 1kg');
+    await user.type(screen.getByTestId('field-grossWeight'), '1.2');
+    await user.click(screen.getByTestId('submit-product'));
+
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
+    const [, payload] = updateMock.mock.calls[0];
+    // Dédoublonnage CSV : "1kg, 5kg, 1kg" → ["1kg", "5kg"]
+    expect(payload.packagingFormats).toEqual(['1kg', '5kg']);
+    expect(payload.grossWeight).toBe(1.2);
+  });
+
+  it('FP-8 — refuse > 12 formats de conditionnement (validation client)', async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct, packagingFormats: [] });
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('field-packagingFormats')).toBeInTheDocument(),
+    );
+    const csv = Array.from({ length: 13 }, (_, i) => `f${i}`).join(', ');
+    await user.type(screen.getByTestId('field-packagingFormats'), csv);
+    await user.click(screen.getByTestId('submit-product'));
+    expect(screen.getByTestId('validation-error')).toHaveTextContent(/12 formats/i);
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
   // ── MP-EDIT-PRODUCT.2 — workflow submit/archive ────────────────────────
 
   it('MP-EDIT-PRODUCT.2 — action Soumettre visible si DRAFT, masquée si IN_REVIEW', async () => {

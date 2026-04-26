@@ -66,6 +66,14 @@ export interface SellerMarketplaceProduct {
   shelfLifeInfo?: string | null;
   allergenInfo?: string | null;
 
+  // FP-8 — Logistique structurée. grossWeight/netWeight arrivent en string
+  // (Decimal sérialisé) ou number selon Prisma — on accepte les deux.
+  packagingFormats?: string[];
+  temperatureRequirements?: string | null;
+  grossWeight?: string | number | null;
+  netWeight?: string | number | null;
+  palletization?: string | null;
+
   // Saisonnalité (édition via /seasonality, lecture seule ici)
   harvestMonths: SeasonalityMonth[];
   availabilityMonths: SeasonalityMonth[];
@@ -127,6 +135,13 @@ export interface UpdateMarketplaceProductInput {
   storageConditions?: string;
   shelfLifeInfo?: string;
   allergenInfo?: string;
+
+  // FP-8 — Logistique structurée
+  packagingFormats?: string[];
+  temperatureRequirements?: string;
+  grossWeight?: number;
+  netWeight?: number;
+  palletization?: string;
 }
 
 /**
