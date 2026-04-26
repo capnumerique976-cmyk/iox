@@ -974,6 +974,12 @@ model MarketplaceProduct {
 
   originCountry            String                       @map("origin_country")
   originRegion             String?                      @map("origin_region")
+  // FP-6 — origine fine (tous optionnels, pas d'index : données vitrine).
+  // gpsLat/gpsLng doivent être fournis ensemble (cohérence service-side).
+  originLocality           String?                      @map("origin_locality")
+  altitudeMeters           Int?                         @map("altitude_meters")
+  gpsLat                   Decimal?                     @map("gps_lat") @db.Decimal(9, 6)
+  gpsLng                   Decimal?                     @map("gps_lng") @db.Decimal(9, 6)
   varietySpecies           String?                      @map("variety_species")
   productionMethod         String?                      @map("production_method")
 

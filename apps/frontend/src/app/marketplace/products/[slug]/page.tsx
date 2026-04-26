@@ -357,6 +357,54 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </div>
           </div>
 
+          {/* FP-6 — Origine détaillée (no-op si tous les champs sont nuls) */}
+          {(product.originLocality ||
+            product.altitudeMeters != null ||
+            (product.gpsLat != null && product.gpsLng != null)) && (
+            <div
+              className="iox-glass relative mt-4 overflow-hidden rounded-2xl p-5"
+              data-testid="product-fine-origin"
+            >
+              <span
+                aria-hidden
+                className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
+              />
+              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">
+                Origine détaillée
+              </h2>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 pl-3 text-xs">
+                {product.originLocality && (
+                  <>
+                    <dt className="text-white/50">Localité</dt>
+                    <dd className="font-medium text-white/90">{product.originLocality}</dd>
+                  </>
+                )}
+                {product.altitudeMeters != null && (
+                  <>
+                    <dt className="text-white/50">Altitude</dt>
+                    <dd className="font-medium text-white/90">{product.altitudeMeters} m</dd>
+                  </>
+                )}
+                {product.gpsLat != null && product.gpsLng != null && (
+                  <>
+                    <dt className="text-white/50">GPS</dt>
+                    <dd className="font-medium text-white/90">
+                      <a
+                        href={`https://www.google.com/maps?q=${product.gpsLat},${product.gpsLng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#00D4FF] underline-offset-2 hover:underline"
+                        data-testid="product-fine-origin-gps-link"
+                      >
+                        {product.gpsLat}, {product.gpsLng}
+                      </a>
+                    </dd>
+                  </>
+                )}
+              </dl>
+            </div>
+          )}
+
           {/* FP-1 — Saisonnalité (no-op si rien à afficher) */}
           <div className="mt-4">
             <SeasonalityCalendar

@@ -188,6 +188,57 @@ describe('MarketplaceProductsService', () => {
       const data = prisma.marketplaceProduct.update.mock.calls[0][0].data;
       expect(data.publicationStatus).toBeUndefined();
     });
+
+    // ── FP-6 — Origine fine ─────────────────────────────────────────────
+    it('FP-6 — propage les 4 champs d’origine fine au create', async () => {
+      prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({ id: 'sp1' });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue(null);
+      prisma.marketplaceProduct.create.mockResolvedValue({ id: 'mp1' });
+      await service.create({
+        productId: 'p1',
+        sellerProfileId: 'sp1',
+        slug: 'mp',
+        commercialName: 'Nom',
+        originCountry: 'YT',
+        originLocality: 'Combani',
+        altitudeMeters: 350,
+        gpsLat: -12.8275,
+        gpsLng: 45.166,
+      });
+      const data = prisma.marketplaceProduct.create.mock.calls[0][0].data;
+      expect(data.originLocality).toBe('Combani');
+      expect(data.altitudeMeters).toBe(350);
+      expect(data.gpsLat).toBe(-12.8275);
+      expect(data.gpsLng).toBe(45.166);
+    });
+
+    it('FP-6 — rejette une coordonnée GPS orpheline (lat sans lng) au create', async () => {
+      prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({ id: 'sp1' });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue(null);
+      await expect(
+        service.create({
+          productId: 'p1',
+          sellerProfileId: 'sp1',
+          slug: 'mp',
+          commercialName: 'Nom',
+          originCountry: 'YT',
+          gpsLat: -12.8275,
+        }),
+      ).rejects.toThrow(/gpsLat et gpsLng/);
+    });
+
+    it('FP-6 — rejette une coordonnée GPS orpheline au update', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({
+        id: 'mp1',
+        slug: 'mp',
+        publicationStatus: MarketplacePublicationStatus.DRAFT,
+      });
+      await expect(
+        service.update('mp1', { gpsLng: 45.166 }),
+      ).rejects.toThrow(/gpsLat et gpsLng/);
+    });
   });
 
   // ── Workflow ──────────────────────────────────────────────────────────────

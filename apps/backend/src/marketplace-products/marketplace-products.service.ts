@@ -179,6 +179,7 @@ export class MarketplaceProductsService {
       if (!cat) throw new NotFoundException('Catégorie introuvable');
     }
 
+    this.assertGpsPairCoherence(dto);
     const seasonality = this.normalizeSeasonalityInput(dto);
     const dataForScore = { ...dto, ...seasonality };
     const completionScore = this.computeCompletionScore(
@@ -196,6 +197,11 @@ export class MarketplaceProductsService {
         slug: dto.slug,
         originCountry: dto.originCountry,
         originRegion: dto.originRegion,
+        // FP-6 — origine fine. Decimal accepte number côté Prisma input.
+        originLocality: dto.originLocality,
+        altitudeMeters: dto.altitudeMeters,
+        gpsLat: dto.gpsLat,
+        gpsLng: dto.gpsLng,
         varietySpecies: dto.varietySpecies,
         productionMethod: dto.productionMethod,
         descriptionShort: dto.descriptionShort,
@@ -279,6 +285,10 @@ export class MarketplaceProductsService {
       (existing.publicationStatus === MarketplacePublicationStatus.APPROVED ||
         existing.publicationStatus === MarketplacePublicationStatus.PUBLISHED) &&
       touchesVitrine;
+
+    // FP-6 — cohérence GPS lat/lng (les deux ou aucun, en update aussi
+    // pour empêcher un patch partiel orphelin).
+    this.assertGpsPairCoherence(dto);
 
     // FP-1 — normalise la saisonnalité (year-round force availabilityMonths=[]).
     const seasonality = this.normalizeSeasonalityInput(dto);
@@ -685,6 +695,25 @@ export class MarketplaceProductsService {
    *  - Sinon on conserve le tableau fourni (peut rester [] avant submit, voir validateSeasonalityForSubmit).
    *  - Les mois sont triés selon l'ordre calendaire pour stabiliser l'écriture.
    */
+  /**
+   * FP-6 — Cohérence GPS : lat/lng doivent être fournis ensemble.
+   * Si exactement un des deux est non-undefined, on lève BadRequest.
+   * Renvoie void — la validation des bornes (-90/90, -180/180) est
+   * faite côté DTO via class-validator.
+   */
+  private assertGpsPairCoherence(dto: {
+    gpsLat?: number;
+    gpsLng?: number;
+  }): void {
+    const hasLat = dto.gpsLat !== undefined && dto.gpsLat !== null;
+    const hasLng = dto.gpsLng !== undefined && dto.gpsLng !== null;
+    if (hasLat !== hasLng) {
+      throw new BadRequestException(
+        'gpsLat et gpsLng doivent être fournis ensemble (cohérence FP-6).',
+      );
+    }
+  }
+
   private normalizeSeasonalityInput(dto: {
     harvestMonths?: SeasonalityMonth[];
     availabilityMonths?: SeasonalityMonth[];

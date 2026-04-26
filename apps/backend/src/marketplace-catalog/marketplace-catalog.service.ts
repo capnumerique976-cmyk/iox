@@ -77,6 +77,11 @@ export class MarketplaceCatalogService {
               subtitle: true,
               originCountry: true,
               originRegion: true,
+              // FP-6 — origine fine projetée publiquement.
+              originLocality: true,
+              altitudeMeters: true,
+              gpsLat: true,
+              gpsLng: true,
               varietySpecies: true,
               productionMethod: true,
               packagingDescription: true,
@@ -249,6 +254,12 @@ export class MarketplaceCatalogService {
       subtitle: product.subtitle,
       originCountry: product.originCountry,
       originRegion: product.originRegion,
+      // FP-6 — gpsLat/gpsLng arrivent en Decimal (Prisma) ; on stringify
+      // pour rester JSON-safe (la précision est conservée).
+      originLocality: product.originLocality,
+      altitudeMeters: product.altitudeMeters,
+      gpsLat: product.gpsLat != null ? product.gpsLat.toString() : null,
+      gpsLng: product.gpsLng != null ? product.gpsLng.toString() : null,
       varietySpecies: product.varietySpecies,
       productionMethod: product.productionMethod,
       descriptionShort: product.descriptionShort,

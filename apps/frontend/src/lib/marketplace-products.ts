@@ -29,6 +29,12 @@ export interface SellerMarketplaceProduct {
   publicationStatus: MarketplacePublicationStatus;
   originCountry: string;
   originRegion: string | null;
+  // FP-6 — origine fine (tous optionnels). gpsLat/gpsLng arrivent en string
+  // depuis Prisma (Decimal sérialisé), à parser côté UI si besoin numérique.
+  originLocality?: string | null;
+  altitudeMeters?: number | null;
+  gpsLat?: string | number | null;
+  gpsLng?: string | number | null;
   harvestMonths: SeasonalityMonth[];
   availabilityMonths: SeasonalityMonth[];
   isYearRound: boolean;
