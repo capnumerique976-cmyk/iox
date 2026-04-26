@@ -544,6 +544,7 @@ export default function SellerDashboardPage() {
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Raccourcis</h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
           <QuickLink href="/seller/profile/edit" label="Éditer mon profil vendeur" />
+          <QuickLink href="/seller/marketplace-products" label="Mes produits marketplace" />
           <QuickLink href="/quote-requests" label="Demandes de devis" />
           <QuickLink href="/seller/documents" label="Documents marketplace" />
           <QuickLink href="/marketplace" label="Voir le catalogue public" />
