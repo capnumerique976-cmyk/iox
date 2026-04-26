@@ -119,6 +119,58 @@ reçoit un 403 — l'UI affiche un hint explicite.
 - **Pas de bouton soumettre/archiver** : le workflow d'état (submit, approve,
   archive) sera couvert par MP-EDIT-PRODUCT.2.
 
+## MP-EDIT-PRODUCT.2 — Création + workflow soumission/archivage
+
+### Création d'un brouillon (`/seller/marketplace-products/new`)
+
+Formulaire minimaliste réservé au rôle `MARKETPLACE_SELLER` :
+
+- `commercialName` (≥ 2 caractères, ≤ 255)
+- `slug` — auto-généré côté client via `slugify()` (NFD + ASCII safe,
+  kebab-case). Editable manuellement, validé par
+  `^[a-z0-9]+(?:-[a-z0-9]+)*$`. Doit être unique côté backend (409 sinon).
+- `originCountry` (code ISO recommandé)
+- `productId` — UUID Product MCH **saisi manuellement** (cf. limitation
+  ci-dessous)
+- `sellerProfileId` — résolu automatiquement via
+  `GET /marketplace/seller-profiles/me` au montage. L'utilisateur ne voit
+  jamais cet UUID.
+
+Le backend force `publicationStatus=DRAFT` et
+`exportReadinessStatus=PENDING_QUALITY_REVIEW` à la création — le payload
+ne peut pas les contourner.
+
+**Limitation MCH** : `GET /products` n'est pas ouvert au rôle seller
+(admin/coordinator only). Un picker visuel ergonomique est différé à un
+futur lot qui ajoutera un endpoint `GET /marketplace/products/catalog`
+seller-scoped. En attendant : copier-coller de l'UUID Product MCH.
+
+Sur succès → redirect vers `/seller/marketplace-products/:id` (page
+détail MP-EDIT-PRODUCT.1) pour compléter les autres champs.
+
+### Actions workflow sur la page détail
+
+Deux boutons exposés dans le header de
+`/seller/marketplace-products/[id]` :
+
+- **Soumettre à validation** (`POST /:id/submit`) — visible si
+  `publicationStatus ∈ {DRAFT, REJECTED}`. Confirmation `tone=warning`
+  via `useConfirm` (Lot 9). Refresh in-place du statut, bandeau
+  `workflow-success`. Backend : seules les transitions
+  DRAFT|REJECTED → IN_REVIEW sont autorisées.
+- **Archiver** (`POST /:id/archive`) — visible si
+  `publicationStatus !== ARCHIVED`. Confirmation `tone=danger`
+  (action destructive : le produit disparaît du dashboard seller).
+  Sur succès → redirect vers la liste.
+
+Erreurs API (409 transition interdite, 403 hors périmètre) relayées
+dans `data-testid="workflow-error"` sans casser l'éditeur de champs.
+
+### CTA création sur la liste
+
+Bouton accent premium « Nouveau produit » dans le header de
+`/seller/marketplace-products` (`data-testid="link-new-product"`).
+
 ## Smoke après déploiement
 
 1. Login `smoke-seller@iox.mch` → naviguer vers `/seller/marketplace-products`.
@@ -132,9 +184,11 @@ reçoit un 403 — l'UI affiche un hint explicite.
 ## Fichiers
 
 ```
-apps/frontend/src/app/(dashboard)/seller/marketplace-products/[id]/page.tsx       # Nouvelle page
-apps/frontend/src/app/(dashboard)/seller/marketplace-products/[id]/page.test.tsx  # 8 tests vitest
-apps/frontend/src/lib/marketplace-products.ts                                     # update() + types
-apps/frontend/src/app/(dashboard)/seller/marketplace-products/page.tsx            # +lien Détails
+apps/frontend/src/app/(dashboard)/seller/marketplace-products/[id]/page.tsx       # Édition + workflow submit/archive
+apps/frontend/src/app/(dashboard)/seller/marketplace-products/[id]/page.test.tsx  # 15 tests vitest (8 édition + 7 workflow)
+apps/frontend/src/app/(dashboard)/seller/marketplace-products/new/page.tsx        # MP-EDIT-PRODUCT.2 — création brouillon
+apps/frontend/src/app/(dashboard)/seller/marketplace-products/new/page.test.tsx   # 6 tests vitest (slugify + flux create)
+apps/frontend/src/lib/marketplace-products.ts                                     # update() + create() + submit() + archive() + types
+apps/frontend/src/app/(dashboard)/seller/marketplace-products/page.tsx            # +lien Détails +CTA "Nouveau produit"
 docs/marketplace/MARKETPLACE_PRODUCT_EDIT.md                                      # Ce fichier
 ```

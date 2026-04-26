@@ -74,6 +74,17 @@ describe('SellerMarketplaceProductsPage (FP-4)', () => {
     );
   });
 
+  it('MP-EDIT-PRODUCT.2 — expose le bouton "Nouveau produit" pointant vers /new', async () => {
+    listMineMock.mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 50, totalPages: 0 },
+    });
+    render(<SellerMarketplaceProductsPage />);
+    const link = (await screen.findByTestId('link-new-product')) as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/seller/marketplace-products/new');
+    expect(link).toHaveTextContent(/Nouveau produit/i);
+  });
+
   it('affiche un état vide quand aucune ligne', async () => {
     listMineMock.mockResolvedValue({
       data: [],

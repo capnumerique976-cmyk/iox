@@ -19,8 +19,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
+  Archive,
   ArrowLeft,
   AlertCircle,
   Award,
@@ -29,6 +30,7 @@ import {
   Info,
   Loader2,
   Save,
+  Send,
 } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
@@ -38,6 +40,7 @@ import {
   type UpdateMarketplaceProductInput,
 } from '@/lib/marketplace-products';
 import { PageHeader } from '@/components/ui/page-header';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 type LoadState =
   | { kind: 'loading' }
@@ -240,6 +243,8 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function SellerMarketplaceProductDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const confirm = useConfirm();
   const id = params?.id ?? '';
 
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
@@ -249,6 +254,9 @@ export default function SellerMarketplaceProductDetailPage() {
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [workflowBusy, setWorkflowBusy] = useState<null | 'submit' | 'archive'>(null);
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setState({ kind: 'loading' });
@@ -333,6 +341,67 @@ export default function SellerMarketplaceProductDetailPage() {
     }
   }
 
+  /** Réutilisable pour submit + archive : extrait le message d'erreur API. */
+  function pickErrorMessage(err: unknown, fallback: string): string {
+    if (err instanceof ApiError) return err.message || fallback;
+    if (err instanceof Error) return err.message || fallback;
+    return fallback;
+  }
+
+  async function onWorkflowSubmit() {
+    if (state.kind !== 'ready') return;
+    const ok = await confirm({
+      title: 'Soumettre à la revue qualité ?',
+      description:
+        'Le produit passera en statut IN_REVIEW. Vous ne pourrez plus le modifier tant que la revue n’est pas terminée.',
+      confirmLabel: 'Soumettre',
+      cancelLabel: 'Annuler',
+      tone: 'warning',
+    });
+    if (!ok) return;
+    setWorkflowBusy('submit');
+    setWorkflowError(null);
+    setWorkflowSuccess(null);
+    try {
+      const token = authStorage.getAccessToken() ?? '';
+      const updated = await marketplaceProductsApi.submit(id, token);
+      const next = fromProduct(updated);
+      setInitial(next);
+      setForm(next);
+      setState({ kind: 'ready', product: updated });
+      setWorkflowSuccess('Produit soumis à la revue qualité.');
+      setTimeout(() => setWorkflowSuccess(null), 3500);
+    } catch (err) {
+      setWorkflowError(pickErrorMessage(err, 'Échec de la soumission'));
+    } finally {
+      setWorkflowBusy(null);
+    }
+  }
+
+  async function onWorkflowArchive() {
+    if (state.kind !== 'ready') return;
+    const ok = await confirm({
+      title: 'Archiver ce produit ?',
+      description:
+        'Le produit sera retiré de votre tableau de bord et n’apparaîtra plus dans la marketplace. Cette action est destructive.',
+      confirmLabel: 'Archiver',
+      cancelLabel: 'Annuler',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setWorkflowBusy('archive');
+    setWorkflowError(null);
+    setWorkflowSuccess(null);
+    try {
+      const token = authStorage.getAccessToken() ?? '';
+      await marketplaceProductsApi.archive(id, token);
+      router.push('/seller/marketplace-products');
+    } catch (err) {
+      setWorkflowError(pickErrorMessage(err, 'Échec de l’archivage'));
+      setWorkflowBusy(null);
+    }
+  }
+
   if (state.kind === 'loading') {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">
@@ -377,6 +446,9 @@ export default function SellerMarketplaceProductDetailPage() {
   const product = state.product;
   const willTriggerReview =
     product.publicationStatus === 'APPROVED' || product.publicationStatus === 'PUBLISHED';
+  const canSubmitWorkflow =
+    product.publicationStatus === 'DRAFT' || product.publicationStatus === 'REJECTED';
+  const canArchiveWorkflow = product.publicationStatus !== 'ARCHIVED';
 
   return (
     <div className="space-y-5">
@@ -385,6 +457,38 @@ export default function SellerMarketplaceProductDetailPage() {
         subtitle={product.subtitle ?? undefined}
         actions={
           <div className="flex items-center gap-2">
+            {canSubmitWorkflow && (
+              <button
+                type="button"
+                onClick={onWorkflowSubmit}
+                disabled={workflowBusy !== null}
+                data-testid="action-submit"
+                className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {workflowBusy === 'submit' ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Send className="h-3 w-3" />
+                )}
+                Soumettre à validation
+              </button>
+            )}
+            {canArchiveWorkflow && (
+              <button
+                type="button"
+                onClick={onWorkflowArchive}
+                disabled={workflowBusy !== null}
+                data-testid="action-archive"
+                className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {workflowBusy === 'archive' ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Archive className="h-3 w-3" />
+                )}
+                Archiver
+              </button>
+            )}
             <Link
               href={`/seller/marketplace-products/${product.id}/seasonality`}
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
@@ -423,6 +527,26 @@ export default function SellerMarketplaceProductDetailPage() {
         <span className="text-gray-400">·</span>
         <span className="text-gray-400">Slug : {product.slug}</span>
       </div>
+
+      {workflowError && (
+        <div
+          role="alert"
+          data-testid="workflow-error"
+          className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>{workflowError}</span>
+        </div>
+      )}
+      {workflowSuccess && (
+        <div
+          role="status"
+          data-testid="workflow-success"
+          className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800"
+        >
+          <CheckCircle2 className="h-4 w-4" /> {workflowSuccess}
+        </div>
+      )}
 
       {willTriggerReview && dirty && (
         <div
