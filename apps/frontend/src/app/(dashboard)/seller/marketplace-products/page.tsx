@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertCircle, Award, Calendar, Loader2 } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Award, Calendar, Loader2, Pencil } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
 import {
@@ -127,6 +127,13 @@ export default function SellerMarketplaceProductsPage() {
                   </td>
                   <td className="px-4 py-2 text-right">
                     <div className="inline-flex items-center gap-1">
+                      <Link
+                        href={`/seller/marketplace-products/${p.id}`}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                        data-testid={`seller-mp-detail-${p.id}`}
+                      >
+                        <Pencil className="h-3 w-3" /> Détails
+                      </Link>
                       <Link
                         href={`/seller/marketplace-products/${p.id}/seasonality`}
                         className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
