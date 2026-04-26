@@ -230,6 +230,17 @@ export class MarketplaceCatalogService {
       product.id,
     );
 
+    // FP-2 — certifications publiques (VERIFIED + non expirées) du produit ET
+    // du vendeur. On agrège les deux scopes dans une seule liste pour la fiche
+    // produit (le scope reste exposé pour permettre au front de filtrer/grouper).
+    const certifications = await this.findPublicCertifications([
+      { relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT, relatedId: product.id },
+      {
+        relatedType: MarketplaceRelatedEntityType.SELLER_PROFILE,
+        relatedId: product.sellerProfile.id,
+      },
+    ]);
+
     return {
       id: product.id,
       slug: product.slug,
@@ -263,6 +274,7 @@ export class MarketplaceCatalogService {
       gallery,
       offers: offersOut,
       documents,
+      certifications,
     };
   }
 
@@ -316,6 +328,11 @@ export class MarketplaceCatalogService {
 
     const primaryMediaMap = await this.loadPrimaryMediaMap(products.map((p) => p.id));
 
+    // FP-2 — certifications publiques du vendeur (VERIFIED + non expirées).
+    const certifications = await this.findPublicCertifications([
+      { relatedType: MarketplaceRelatedEntityType.SELLER_PROFILE, relatedId: seller.id },
+    ]);
+
     return {
       id: seller.id,
       slug: seller.slug,
@@ -343,6 +360,7 @@ export class MarketplaceCatalogService {
         exportReadinessStatus: p.exportReadinessStatus,
         primaryImage: primaryMediaMap.get(p.id) ?? null,
       })),
+      certifications,
     };
   }
 
@@ -549,5 +567,46 @@ export class MarketplaceCatalogService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * FP-2 — Lecture publique des certifications structurées.
+   *
+   * Filtre :
+   *   - verificationStatus = VERIFIED
+   *   - validUntil null OU dans le futur (les expirées ne sortent pas)
+   *
+   * Accepte plusieurs scopes (typiquement [produit, vendeur]) en une seule
+   * requête pour éviter le N+1 sur la fiche produit. Le scope reste exposé
+   * dans la projection pour permettre au front de grouper/badger.
+   */
+  private async findPublicCertifications(
+    scopes: Array<{ relatedType: MarketplaceRelatedEntityType; relatedId: string }>,
+  ) {
+    if (scopes.length === 0) return [];
+    const now = new Date();
+    const rows = await this.prisma.certification.findMany({
+      where: {
+        verificationStatus: MarketplaceVerificationStatus.VERIFIED,
+        AND: [
+          { OR: scopes.map((s) => ({ relatedType: s.relatedType, relatedId: s.relatedId })) },
+          { OR: [{ validUntil: null }, { validUntil: { gt: now } }] },
+        ],
+      },
+      select: {
+        id: true,
+        relatedType: true,
+        relatedId: true,
+        type: true,
+        code: true,
+        issuingBody: true,
+        issuedAt: true,
+        validFrom: true,
+        validUntil: true,
+        documentMediaId: true,
+      },
+      orderBy: [{ type: 'asc' }, { issuedAt: 'desc' }],
+    });
+    return rows;
   }
 }

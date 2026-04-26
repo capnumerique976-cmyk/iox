@@ -145,6 +145,7 @@ enum EntityType {
   MARKETPLACE_PRODUCT
   MARKETPLACE_OFFER
   MARKETPLACE_DOCUMENT
+  MARKETPLACE_CERTIFICATION
   MEDIA_ASSET
   QUOTE_REQUEST
   MARKETPLACE_REVIEW
@@ -840,6 +841,27 @@ enum MarketplaceRelatedEntityType {
   PRODUCT_BATCH
 }
 
+// ─── CERTIFICATIONS MARKETPLACE (FP-2) ───────────────────────────────────────
+// Liste fermée des standards/labels de certification reconnus pour le MVP.
+// Volontairement large pour couvrir agro/bio/équitable/qualité ; le slot
+// `OTHER` autorise des cas particuliers (à documenter via `code` + `issuingBody`).
+enum CertificationType {
+  BIO_EU
+  BIO_USDA
+  ECOCERT
+  FAIRTRADE
+  RAINFOREST_ALLIANCE
+  HACCP
+  ISO_22000
+  ISO_9001
+  GLOBALGAP
+  BRC
+  IFS
+  KOSHER
+  HALAL
+  OTHER
+}
+
 // ─── SAISONNALITÉ PRODUIT (FP-1) ─────────────────────────────────────────────
 // Mois calendaires utilisés pour décrire récolte et disponibilité commerciale
 // d'un MarketplaceProduct. Un enum (vs entier 1..12 ou string) garantit la
@@ -1120,6 +1142,48 @@ model MarketplaceDocument {
   @@index([verificationStatus])
   @@index([validUntil])
   @@map("marketplace_documents")
+}
+
+// ─── CERTIFICATION (FP-2) ────────────────────────────────────────────────────
+// Table polymorphe dédiée aux labels/certifications attachés à un acteur ou
+// un produit. Pour le MVP `relatedType` est validé côté service à
+// SELLER_PROFILE ou MARKETPLACE_PRODUCT (les offres sont hors scope).
+//   - `code` : identifiant lisible du certificat (ex. n° de licence Ecocert),
+//     unique (relatedType, relatedId, type, code) pour empêcher les doublons.
+//   - `documentMediaId` : pointeur facultatif vers un MediaAsset (PDF scanné).
+//   - `verificationStatus` : pipeline classique PENDING → VERIFIED/REJECTED ;
+//     EXPIRED dérivable depuis `validUntil` (calcul en lecture, pas en stockage).
+model Certification {
+  id                 String                        @id @default(uuid())
+  relatedType        MarketplaceRelatedEntityType  @map("related_type")
+  relatedId          String                        @map("related_id")
+
+  type               CertificationType
+  code               String?
+  issuingBody        String?                       @map("issuing_body")
+
+  issuedAt           DateTime?                     @map("issued_at")
+  validFrom          DateTime?                     @map("valid_from")
+  validUntil         DateTime?                     @map("valid_until")
+
+  documentMediaId    String?                       @map("document_media_id")
+
+  verificationStatus MarketplaceVerificationStatus @default(PENDING) @map("verification_status")
+  rejectionReason    String?                       @map("rejection_reason")
+  verifiedByUserId   String?                       @map("verified_by_user_id")
+  verifiedAt         DateTime?                     @map("verified_at")
+
+  createdAt          DateTime                      @default(now()) @map("created_at")
+  updatedAt          DateTime                      @updatedAt @map("updated_at")
+  createdByUserId    String?                       @map("created_by_user_id")
+  updatedByUserId    String?                       @map("updated_by_user_id")
+
+  @@index([relatedType, relatedId])
+  @@index([type])
+  @@index([verificationStatus])
+  @@index([validUntil])
+  @@unique([relatedType, relatedId, type, code], name: "uniq_certification_scope_type_code")
+  @@map("marketplace_certifications")
 }
 
 // ─── MÉDIA (image / illustration polymorphique) ─────────────────────────────

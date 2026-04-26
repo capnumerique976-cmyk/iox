@@ -91,6 +91,40 @@ export type SeasonalityMonth =
   | 'NOV'
   | 'DEC';
 
+// FP-2 — Certifications structurées projetées par le backend public.
+// Aligné sur l'enum Prisma `CertificationType` ; étendre ici si l'enum
+// backend évolue.
+export type CertificationType =
+  | 'BIO_EU'
+  | 'BIO_USDA'
+  | 'ECOCERT'
+  | 'FAIRTRADE'
+  | 'RAINFOREST_ALLIANCE'
+  | 'HACCP'
+  | 'ISO_22000'
+  | 'ISO_9001'
+  | 'GLOBALGAP'
+  | 'BRC'
+  | 'IFS'
+  | 'KOSHER'
+  | 'HALAL'
+  | 'OTHER';
+
+export type CertificationScope = 'SELLER_PROFILE' | 'MARKETPLACE_PRODUCT';
+
+export interface Certification {
+  id: string;
+  relatedType: CertificationScope;
+  relatedId: string;
+  type: CertificationType;
+  code: string | null;
+  issuingBody: string | null;
+  issuedAt: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  documentMediaId: string | null;
+}
+
 export interface ProductDetail {
   id: string;
   slug: string;
@@ -138,6 +172,8 @@ export interface ProductDetail {
     validFrom: string | null;
     validUntil: string | null;
   }>;
+  // FP-2 — agrégat certifications publiques (produit + vendeur).
+  certifications: Certification[];
 }
 
 export interface SellerPublic {
@@ -167,4 +203,6 @@ export interface SellerPublic {
     exportReadinessStatus: ReadinessStatus;
     primaryImage: { id: string; publicUrl: string | null; altTextFr: string | null } | null;
   }>;
+  // FP-2 — certifications publiques du vendeur (scope SELLER_PROFILE).
+  certifications: Certification[];
 }

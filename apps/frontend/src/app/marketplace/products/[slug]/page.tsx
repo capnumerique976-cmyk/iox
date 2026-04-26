@@ -17,6 +17,7 @@ import { PriceTag } from '@/components/marketplace/PriceTag';
 import { FavoriteButton } from '@/components/marketplace/FavoriteButton';
 import { ShareButton } from '@/components/marketplace/ShareButton';
 import { SeasonalityCalendar } from '@/components/marketplace/SeasonalityCalendar';
+import { CertificationBadgeList } from '@/components/marketplace/CertificationBadgeList';
 
 export const dynamic = 'force-dynamic';
 
@@ -363,6 +364,14 @@ export default async function ProductDetailPage({ params }: PageProps) {
               harvestMonths={product.harvestMonths}
               isYearRound={product.isYearRound}
               ariaLabel={`Saisonnalité de ${product.commercialName}`}
+            />
+          </div>
+
+          {/* FP-2 — Certifications (no-op si liste vide) */}
+          <div className="mt-4">
+            <CertificationBadgeList
+              certifications={product.certifications}
+              ariaLabel={`Certifications de ${product.commercialName}`}
             />
           </div>
         </section>

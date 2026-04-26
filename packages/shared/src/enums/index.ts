@@ -121,6 +121,35 @@ export enum MarketplaceRelatedEntityType {
   PRODUCT_BATCH = 'PRODUCT_BATCH',
 }
 
+// FP-2 — Standards de certification reconnus (labels agro / qualité).
+// `OTHER` autorise un cas particulier qui doit être documenté via `code` +
+// `issuingBody` côté DTO.
+export enum CertificationType {
+  BIO_EU = 'BIO_EU',
+  BIO_USDA = 'BIO_USDA',
+  ECOCERT = 'ECOCERT',
+  FAIRTRADE = 'FAIRTRADE',
+  RAINFOREST_ALLIANCE = 'RAINFOREST_ALLIANCE',
+  HACCP = 'HACCP',
+  ISO_22000 = 'ISO_22000',
+  ISO_9001 = 'ISO_9001',
+  GLOBALGAP = 'GLOBALGAP',
+  BRC = 'BRC',
+  IFS = 'IFS',
+  KOSHER = 'KOSHER',
+  HALAL = 'HALAL',
+  OTHER = 'OTHER',
+}
+
+// FP-2 — Scopes polymorphes acceptés par le module Certifications (MVP).
+// Aligné sur MarketplaceRelatedEntityType mais restreint : SELLER_PROFILE et
+// MARKETPLACE_PRODUCT uniquement (offres et lots hors scope).
+export const CERTIFICATION_ALLOWED_SCOPES = [
+  MarketplaceRelatedEntityType.SELLER_PROFILE,
+  MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+] as const;
+export type CertificationScope = (typeof CERTIFICATION_ALLOWED_SCOPES)[number];
+
 // FP-1 — Saisonnalité produit (récolte / disponibilité). Ordre = ordre calendaire.
 export enum SeasonalityMonth {
   JAN = 'JAN',
@@ -370,6 +399,7 @@ export enum EntityType {
   MARKETPLACE_PRODUCT = 'MARKETPLACE_PRODUCT',
   MARKETPLACE_OFFER = 'MARKETPLACE_OFFER',
   MARKETPLACE_DOCUMENT = 'MARKETPLACE_DOCUMENT',
+  MARKETPLACE_CERTIFICATION = 'MARKETPLACE_CERTIFICATION',
   MEDIA_ASSET = 'MEDIA_ASSET',
   QUOTE_REQUEST = 'QUOTE_REQUEST',
   MARKETPLACE_REVIEW = 'MARKETPLACE_REVIEW',
