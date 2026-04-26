@@ -14,6 +14,7 @@ import {
   Min,
   Max,
   ArrayUnique,
+  ArrayMaxSize,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -89,6 +90,48 @@ export class CreateMarketplaceProductDto {
   @ApiPropertyOptional() @IsOptional() @IsString() storageConditions?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() shelfLifeInfo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() allergenInfo?: string;
+
+  // ─── FP-8 — Logistique structurée ──────────────────────────────────────
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['1kg', '5kg', 'carton 10kg'],
+    description: 'Conditionnements proposés. Max 12 entrées, ≤ 80 chars chacune.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @MaxLength(80, { each: true })
+  packagingFormats?: string[];
+
+  @ApiPropertyOptional({ example: 'Cool 4-8°C' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  temperatureRequirements?: string;
+
+  @ApiPropertyOptional({ example: 1.05, description: 'Poids brut unitaire (kg).' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100000)
+  grossWeight?: number;
+
+  @ApiPropertyOptional({ example: 1.0, description: 'Poids net unitaire (kg).' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100000)
+  netWeight?: number;
+
+  @ApiPropertyOptional({ example: '120 cartons / palette EUR-EPAL 1200x800' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  palletization?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -193,6 +236,38 @@ export class UpdateMarketplaceProductDto {
   @ApiPropertyOptional() @IsOptional() @IsString() storageConditions?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() shelfLifeInfo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() allergenInfo?: string;
+
+  // ─── FP-8 — Logistique structurée (mêmes règles que Create) ────────────
+  @ApiPropertyOptional({ type: [String], example: ['1kg', '5kg'] })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @MaxLength(80, { each: true })
+  packagingFormats?: string[];
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100)
+  temperatureRequirements?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100000)
+  grossWeight?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100000)
+  netWeight?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500)
+  palletization?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -239,6 +239,48 @@ describe('MarketplaceProductsService', () => {
         service.update('mp1', { gpsLng: 45.166 }),
       ).rejects.toThrow(/gpsLat et gpsLng/);
     });
+
+    // ── FP-8 — Logistique structurée ─────────────────────────────────────
+    it('FP-8 — propage les 5 champs logistiques au create', async () => {
+      prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({ id: 'sp1' });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue(null);
+      prisma.marketplaceProduct.create.mockResolvedValue({ id: 'mp1' });
+      await service.create({
+        productId: 'p1',
+        sellerProfileId: 'sp1',
+        slug: 'mp',
+        commercialName: 'Nom',
+        originCountry: 'YT',
+        packagingFormats: ['1kg', '5kg', 'carton 10kg'],
+        temperatureRequirements: 'Cool 4-8°C',
+        grossWeight: 1.05,
+        netWeight: 1.0,
+        palletization: '120 cartons / palette EUR-EPAL',
+      });
+      const data = prisma.marketplaceProduct.create.mock.calls[0][0].data;
+      expect(data.packagingFormats).toEqual(['1kg', '5kg', 'carton 10kg']);
+      expect(data.temperatureRequirements).toBe('Cool 4-8°C');
+      expect(data.grossWeight).toBe(1.05);
+      expect(data.netWeight).toBe(1.0);
+      expect(data.palletization).toBe('120 cartons / palette EUR-EPAL');
+    });
+
+    it('FP-8 — un patch logistique sur un produit PUBLISHED déclenche IN_REVIEW', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({
+        id: 'mp1',
+        slug: 'mp',
+        publicationStatus: MarketplacePublicationStatus.PUBLISHED,
+      });
+      prisma.marketplaceProduct.update.mockResolvedValue({
+        id: 'mp1',
+        publicationStatus: MarketplacePublicationStatus.IN_REVIEW,
+      });
+      await service.update('mp1', { packagingFormats: ['1kg', '5kg'] });
+      const data = prisma.marketplaceProduct.update.mock.calls[0][0].data;
+      expect(data.publicationStatus).toBe(MarketplacePublicationStatus.IN_REVIEW);
+      expect(data.packagingFormats).toEqual(['1kg', '5kg']);
+    });
   });
 
   // ── Workflow ──────────────────────────────────────────────────────────────

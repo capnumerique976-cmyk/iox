@@ -71,6 +71,12 @@ interface FormState {
   storageConditions: string;
   shelfLifeInfo: string;
   allergenInfo: string;
+  // FP-8 — Logistique structurée
+  packagingFormats: string; // CSV séparé par virgules pour input simple
+  temperatureRequirements: string;
+  grossWeight: string;
+  netWeight: string;
+  palletization: string;
 }
 
 const EMPTY: FormState = {
@@ -92,6 +98,11 @@ const EMPTY: FormState = {
   storageConditions: '',
   shelfLifeInfo: '',
   allergenInfo: '',
+  packagingFormats: '',
+  temperatureRequirements: '',
+  grossWeight: '',
+  netWeight: '',
+  palletization: '',
 };
 
 function gpsToString(v: string | number | null | undefined): string {
@@ -122,7 +133,29 @@ function fromProduct(p: SellerMarketplaceProduct): FormState {
     storageConditions: p.storageConditions ?? '',
     shelfLifeInfo: p.shelfLifeInfo ?? '',
     allergenInfo: p.allergenInfo ?? '',
+    packagingFormats: (p.packagingFormats ?? []).join(', '),
+    temperatureRequirements: p.temperatureRequirements ?? '',
+    grossWeight: gpsToString(p.grossWeight),
+    netWeight: gpsToString(p.netWeight),
+    palletization: p.palletization ?? '',
   };
+}
+
+/**
+ * Découpe une saisie CSV "1kg, 5kg ,carton 10kg" en tableau propre,
+ * trim + dédoublonnage. Limites validées en aval.
+ */
+function parsePackagingFormats(csv: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of csv.split(',')) {
+    const v = raw.trim();
+    if (!v) continue;
+    if (seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
 }
 
 /**
@@ -183,6 +216,22 @@ function buildPayload(
     const n = Number.parseFloat(current.gpsLng);
     if (Number.isFinite(n)) out.gpsLng = n;
   }
+  // FP-8 — logistique structurée (diff)
+  if (current.packagingFormats !== initial.packagingFormats) {
+    out.packagingFormats = parsePackagingFormats(current.packagingFormats);
+  }
+  if (current.temperatureRequirements !== initial.temperatureRequirements)
+    setStr('temperatureRequirements', current.temperatureRequirements.trim());
+  if (current.palletization !== initial.palletization)
+    setStr('palletization', current.palletization);
+  if (current.grossWeight !== initial.grossWeight && current.grossWeight.trim() !== '') {
+    const n = Number.parseFloat(current.grossWeight);
+    if (Number.isFinite(n)) out.grossWeight = n;
+  }
+  if (current.netWeight !== initial.netWeight && current.netWeight.trim() !== '') {
+    const n = Number.parseFloat(current.netWeight);
+    if (Number.isFinite(n)) out.netWeight = n;
+  }
   return out;
 }
 
@@ -227,6 +276,25 @@ function validateClient(form: FormState): string | null {
     const lng = Number.parseFloat(lngStr);
     if (!Number.isFinite(lng) || lng < -180 || lng > 180)
       return 'La longitude doit être un nombre entre -180 et 180.';
+  }
+  // FP-8 — logistique structurée
+  const formats = parsePackagingFormats(form.packagingFormats);
+  if (formats.length > 12)
+    return 'Au plus 12 formats de conditionnement (séparés par des virgules).';
+  if (formats.some((f) => f.length > 80))
+    return 'Chaque format de conditionnement est limité à 80 caractères.';
+  if (form.temperatureRequirements.length > 100)
+    return 'La consigne de température est limitée à 100 caractères.';
+  if (form.palletization.length > 500)
+    return 'La description de palettisation est limitée à 500 caractères.';
+  for (const [label, raw] of [
+    ['Poids brut', form.grossWeight],
+    ['Poids net', form.netWeight],
+  ] as const) {
+    if (raw.trim() === '') continue;
+    const n = Number.parseFloat(raw);
+    if (!Number.isFinite(n) || n < 0 || n > 100000)
+      return `${label} doit être un nombre entre 0 et 100000 kg.`;
   }
   return null;
 }
@@ -766,6 +834,70 @@ export default function SellerMarketplaceProductDetailPage() {
               />
             </Field>
           </div>
+        </Section>
+
+        <Section title="Logistique (FP-8)">
+          <Field
+            label="Conditionnements proposés"
+            hint="Liste séparée par des virgules (ex. « 1kg, 5kg, carton 10kg »). Max 12 entrées, ≤ 80 caractères chacune."
+          >
+            <input
+              type="text"
+              value={form.packagingFormats}
+              onChange={set('packagingFormats')}
+              className={inputCls}
+              data-testid="field-packagingFormats"
+            />
+          </Field>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Field label="Contraintes de température" hint="Ex. Ambient, Cool 4-8°C, Frozen ≤ -18°C">
+              <input
+                type="text"
+                value={form.temperatureRequirements}
+                onChange={set('temperatureRequirements')}
+                maxLength={100}
+                className={inputCls}
+                data-testid="field-temperatureRequirements"
+              />
+            </Field>
+            <Field label="Poids brut (kg)" hint="≥ 0, ≤ 100000">
+              <input
+                type="number"
+                step="0.001"
+                min={0}
+                max={100000}
+                value={form.grossWeight}
+                onChange={set('grossWeight')}
+                className={inputCls}
+                data-testid="field-grossWeight"
+              />
+            </Field>
+            <Field label="Poids net (kg)" hint="≥ 0, ≤ 100000">
+              <input
+                type="number"
+                step="0.001"
+                min={0}
+                max={100000}
+                value={form.netWeight}
+                onChange={set('netWeight')}
+                className={inputCls}
+                data-testid="field-netWeight"
+              />
+            </Field>
+          </div>
+          <Field
+            label="Palettisation"
+            hint="Description libre — palette + nombre de cartons / palette (ex. « 120 cartons / palette EUR-EPAL »)."
+          >
+            <textarea
+              value={form.palletization}
+              onChange={set('palletization')}
+              rows={2}
+              maxLength={500}
+              className={textareaCls}
+              data-testid="field-palletization"
+            />
+          </Field>
         </Section>
 
         <Section title="Lecture seule (édition réservée à d’autres écrans)">

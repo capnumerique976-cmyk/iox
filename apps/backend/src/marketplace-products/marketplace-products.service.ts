@@ -211,6 +211,12 @@ export class MarketplaceProductsService {
         storageConditions: dto.storageConditions,
         shelfLifeInfo: dto.shelfLifeInfo,
         allergenInfo: dto.allergenInfo,
+        // FP-8 — logistique structurée
+        ...(dto.packagingFormats !== undefined ? { packagingFormats: dto.packagingFormats } : {}),
+        temperatureRequirements: dto.temperatureRequirements,
+        grossWeight: dto.grossWeight,
+        netWeight: dto.netWeight,
+        palletization: dto.palletization,
         nutritionInfoJson: dto.nutritionInfoJson as Prisma.InputJsonValue,
         defaultUnit: dto.defaultUnit,
         minimumOrderQuantity: dto.minimumOrderQuantity,
@@ -279,6 +285,12 @@ export class MarketplaceProductsService {
       'shelfLifeInfo',
       'allergenInfo',
       'nutritionInfoJson',
+      // FP-8 — logistique structurée fait partie de la vitrine publique
+      'packagingFormats',
+      'temperatureRequirements',
+      'grossWeight',
+      'netWeight',
+      'palletization',
     ];
     const touchesVitrine = vitrine.some((f) => dto[f] !== undefined);
     const requiresRecheck =
