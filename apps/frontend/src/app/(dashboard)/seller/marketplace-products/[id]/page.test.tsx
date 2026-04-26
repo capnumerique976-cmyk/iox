@@ -9,12 +9,21 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'mp1' }),
+  useRouter: () => ({ push: pushMock }),
+}));
+
+const confirmMock = vi.fn();
+vi.mock('@/components/ui/confirm-dialog', () => ({
+  useConfirm: () => confirmMock,
 }));
 
 const getByIdMock = vi.fn();
 const updateMock = vi.fn();
+const submitWorkflowMock = vi.fn();
+const archiveMock = vi.fn();
 vi.mock('@/lib/marketplace-products', async () => {
   const actual = await vi.importActual<typeof import('@/lib/marketplace-products')>(
     '@/lib/marketplace-products',
@@ -25,6 +34,8 @@ vi.mock('@/lib/marketplace-products', async () => {
       ...actual.marketplaceProductsApi,
       getById: (...args: unknown[]) => getByIdMock(...args),
       update: (...args: unknown[]) => updateMock(...args),
+      submit: (...args: unknown[]) => submitWorkflowMock(...args),
+      archive: (...args: unknown[]) => archiveMock(...args),
     },
   };
 });
@@ -73,6 +84,10 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
   beforeEach(() => {
     getByIdMock.mockReset();
     updateMock.mockReset();
+    submitWorkflowMock.mockReset();
+    archiveMock.mockReset();
+    pushMock.mockReset();
+    confirmMock.mockReset();
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -192,6 +207,113 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
     render(<SellerMarketplaceProductDetailPage />);
     expect(await screen.findByText('Accès refusé')).toBeInTheDocument();
     expect(screen.getByTestId('hint-403')).toBeInTheDocument();
+  });
+
+  // ── MP-EDIT-PRODUCT.2 — workflow submit/archive ────────────────────────
+
+  it('MP-EDIT-PRODUCT.2 — action Soumettre visible si DRAFT, masquée si IN_REVIEW', async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct, publicationStatus: 'DRAFT' as const });
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() => expect(screen.getByTestId('action-submit')).toBeInTheDocument());
+    expect(screen.getByTestId('action-archive')).toBeInTheDocument();
+  });
+
+  it('MP-EDIT-PRODUCT.2 — action Soumettre masquée si IN_REVIEW', async () => {
+    getByIdMock.mockResolvedValue({
+      ...baseProduct,
+      publicationStatus: 'IN_REVIEW' as const,
+    });
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() => expect(screen.getByTestId('action-archive')).toBeInTheDocument());
+    expect(screen.queryByTestId('action-submit')).toBeNull();
+  });
+
+  it('MP-EDIT-PRODUCT.2 — action Archiver masquée si déjà ARCHIVED', async () => {
+    getByIdMock.mockResolvedValue({
+      ...baseProduct,
+      publicationStatus: 'ARCHIVED' as const,
+    });
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() => expect(screen.getByTestId('status-badge')).toBeInTheDocument());
+    expect(screen.queryByTestId('action-archive')).toBeNull();
+    expect(screen.queryByTestId('action-submit')).toBeNull();
+  });
+
+  it('MP-EDIT-PRODUCT.2 — Soumettre appelle POST /:id/submit après confirmation', async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct, publicationStatus: 'DRAFT' as const });
+    submitWorkflowMock.mockResolvedValue({
+      ...baseProduct,
+      publicationStatus: 'IN_REVIEW' as const,
+    });
+    confirmMock.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() => expect(screen.getByTestId('action-submit')).toBeInTheDocument());
+
+    await user.click(screen.getByTestId('action-submit'));
+
+    await waitFor(() => expect(submitWorkflowMock).toHaveBeenCalledTimes(1));
+    expect(confirmMock).toHaveBeenCalledTimes(1);
+    expect(confirmMock.mock.calls[0][0]).toMatchObject({ tone: 'warning' });
+    const [idArg, token] = submitWorkflowMock.mock.calls[0];
+    expect(idArg).toBe('mp1');
+    expect(token).toBe('tok');
+    await waitFor(() =>
+      expect(screen.getByTestId('status-badge')).toHaveTextContent('IN_REVIEW'),
+    );
+    expect(screen.getByTestId('workflow-success')).toHaveTextContent(/soumis/i);
+  });
+
+  it("MP-EDIT-PRODUCT.2 — Soumettre n'appelle rien si confirm annulé", async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct, publicationStatus: 'DRAFT' as const });
+    confirmMock.mockResolvedValue(false);
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() => expect(screen.getByTestId('action-submit')).toBeInTheDocument());
+
+    await user.click(screen.getByTestId('action-submit'));
+
+    expect(confirmMock).toHaveBeenCalledTimes(1);
+    expect(submitWorkflowMock).not.toHaveBeenCalled();
+  });
+
+  it('MP-EDIT-PRODUCT.2 — Archiver appelle POST /:id/archive (tone=danger) puis redirige', async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct });
+    archiveMock.mockResolvedValue({
+      ...baseProduct,
+      publicationStatus: 'ARCHIVED' as const,
+    });
+    confirmMock.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() => expect(screen.getByTestId('action-archive')).toBeInTheDocument());
+
+    await user.click(screen.getByTestId('action-archive'));
+
+    await waitFor(() => expect(archiveMock).toHaveBeenCalledTimes(1));
+    expect(confirmMock.mock.calls[0][0]).toMatchObject({ tone: 'danger' });
+    expect(archiveMock.mock.calls[0]).toEqual(['mp1', 'tok']);
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith('/seller/marketplace-products'),
+    );
+  });
+
+  it('MP-EDIT-PRODUCT.2 — relaie un 409 backend (transition interdite) dans workflow-error', async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct, publicationStatus: 'DRAFT' as const });
+    const { ApiError } = await import('@/lib/api');
+    submitWorkflowMock.mockRejectedValue(
+      new ApiError('CONFLICT', 'Transition interdite', undefined, 'rid', 409),
+    );
+    confirmMock.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() => expect(screen.getByTestId('action-submit')).toBeInTheDocument());
+
+    await user.click(screen.getByTestId('action-submit'));
+
+    expect(await screen.findByTestId('workflow-error')).toHaveTextContent(
+      /transition interdite/i,
+    );
   });
 
   it('relaie l’erreur backend 400 (ex. cohérence GPS) dans submit-error', async () => {

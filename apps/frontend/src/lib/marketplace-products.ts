@@ -129,6 +129,30 @@ export interface UpdateMarketplaceProductInput {
   allergenInfo?: string;
 }
 
+/**
+ * MP-EDIT-PRODUCT.2 — Champs autorisés à la création d'un brouillon seller.
+ *
+ * Tous les champs `UpdateMarketplaceProductInput` sont permis (édition à
+ * la création) PLUS les 2 champs requis backend `productId` et
+ * `sellerProfileId` qui ne sont autorisés qu'à la création (immuables après).
+ *
+ * Champs interdits — non typés ici, donc rejetés par tsc :
+ *   - `categoryId` (taxonomie staff)
+ *   - `mainMediaId` (workflow upload séparé)
+ *   - `nutritionInfoJson` (lot dédié)
+ *   - `harvestMonths`, `availabilityMonths`, `isYearRound`
+ *     (édition via /seasonality)
+ *   - `defaultUnit`, `minimumOrderQuantity` (FP-5)
+ *   - workflow / scoring (gérés serveur)
+ */
+export interface CreateMarketplaceProductInput extends UpdateMarketplaceProductInput {
+  productId: string;
+  sellerProfileId: string;
+  commercialName: string;
+  slug: string;
+  originCountry: string;
+}
+
 function qs(params: Record<string, string | number | boolean | undefined>): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -168,6 +192,28 @@ export const marketplaceProductsApi = {
    */
   updateSeasonality: (id: string, dto: UpdateSeasonalityInput, token: string) =>
     api.patch<SellerMarketplaceProduct>(`/marketplace/products/${id}`, dto, token),
+
+  /**
+   * MP-EDIT-PRODUCT.2 — Création d'un brouillon marketplace par le seller.
+   * Le backend impose `publicationStatus=DRAFT` et `exportReadinessStatus=
+   * PENDING_QUALITY_REVIEW` indépendamment du payload.
+   */
+  create: (dto: CreateMarketplaceProductInput, token: string) =>
+    api.post<SellerMarketplaceProduct>('/marketplace/products', dto, token),
+
+  /**
+   * MP-EDIT-PRODUCT.2 — Soumettre à la revue qualité.
+   * Allowed transitions backend : DRAFT|REJECTED → IN_REVIEW.
+   */
+  submit: (id: string, token: string) =>
+    api.post<SellerMarketplaceProduct>(`/marketplace/products/${id}/submit`, {}, token),
+
+  /**
+   * MP-EDIT-PRODUCT.2 — Archiver un produit (action seller destructive).
+   * Le backend autorise depuis n'importe quel statut sauf ARCHIVED.
+   */
+  archive: (id: string, token: string) =>
+    api.post<SellerMarketplaceProduct>(`/marketplace/products/${id}/archive`, {}, token),
 
   /**
    * Mise à jour ciblée des champs textuels sûrs (MP-EDIT-PRODUCT.1).
