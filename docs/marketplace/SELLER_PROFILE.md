@@ -8,11 +8,12 @@
 
 | Lot   | Sujet                                       | Statut       |
 | ----- | ------------------------------------------- | ------------ |
-| FP-1  | Saisonnalité produit                        | ✅ Livré      |
+| FP-1  | Saisonnalité produit (vitrine + DTO backend)| ✅ Livré      |
 | FP-2  | Certifications structurées                  | ✅ Livré      |
 | FP-3  | Auto-édition profil seller (PATCH /me)      | ✅ Livré      |
-| FP-4  | Volumes / capacités / unités typées         | ⏳ À venir    |
-| FP-5  | Histoire producteur + médias enrichis       | ⏳ À venir    |
+| FP-4  | Saisonnalité — saisie seller (UI éditable)  | ✅ Livré      |
+| FP-5  | Volumes / capacités / unités typées         | ⏳ À venir    |
+| FP-6  | Histoire producteur + médias enrichis       | ⏳ À venir    |
 
 ## FP-2 — Certifications structurées
 
