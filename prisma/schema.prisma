@@ -992,6 +992,14 @@ model MarketplaceProduct {
   allergenInfo             String?                      @map("allergen_info")
   nutritionInfoJson        Json?                        @map("nutrition_info_json")
 
+  // FP-8 — Logistique structurée (vitrine + future intégration export).
+  // Toutes optionnelles, additives, sans index.
+  packagingFormats         String[]                     @default([]) @map("packaging_formats")
+  temperatureRequirements  String?                      @map("temperature_requirements")
+  grossWeight              Decimal?                     @map("gross_weight") @db.Decimal(10, 3)
+  netWeight                Decimal?                     @map("net_weight") @db.Decimal(10, 3)
+  palletization            String?                      @map("palletization")
+
   defaultUnit              String?                      @map("default_unit")
   minimumOrderQuantity     Decimal?                     @map("minimum_order_quantity") @db.Decimal(12, 3)
 
