@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertCircle, Calendar, Loader2 } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Award, Calendar, Loader2 } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
 import {
@@ -126,13 +126,22 @@ export default function SellerMarketplaceProductsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <Link
-                      href={`/seller/marketplace-products/${p.id}/seasonality`}
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                      data-testid={`seller-mp-seasonality-${p.id}`}
-                    >
-                      <Calendar className="h-3 w-3" /> Saisonnalité
-                    </Link>
+                    <div className="inline-flex items-center gap-1">
+                      <Link
+                        href={`/seller/marketplace-products/${p.id}/seasonality`}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                        data-testid={`seller-mp-seasonality-${p.id}`}
+                      >
+                        <Calendar className="h-3 w-3" /> Saisonnalité
+                      </Link>
+                      <Link
+                        href={`/seller/marketplace-products/${p.id}/certifications`}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                        data-testid={`seller-mp-certifications-${p.id}`}
+                      >
+                        <Award className="h-3 w-3" /> Certifications
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
