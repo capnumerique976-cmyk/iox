@@ -212,3 +212,30 @@ export interface SellerPublic {
   // FP-2 — certifications publiques du vendeur (scope SELLER_PROFILE).
   certifications: Certification[];
 }
+
+// MP-S-INDEX — Item de l'annuaire public seller
+// (`GET /marketplace/catalog/sellers`). Strictement projeté par le backend ;
+// aucun champ privé (`legalName`, `companyId`, `salesEmail`, `salesPhone`,
+// `rejectionReason`, `suspendedAt`, `createdById`, `updatedById`,
+// `approvedAt`) ne sort.
+export interface PublicSeller {
+  id: string;
+  slug: string;
+  publicDisplayName: string;
+  country: string;
+  region: string | null;
+  cityOrZone: string | null;
+  descriptionShort: string | null;
+  logoMediaId: string | null;
+  bannerMediaId: string | null;
+  averageLeadTimeDays: number | null;
+  destinationsServed: unknown;
+  supportedIncoterms: unknown;
+  isFeatured: boolean;
+  publishedProductsCount: number;
+}
+
+export interface SellersResult {
+  data: PublicSeller[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}

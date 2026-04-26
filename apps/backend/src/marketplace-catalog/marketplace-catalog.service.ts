@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CatalogQueryDto, CatalogSort } from './dto/catalog-query.dto';
+import { SellersQueryDto, SellersSort } from './dto/sellers-query.dto';
 import {
   MarketplaceDocumentVisibility,
   MarketplacePublicationStatus,
@@ -373,6 +374,130 @@ export class MarketplaceCatalogService {
       })),
       certifications,
     };
+  }
+
+  // ─── Annuaire seller public (MP-S-INDEX) ──────────────────────────────────
+
+  /**
+   * MP-S-INDEX — Liste publique paginée des vendeurs `APPROVED`.
+   *
+   * Règles de visibilité publique :
+   *  - `status = APPROVED` (toujours, jamais surchargeable par query).
+   *  - Aucun champ privé exposé : `select` Prisma whitelist stricte. Les
+   *    champs `legalName`, `companyId`, `salesEmail`, `salesPhone`,
+   *    `rejectionReason`, `suspendedAt`, `createdById`, `updatedById` ne
+   *    sont JAMAIS sélectionnés (testé explicitement dans le spec).
+   *  - Compteur `publishedProductsCount` = nombre de
+   *    `MarketplaceProduct.publicationStatus = PUBLISHED` du vendeur,
+   *    via `_count` Prisma.
+   *
+   * Filtres :
+   *  - `q` → OR insensitive sur `publicDisplayName` + `cityOrZone`.
+   *  - `country` → match exact upper-case (codes ISO).
+   *  - `region` → contains insensitive.
+   *  - `featured=true` → restreint à `isFeatured=true`.
+   *
+   * Tri :
+   *  - `featured` (default) → featured en tête puis `approvedAt` desc.
+   *  - `recent` → `approvedAt` desc.
+   *  - `name_asc` → `publicDisplayName` asc.
+   */
+  async listSellers(query: SellersQueryDto) {
+    const page = Math.max(1, Number(query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)));
+    const skip = (page - 1) * limit;
+
+    const where = this.buildSellersWhere(query);
+    const orderBy = this.buildSellersOrderBy(query.sort);
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.sellerProfile.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          slug: true,
+          publicDisplayName: true,
+          country: true,
+          region: true,
+          cityOrZone: true,
+          descriptionShort: true,
+          logoMediaId: true,
+          bannerMediaId: true,
+          averageLeadTimeDays: true,
+          destinationsServed: true,
+          supportedIncoterms: true,
+          isFeatured: true,
+          _count: {
+            select: {
+              marketplaceProducts: {
+                where: { publicationStatus: MarketplacePublicationStatus.PUBLISHED },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.sellerProfile.count({ where }),
+    ]);
+
+    const data = rows.map((s) => ({
+      id: s.id,
+      slug: s.slug,
+      publicDisplayName: s.publicDisplayName,
+      country: s.country,
+      region: s.region,
+      cityOrZone: s.cityOrZone,
+      descriptionShort: s.descriptionShort,
+      logoMediaId: s.logoMediaId,
+      bannerMediaId: s.bannerMediaId,
+      averageLeadTimeDays: s.averageLeadTimeDays,
+      destinationsServed: s.destinationsServed,
+      supportedIncoterms: s.supportedIncoterms,
+      isFeatured: s.isFeatured,
+      publishedProductsCount: s._count?.marketplaceProducts ?? 0,
+    }));
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  private buildSellersWhere(q: SellersQueryDto): Prisma.SellerProfileWhereInput {
+    // Filtre dur — non surchargeable par la query, garantit l'invariant
+    // "aucun seller non APPROVED dans la projection publique".
+    const where: Prisma.SellerProfileWhereInput = {
+      status: SellerProfileStatus.APPROVED,
+    };
+
+    if (q.country) where.country = q.country.toUpperCase();
+    if (q.region) where.region = { contains: q.region, mode: 'insensitive' };
+    if (q.featured === 'true') where.isFeatured = true;
+
+    if (q.q) {
+      where.OR = [
+        { publicDisplayName: { contains: q.q, mode: 'insensitive' } },
+        { cityOrZone: { contains: q.q, mode: 'insensitive' } },
+      ];
+    }
+
+    return where;
+  }
+
+  private buildSellersOrderBy(
+    sort?: SellersSort,
+  ): Prisma.SellerProfileOrderByWithRelationInput[] {
+    switch (sort) {
+      case SellersSort.RECENT:
+        return [{ approvedAt: 'desc' }];
+      case SellersSort.NAME_ASC:
+        return [{ publicDisplayName: 'asc' }];
+      case SellersSort.FEATURED:
+      default:
+        return [{ isFeatured: 'desc' }, { approvedAt: 'desc' }];
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

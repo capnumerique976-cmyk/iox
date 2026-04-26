@@ -1,4 +1,9 @@
-import type { CatalogResponse, ProductDetail, SellerPublic } from './types';
+import type {
+  CatalogResponse,
+  ProductDetail,
+  SellerPublic,
+  SellersResult,
+} from './types';
 
 /**
  * Résolution du base URL du backend.
@@ -54,4 +59,10 @@ export function fetchProductBySlug(slug: string): Promise<ProductDetail> {
 
 export function fetchSellerBySlug(slug: string): Promise<SellerPublic> {
   return publicGet<SellerPublic>(`/marketplace/catalog/sellers/${encodeURIComponent(slug)}`);
+}
+
+/** MP-S-INDEX — annuaire public paginé des vendeurs APPROVED. */
+export function fetchSellers(search: URLSearchParams): Promise<SellersResult> {
+  const qs = search.toString();
+  return publicGet<SellersResult>(`/marketplace/catalog/sellers${qs ? `?${qs}` : ''}`);
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Heart, LogIn } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Heart, LogIn, Users } from 'lucide-react';
 import { useLang } from '@/lib/i18n';
 import { LangSwitcher } from './LangSwitcher';
 import { Logo } from '@/components/brand/logo';
@@ -12,6 +13,9 @@ import { Logo } from '@/components/brand/logo';
  */
 export function PublicMarketplaceHeader() {
   const { t } = useLang();
+  const pathname = usePathname();
+  const isSellers = pathname?.startsWith('/marketplace/sellers') ?? false;
+  const isCatalog = pathname === '/marketplace';
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0A0E1A]/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
@@ -29,9 +33,23 @@ export function PublicMarketplaceHeader() {
         <nav className="flex items-center gap-1 text-sm sm:gap-2">
           <Link
             href="/marketplace"
-            className="hidden rounded-lg px-3 py-1.5 font-medium text-white/70 transition-colors hover:bg-white/5 hover:text-white sm:inline-block"
+            aria-current={isCatalog ? 'page' : undefined}
+            className={`hidden rounded-lg px-3 py-1.5 font-medium transition-colors hover:bg-white/5 hover:text-white sm:inline-block ${
+              isCatalog ? 'bg-white/10 text-white' : 'text-white/70'
+            }`}
           >
             {t('nav.catalog')}
+          </Link>
+          <Link
+            href="/marketplace/sellers"
+            aria-current={isSellers ? 'page' : undefined}
+            data-testid="nav-sellers"
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors hover:bg-white/5 hover:text-white ${
+              isSellers ? 'bg-white/10 text-white' : 'text-white/70'
+            }`}
+          >
+            <Users className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">{t('nav.sellers', 'Producteurs')}</span>
           </Link>
           <Link
             href="/marketplace/favorites"

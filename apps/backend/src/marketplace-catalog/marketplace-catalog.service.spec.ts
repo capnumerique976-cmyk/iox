@@ -25,7 +25,7 @@ describe('MarketplaceCatalogService', () => {
       groupBy: jest.Mock;
     };
     marketplaceProduct: { findFirst: jest.Mock; findMany: jest.Mock };
-    sellerProfile: { findFirst: jest.Mock };
+    sellerProfile: { findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
     mediaAsset: { findMany: jest.Mock };
     marketplaceDocument: { findMany: jest.Mock };
     certification: { findMany: jest.Mock };
@@ -40,7 +40,7 @@ describe('MarketplaceCatalogService', () => {
         groupBy: jest.fn().mockResolvedValue([]),
       },
       marketplaceProduct: { findFirst: jest.fn(), findMany: jest.fn() },
-      sellerProfile: { findFirst: jest.fn() },
+      sellerProfile: { findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn() },
       mediaAsset: { findMany: jest.fn() },
       marketplaceDocument: { findMany: jest.fn().mockResolvedValue([]) },
       certification: { findMany: jest.fn().mockResolvedValue([]) },
@@ -460,6 +460,108 @@ describe('MarketplaceCatalogService', () => {
       expect(where.offers.some.visibilityScope).toEqual({
         not: MarketplaceVisibilityScope.PRIVATE,
       });
+    });
+  });
+
+  // ── listSellers (MP-S-INDEX) ─────────────────────────────────────────────
+
+  describe('listSellers (MP-S-INDEX)', () => {
+    /** Construit un seller mocké minimaliste (champs whitelist projection). */
+    function fakeSeller(overrides: Partial<Record<string, unknown>> = {}) {
+      return {
+        id: overrides.id ?? 's1',
+        slug: overrides.slug ?? 'seller-1',
+        publicDisplayName: overrides.publicDisplayName ?? 'Seller One',
+        country: overrides.country ?? 'YT',
+        region: overrides.region ?? null,
+        cityOrZone: overrides.cityOrZone ?? null,
+        descriptionShort: overrides.descriptionShort ?? null,
+        logoMediaId: overrides.logoMediaId ?? null,
+        bannerMediaId: overrides.bannerMediaId ?? null,
+        averageLeadTimeDays: overrides.averageLeadTimeDays ?? null,
+        destinationsServed: overrides.destinationsServed ?? null,
+        supportedIncoterms: overrides.supportedIncoterms ?? null,
+        isFeatured: overrides.isFeatured ?? false,
+        _count: overrides._count ?? { marketplaceProducts: 0 },
+      };
+    }
+
+    it('force status=APPROVED dur dans le where (filtre non surchargeable)', async () => {
+      prisma.sellerProfile.findMany.mockResolvedValue([]);
+      prisma.sellerProfile.count.mockResolvedValue(0);
+
+      // Même si le caller passe un status quelconque (impossible via DTO mais
+      // on garde l'invariant), on reste sur APPROVED.
+      await service.listSellers({});
+
+      const where = prisma.sellerProfile.findMany.mock.calls[0][0].where;
+      expect(where.status).toBe(SellerProfileStatus.APPROVED);
+    });
+
+    it('filtre country et l\'upper-case', async () => {
+      prisma.sellerProfile.findMany.mockResolvedValue([fakeSeller({ country: 'YT' })]);
+      prisma.sellerProfile.count.mockResolvedValue(1);
+
+      await service.listSellers({ country: 'yt' });
+
+      const where = prisma.sellerProfile.findMany.mock.calls[0][0].where;
+      expect(where.country).toBe('YT');
+    });
+
+    it('featured=true active le filtre isFeatured=true', async () => {
+      prisma.sellerProfile.findMany.mockResolvedValue([]);
+      prisma.sellerProfile.count.mockResolvedValue(0);
+
+      await service.listSellers({ featured: 'true' });
+
+      const where = prisma.sellerProfile.findMany.mock.calls[0][0].where;
+      expect(where.isFeatured).toBe(true);
+    });
+
+    it('sort featured (default) place isFeatured desc puis approvedAt desc', async () => {
+      prisma.sellerProfile.findMany.mockResolvedValue([]);
+      prisma.sellerProfile.count.mockResolvedValue(0);
+
+      await service.listSellers({});
+
+      const orderBy = prisma.sellerProfile.findMany.mock.calls[0][0].orderBy;
+      expect(orderBy).toEqual([{ isFeatured: 'desc' }, { approvedAt: 'desc' }]);
+    });
+
+    it('projection ne contient AUCUN champ privé (legalName, salesEmail, companyId, rejectionReason)', async () => {
+      prisma.sellerProfile.findMany.mockResolvedValue([fakeSeller()]);
+      prisma.sellerProfile.count.mockResolvedValue(1);
+
+      const res = await service.listSellers({});
+
+      // Vérifie que le `select` Prisma n'a PAS demandé ces champs.
+      const select = prisma.sellerProfile.findMany.mock.calls[0][0].select;
+      expect(select).not.toHaveProperty('legalName');
+      expect(select).not.toHaveProperty('companyId');
+      expect(select).not.toHaveProperty('salesEmail');
+      expect(select).not.toHaveProperty('salesPhone');
+      expect(select).not.toHaveProperty('rejectionReason');
+      expect(select).not.toHaveProperty('suspendedAt');
+      expect(select).not.toHaveProperty('createdById');
+      expect(select).not.toHaveProperty('updatedById');
+      expect(select).not.toHaveProperty('approvedAt');
+      expect(select).not.toHaveProperty('story');
+      expect(select).not.toHaveProperty('descriptionLong');
+      expect(select).not.toHaveProperty('languages');
+      expect(select).not.toHaveProperty('website');
+
+      // Et que la projection (data[0]) n'expose pas ces champs non plus.
+      const item = res.data[0];
+      expect(item).not.toHaveProperty('legalName');
+      expect(item).not.toHaveProperty('companyId');
+      expect(item).not.toHaveProperty('salesEmail');
+      expect(item).not.toHaveProperty('salesPhone');
+      expect(item).not.toHaveProperty('rejectionReason');
+      expect(item).not.toHaveProperty('suspendedAt');
+      expect(item).not.toHaveProperty('createdById');
+      expect(item).not.toHaveProperty('updatedById');
+      expect(item).not.toHaveProperty('approvedAt');
+      expect(item).toHaveProperty('publishedProductsCount');
     });
   });
 
