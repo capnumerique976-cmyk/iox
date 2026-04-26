@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertCircle, Award, Calendar, Loader2, Pencil } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Award, Calendar, Loader2, Pencil, Plus } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
 import {
@@ -62,12 +62,21 @@ export default function SellerMarketplaceProductsPage() {
         title="Mes produits marketplace"
         subtitle="Édition saisonnalité et contenu vitrine"
         actions={
-          <Link
-            href="/seller/dashboard"
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowLeft className="h-3 w-3" /> Cockpit vendeur
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/seller/marketplace-products/new"
+              data-testid="link-new-product"
+              className="inline-flex items-center gap-1 rounded-md bg-premium-accent px-2.5 py-1.5 text-xs font-semibold text-white shadow-premium-sm hover:bg-premium-primary"
+            >
+              <Plus className="h-3 w-3" /> Nouveau produit
+            </Link>
+            <Link
+              href="/seller/dashboard"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-3 w-3" /> Cockpit vendeur
+            </Link>
+          </div>
         }
       />
 
