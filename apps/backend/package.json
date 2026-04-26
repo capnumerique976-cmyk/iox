@@ -10,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "seed:demo": "cd ../.. && tsx prisma/seed-demo.ts"
   },
   "dependencies": {
     "@iox/shared": "workspace:*",
