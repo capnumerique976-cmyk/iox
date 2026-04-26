@@ -339,6 +339,179 @@ for path in /referentiel /production /marketplace-hub /distribution; do
   check_html "$LOT7_MODE" "$path"
 done
 
+# ── 8. Lots récents (FP-3, FP-2.1, FP-3.1, FP-6) ───────────
+# Ces routes sont récentes (avril 2026). On les teste en mode "expect"
+# avec une whitelist de codes attendus (CSV), pour différencier :
+#   - 200 = route présente et fonctionnelle
+#   - 404 "Cannot GET" = ROUTE/MODULE ABSENT côté backend déployé
+#     → drift de déploiement (alerte explicite, pas un simple skip)
+#   - 401/403 = route présente mais accès refusé (acteur non autorisé)
+# Les checks de SCHÉMA (FP-6) vérifient en plus que les nouveaux
+# champs (originLocality, altitudeMeters, gpsLat, gpsLng) sont bien
+# projetés par le backend public — un backend old-build laisserait
+# passer les routes mais sans les nouveaux champs.
+echo
+echo "${CYAN}— Lots récents (FP-3, FP-2.1, FP-3.1, FP-6)${RESET}"
+
+LAST_BODY=""
+LAST_CODE=""
+
+# http_expect <label> <method> <path> <allowed_csv> [<body>] [auth=yes|no]
+http_expect() {
+  local label="$1" method="$2" path="$3" allowed_csv="$4" body="${5:-}" auth="${6:-yes}"
+  total=$((total+1))
+  local tmp; tmp=$(mktemp)
+  local code
+  if [[ "$auth" == "yes" && -n "$body" ]]; then
+    code=$(curl -sS -k --max-time "$TIMEOUT" -X "$method" "$BASE$path" \
+      -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+      -d "$body" -o "$tmp" -w '%{http_code}' 2>/dev/null || echo "000")
+  elif [[ "$auth" == "yes" ]]; then
+    code=$(curl -sS -k --max-time "$TIMEOUT" -X "$method" "$BASE$path" \
+      -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+      -o "$tmp" -w '%{http_code}' 2>/dev/null || echo "000")
+  elif [[ -n "$body" ]]; then
+    code=$(curl -sS -k --max-time "$TIMEOUT" -X "$method" "$BASE$path" \
+      -H 'Content-Type: application/json' \
+      -d "$body" -o "$tmp" -w '%{http_code}' 2>/dev/null || echo "000")
+  else
+    code=$(curl -sS -k --max-time "$TIMEOUT" -X "$method" "$BASE$path" \
+      -H 'Content-Type: application/json' \
+      -o "$tmp" -w '%{http_code}' 2>/dev/null || echo "000")
+  fi
+  LAST_BODY=$(cat "$tmp"); rm -f "$tmp"
+  LAST_CODE="$code"
+  if printf '%s' ",$allowed_csv," | grep -q ",$code,"; then
+    say_ok "$label — $method $path → $code (∈ {$allowed_csv})"
+    return 0
+  fi
+  say_fail "$label — $method $path → $code (attendu ∈ {$allowed_csv})"
+  [[ -n "$LAST_BODY" ]] && echo "    body: $(printf '%s' "$LAST_BODY" | head -c 200)"
+  return 1
+}
+
+# Détecte un drift "Cannot GET …" (= module Nest pas chargé / route inconnue)
+# vs un vrai 404 métier (ressource introuvable mais route présente).
+flag_drift_if_cannot_get() {
+  local feature="$1"
+  if [[ "$LAST_CODE" == "404" ]] && printf '%s' "$LAST_BODY" | grep -qi 'Cannot GET'; then
+    say_warn "⚠ DRIFT DÉPLOIEMENT : route $feature absente du backend déployé (Cannot GET) — module non chargé"
+  fi
+}
+
+DUMMY_UUID="00000000-0000-0000-0000-000000000000"
+
+# FP-3 — seller-profile self
+# 200 si l'acteur est seller, 404 si non-seller (pas de profil rattaché),
+# 401 si auth muddled. Tout autre code = ✗.
+http_expect "FP-3 GET seller-profiles/me" GET \
+  "/api/v1/marketplace/seller-profiles/me" "200,401,404"
+flag_drift_if_cannot_get "/marketplace/seller-profiles/me"
+
+http_expect "FP-3 PATCH seller-profiles/me (no-op)" PATCH \
+  "/api/v1/marketplace/seller-profiles/me" "200,400,401,404" "{}"
+flag_drift_if_cannot_get "/marketplace/seller-profiles/me (PATCH)"
+
+# FP-2 (sous-jacent à FP-2.1) — listing certifications
+# 200 (liste possiblement vide), 400 (validation params), 401/403 (auth/scope).
+# 404 "Cannot GET" → module FP-2 absent.
+http_expect "FP-2 GET certifications" GET \
+  "/api/v1/marketplace/certifications?relatedType=SELLER_PROFILE&relatedId=$DUMMY_UUID" \
+  "200,400,401,403,404"
+flag_drift_if_cannot_get "/marketplace/certifications"
+
+# FP-4 / FP-6 — listing produits seller (auth) + vérif schéma FP-6
+http_expect "FP-4 GET marketplace/products (seller scope)" GET \
+  "/api/v1/marketplace/products?limit=5" "200,401,403"
+if [[ "$LAST_CODE" == "200" ]]; then
+  total=$((total+1))
+  if printf '%s' "$LAST_BODY" | jq -e '
+      (.data // []) | type=="array" and
+      (length == 0 or
+       (.[0] | has("originLocality") and has("altitudeMeters")
+                and has("gpsLat") and has("gpsLng")))
+    ' >/dev/null 2>&1; then
+    say_ok "FP-6 schéma /marketplace/products : 4 champs origine fine projetés"
+  else
+    say_fail "FP-6 schéma /marketplace/products : champs originLocality/altitudeMeters/gpsLat/gpsLng absents → backend pas à jour FP-6"
+    echo "    extrait: $(printf '%s' "$LAST_BODY" | jq -c '(.data//[])[0] // {}' 2>/dev/null | head -c 300)"
+  fi
+fi
+
+# Catalog public — récupère un slug pour le check FP-6 public detail
+http_expect "catalog public" GET "/api/v1/marketplace/catalog?limit=5" "200" "" "no"
+CATALOG_SLUG=""
+CATALOG_TOTAL=""
+if [[ "$LAST_CODE" == "200" ]]; then
+  CATALOG_SLUG=$(printf '%s' "$LAST_BODY" | jq -r '(.data // [])[0].productSlug // empty' 2>/dev/null || true)
+  CATALOG_TOTAL=$(printf '%s' "$LAST_BODY" | jq -r '.meta.total // 0' 2>/dev/null || echo "0")
+  printf "    ${CYAN}ℹ${RESET} catalog total=%s, premier slug=%s\n" "$CATALOG_TOTAL" "${CATALOG_SLUG:-<aucun>}"
+fi
+
+# FP-6 — fiche publique, vérifie présence des 4 champs origine fine
+if [[ -n "$CATALOG_SLUG" ]]; then
+  http_expect "FP-6 catalog product detail ($CATALOG_SLUG)" GET \
+    "/api/v1/marketplace/catalog/products/$CATALOG_SLUG" "200" "" "no"
+  if [[ "$LAST_CODE" == "200" ]]; then
+    total=$((total+1))
+    if printf '%s' "$LAST_BODY" | jq -e '
+        has("originLocality") and has("altitudeMeters")
+        and has("gpsLat") and has("gpsLng")
+      ' >/dev/null 2>&1; then
+      say_ok "FP-6 schéma fiche publique : 4 champs origine fine présents"
+    else
+      say_fail "FP-6 schéma fiche publique : champs absents → backend public PAS à jour FP-6"
+      echo "    extrait: $(printf '%s' "$LAST_BODY" | jq -c '{originLocality,altitudeMeters,gpsLat,gpsLng}' 2>/dev/null || head -c 300)"
+    fi
+  fi
+else
+  say_skip "FP-6 fiche publique — aucun slug disponible (catalog vide)"
+fi
+
+# FP-3.1 — endpoint MediaAsset URL signée (présence de la route)
+# Sans token : 401 (route présente, accès refusé) ou 404 (route absente).
+http_expect "FP-3.1 GET media-assets/:id/url (sans token)" GET \
+  "/api/v1/marketplace/media-assets/$DUMMY_UUID/url" "401,403,404" "" "no"
+flag_drift_if_cannot_get "/marketplace/media-assets/:id/url"
+
+http_expect "FP-3.1 GET media-assets/:id/url (avec token)" GET \
+  "/api/v1/marketplace/media-assets/$DUMMY_UUID/url" "200,400,401,403,404"
+flag_drift_if_cannot_get "/marketplace/media-assets/:id/url (auth)"
+
+# ── 9. Non-régression frontend ─────────────────────────────
+echo
+echo "${CYAN}— Non-régression frontend${RESET}"
+
+# Header x-nextjs-cache (présence = Next.js 14 SSR/RSC actif)
+total=$((total+1))
+NEXT_CACHE=$(curl -sI -k --max-time "$TIMEOUT" "$BASE/marketplace" 2>/dev/null \
+  | grep -i '^x-nextjs-cache' | tr -d '\r' || true)
+if [[ -n "$NEXT_CACHE" ]]; then
+  say_ok "header x-nextjs-cache présent sur /marketplace : $NEXT_CACHE"
+else
+  say_warn "header x-nextjs-cache absent sur /marketplace (peut être normal selon cache CDN)"
+fi
+
+# /marketplace/sellers : MP-S-INDEX non livrée → "Page introuvable" attendu
+total=$((total+1))
+SELLERS_BODY=$(curl -sS -k --max-time "$TIMEOUT" "$BASE/marketplace/sellers" 2>/dev/null || true)
+if printf '%s' "$SELLERS_BODY" | grep -q "Page introuvable"; then
+  say_ok "/marketplace/sellers : 404 \"Page introuvable\" (MP-S-INDEX non livrée — état attendu)"
+else
+  say_warn "/marketplace/sellers : ne contient pas \"Page introuvable\" — MP-S-INDEX livrée ? (à analyser)"
+fi
+
+# BuildId frontend — drift indicateur
+total=$((total+1))
+BUILD_ID=$(curl -sS -k --max-time "$TIMEOUT" "$BASE/" 2>/dev/null \
+  | grep -oE '"buildId":"[^"]+"' | head -1 \
+  | sed 's/.*"buildId":"\([^"]*\)".*/\1/' || true)
+if [[ -n "$BUILD_ID" ]]; then
+  say_ok "frontend buildId = $BUILD_ID (à comparer à un build récent attendu)"
+else
+  say_warn "buildId frontend introuvable dans la home (response altérée par CDN/proxy ?)"
+fi
+
 # ── Résumé ──────────────────────────────────────────────────
 echo
 passed=$((total - failed - skipped))
