@@ -27,6 +27,23 @@ vi.mock('@/lib/seller-profiles', async () => {
   };
 });
 
+// FP-3.1 — mock du helper media-assets : aucun appel attendu en l'absence
+// d'un currentMediaId (logoMediaId/bannerMediaId nuls dans baseProfile).
+const uploadMediaMock = vi.fn();
+const getMediaUrlMock = vi.fn();
+vi.mock('@/lib/marketplace-media-assets', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/lib/marketplace-media-assets')
+  >('@/lib/marketplace-media-assets');
+  return {
+    ...actual,
+    marketplaceMediaAssetsApi: {
+      upload: (...args: unknown[]) => uploadMediaMock(...args),
+      getUrl: (...args: unknown[]) => getMediaUrlMock(...args),
+    },
+  };
+});
+
 // Mock du token d'auth.
 vi.mock('@/lib/auth', async () => {
   const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
@@ -78,7 +95,9 @@ describe('SellerProfileEditPage (FP-3)', () => {
     const submit = screen.getByTestId('submit-update-mine') as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
     // Bandeau APPROVED affiché
-    expect(screen.getByText(/revue qualité/i)).toBeInTheDocument();
+    // "revue qualité" apparaît dans le bandeau APPROVED ET dans le texte des
+    // uploaders (FP-3.1). On vérifie juste qu'il y en a au moins un.
+    expect(screen.getAllByText(/revue qualité/i).length).toBeGreaterThan(0);
   });
 
   it('envoie uniquement les champs modifiés et affiche un succès', async () => {
@@ -113,6 +132,15 @@ describe('SellerProfileEditPage (FP-3)', () => {
     expect(payload).toEqual({ descriptionShort: 'Nouveau pitch' });
 
     expect(await screen.findByText(/Profil mis à jour avec succès/i)).toBeInTheDocument();
+  });
+
+  it('FP-3.1 — monte les deux uploaders (logo + bannière)', async () => {
+    getMineMock.mockResolvedValue({ ...baseProfile });
+    render(<SellerProfileEditPage />);
+    expect(await screen.findByTestId('media-uploader-logo')).toBeInTheDocument();
+    expect(screen.getByTestId('media-uploader-banner')).toBeInTheDocument();
+    // Pas d'appel getUrl quand les médias sont absents.
+    expect(getMediaUrlMock).not.toHaveBeenCalled();
   });
 
   it("affiche un message d'aide si /me renvoie 404", async () => {

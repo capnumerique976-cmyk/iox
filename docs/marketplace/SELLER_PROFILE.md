@@ -12,6 +12,7 @@
 | FP-2  | Certifications structurées (backend + admin)| ✅ Livré      |
 | FP-2.1| Certifications — édition seller (UI)        | ✅ Livré      |
 | FP-3  | Auto-édition profil seller (PATCH /me)      | ✅ Livré      |
+| FP-3.1| Logo / bannière — uploader inline (seller)  | ✅ Livré      |
 | FP-4  | Saisonnalité — saisie seller (UI éditable)  | ✅ Livré      |
 | FP-5  | Volumes / capacités / unités typées         | ⏳ À venir    |
 | FP-6  | Histoire producteur + médias enrichis       | ⏳ À venir    |
@@ -335,6 +336,88 @@ deux sont scopés à des entités distinctes).
 
 - Multi-profil par user : bloqué côté `/me`. Une UI staff dédiée
   permettrait de choisir explicitement un profil (hors MVP).
-- Avatar/bannière en lecture seule sur cet écran : un sous-lot
-  `FP-3.1 inline media uploader` permettrait d'unifier l'upload depuis
-  le form sans passer par `/seller/documents`.
+- Avatar/bannière en lecture seule sur cet écran : **levé par FP-3.1**
+  (cf. section dédiée ci-dessous).
+
+## FP-3.1 — Logo / bannière : uploader inline (seller)
+
+### Périmètre
+
+Permet au seller connecté de **téléverser puis associer immédiatement**
+son logo et sa bannière depuis l'écran `/seller/profile/edit`, sans
+passer par un écran tiers. Réutilise l'endpoint existant
+`POST /marketplace/media-assets/upload` (multipart, déjà ouvert au rôle
+`MARKETPLACE_SELLER` avec ownership `SellerProfile`), puis enchaîne un
+`PATCH /me` pour pointer `logoMediaId` ou `bannerMediaId` vers le
+nouveau `MediaAsset`.
+
+Aucune migration SQL, aucun nouveau endpoint, aucun changement de DTO :
+le lot est strictement **frontend** + **doc**.
+
+### Hors scope FP-3.1 (différé)
+
+- Galerie de photos additionnelles (`MediaAssetRole.GALLERY`) : pas
+  d'UI dans ce lot, l'API existe déjà côté backend.
+- Crop / recadrage côté client (le composant pose un `aspect-ratio`
+  CSS uniquement).
+- Uploader dédié pour les `documentMediaId` des certifications (FP-2.1
+  reste en lecture seule pour la pièce jointe).
+
+### Composant `<InlineMediaUploader>`
+
+`apps/frontend/src/components/marketplace/InlineMediaUploader.tsx`
+
+Props publiques :
+
+| Prop                | Rôle                                                                     |
+| ------------------- | ------------------------------------------------------------------------ |
+| `relatedType`       | `MarketplaceRelatedEntityType` (ici `SELLER_PROFILE`).                   |
+| `relatedId`         | Id de l'entité parente (ici `profile.id`).                               |
+| `role`              | `MediaAssetRole.LOGO` ou `MediaAssetRole.BANNER`.                        |
+| `currentMediaId`    | Média actuellement associé — résolu via `getUrl` pour la preview.        |
+| `label` / `helpText`| Texte affiché au-dessus du composant.                                    |
+| `previewClassName`  | Aspect ratio Tailwind (`aspect-square`, `aspect-[3/1]`).                 |
+| `altTextFr?`        | Alt-text propagé au backend dans le multipart.                           |
+| `disabled?`         | Désactive l'input (saving parent en cours).                              |
+| `onUploaded`        | Callback `(mediaId, role) => Promise<void>` — le parent patche l'entité. |
+| `testId?`           | Override la racine `data-testid` (sinon dérivée du role).                |
+
+État interne (`Phase`) : `idle | preview | uploading | success | error`.
+Validation client miroir backend : MIME ∈ `image/jpeg|png|webp` et taille
+≤ 5 Mo (constantes exportées par `marketplace-media-assets`).
+
+`URL.createObjectURL` est utilisé pour la preview locale **avant** upload
+puis révoqué au unmount ou au passage à `success`. La preview du média
+courant utilise `getUrl` (URL signée temporaire, même pattern que les
+documents marketplace).
+
+### Helper `marketplace-media-assets.ts`
+
+`apps/frontend/src/lib/marketplace-media-assets.ts`
+
+Le wrapper partagé `api` force `Content-Type: application/json`, ce qui
+empêche le navigateur de poser le boundary `multipart/form-data`. On
+réimplémente donc `upload` via `fetch` direct (`FormData`, pas de
+`Content-Type` explicite). `getUrl` proxie l'endpoint signé.
+
+### Intégration `/seller/profile/edit`
+
+L'ancienne section "Médias (lecture seule)" est remplacée par deux
+`<InlineMediaUploader>` (LOGO + BANNER). Sur succès :
+
+1. Le composant a déjà créé le `MediaAsset` (`PENDING` modération).
+2. Le parent appelle `sellerProfilesApi.updateMine({ logoMediaId })` ou
+   `({ bannerMediaId })`, puis ré-hydrate le formulaire avec la réponse
+   (le `status` peut basculer `APPROVED → PENDING_REVIEW`).
+3. Si le PATCH échoue, l'erreur remonte côté formulaire et le composant
+   affiche un état `error` (le média reste créé mais non référencé).
+
+### Tests FP-3.1
+
+- `InlineMediaUploader.test.tsx` (7 tests) : état idle, preview signée
+  via `getUrl`, rejet MIME, rejet taille, upload OK + callback, erreur
+  serveur, annulation preview.
+- `seller/profile/edit/page.test.tsx` (+1 test) : présence des deux
+  uploaders et absence d'appel `getUrl` quand aucun média n'est associé.
+
+Frontend : 132 → 140 tests (+8 nets).
