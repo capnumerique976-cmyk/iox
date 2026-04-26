@@ -7,9 +7,12 @@ import {
   IsUUID,
   IsNumber,
   IsObject,
+  IsInt,
   MinLength,
+  MaxLength,
   Matches,
   Min,
+  Max,
   ArrayUnique,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -47,6 +50,38 @@ export class CreateMarketplaceProductDto {
   @ApiPropertyOptional() @IsOptional() @IsString() originRegion?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() varietySpecies?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() productionMethod?: string;
+
+  // ─── FP-6 — Origine fine (tous optionnels) ──────────────────────────────
+  @ApiPropertyOptional({ example: 'Combani', description: 'Localité / village / lieu-dit.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  originLocality?: string;
+
+  @ApiPropertyOptional({ example: 350, description: 'Altitude moyenne en mètres (0..9000).' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(9000)
+  altitudeMeters?: number;
+
+  @ApiPropertyOptional({ example: -12.8275, description: 'Latitude WGS84 (-90..90). Cohérence service-side avec gpsLng.' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  gpsLat?: number;
+
+  @ApiPropertyOptional({ example: 45.166, description: 'Longitude WGS84 (-180..180). Cohérence service-side avec gpsLat.' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  gpsLng?: number;
+
   @ApiPropertyOptional() @IsOptional() @IsString() descriptionShort?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() descriptionLong?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() usageTips?: string;
@@ -119,6 +154,38 @@ export class UpdateMarketplaceProductDto {
   @ApiPropertyOptional() @IsOptional() @IsString() originRegion?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() varietySpecies?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() productionMethod?: string;
+
+  // ─── FP-6 — Origine fine (tous optionnels, mêmes règles que Create) ─────
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  originLocality?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(9000)
+  altitudeMeters?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  gpsLat?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  gpsLng?: number;
+
   @ApiPropertyOptional() @IsOptional() @IsString() descriptionShort?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() descriptionLong?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() usageTips?: string;
