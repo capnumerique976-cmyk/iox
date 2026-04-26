@@ -26,6 +26,8 @@ import {
   type UpdateMySellerProfileInput,
 } from '@/lib/seller-profiles';
 import { PageHeader } from '@/components/ui/page-header';
+import { InlineMediaUploader } from '@/components/marketplace/InlineMediaUploader';
+import { MarketplaceRelatedEntityType, MediaAssetRole } from '@iox/shared';
 
 type LoadState =
   | { kind: 'loading' }
@@ -159,6 +161,7 @@ export default function SellerProfileEditPage() {
   const [initial, setInitial] = useState<FormState>(EMPTY);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [mediaSaving, setMediaSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -200,6 +203,43 @@ export default function SellerProfileEditPage() {
       setSuccess(false);
       setSubmitError(null);
     };
+
+  /**
+   * FP-3.1 — l'uploader inline a déjà créé le MediaAsset (PENDING modération).
+   * On patch le profil pour pointer vers le nouveau média puis on ré-hydrate
+   * pour rafraîchir les previews et le statut (APPROVED → PENDING_REVIEW si
+   * le backend a déclenché la repasse en revue).
+   */
+  const onUploadedMedia = useCallback(
+    async (mediaId: string, role: MediaAssetRole) => {
+      setMediaSaving(true);
+      setSubmitError(null);
+      try {
+        const token = authStorage.getAccessToken() ?? '';
+        const payload: UpdateMySellerProfileInput =
+          role === MediaAssetRole.LOGO
+            ? { logoMediaId: mediaId }
+            : { bannerMediaId: mediaId };
+        const updated = await sellerProfilesApi.updateMine(payload, token);
+        const next = fromProfile(updated);
+        setInitial(next);
+        setForm(next);
+        setState({ kind: 'ready', profile: updated });
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Échec de l’association du média.';
+        setSubmitError(message);
+        throw err;
+      } finally {
+        setMediaSaving(false);
+      }
+    },
+    [],
+  );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -480,31 +520,37 @@ export default function SellerProfileEditPage() {
           </div>
         </Section>
 
-        <Section title="Médias (lecture seule pour l’instant)">
+        <Section title="Médias vitrine (logo & bannière)">
           <p className="text-xs text-gray-500">
-            Le téléversement d’un nouveau logo ou d’une nouvelle bannière n’est pas encore
-            disponible depuis cet écran. Utilisez la section <em>Documents marketplace</em> pour
-            uploader les fichiers, puis revenez ici si nécessaire.
+            PNG, JPEG ou WebP — 5 Mo maximum. Chaque téléversement crée un MediaAsset en attente
+            de modération puis associe immédiatement le média à votre profil. Sur un profil
+            déjà <strong>approuvé</strong>, remplacer un visuel repasse la fiche en revue qualité.
           </p>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="Logo (MediaAsset ID)">
-              <input
-                type="text"
-                value={profile.logoMediaId ?? ''}
-                readOnly
-                disabled
-                className={`${inputCls} bg-gray-50 text-gray-500`}
-              />
-            </Field>
-            <Field label="Bannière (MediaAsset ID)">
-              <input
-                type="text"
-                value={profile.bannerMediaId ?? ''}
-                readOnly
-                disabled
-                className={`${inputCls} bg-gray-50 text-gray-500`}
-              />
-            </Field>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <InlineMediaUploader
+              relatedType={MarketplaceRelatedEntityType.SELLER_PROFILE}
+              relatedId={profile.id}
+              role={MediaAssetRole.LOGO}
+              currentMediaId={profile.logoMediaId}
+              label="Logo vendeur"
+              helpText="Format carré recommandé (1:1)."
+              previewClassName="aspect-square"
+              altTextFr={`Logo ${profile.publicDisplayName ?? ''}`.trim()}
+              disabled={saving || mediaSaving}
+              onUploaded={(mediaId, role) => onUploadedMedia(mediaId, role)}
+            />
+            <InlineMediaUploader
+              relatedType={MarketplaceRelatedEntityType.SELLER_PROFILE}
+              relatedId={profile.id}
+              role={MediaAssetRole.BANNER}
+              currentMediaId={profile.bannerMediaId}
+              label="Bannière vendeur"
+              helpText="Format paysage recommandé (3:1 ou 16:9)."
+              previewClassName="aspect-[3/1]"
+              altTextFr={`Bannière ${profile.publicDisplayName ?? ''}`.trim()}
+              disabled={saving || mediaSaving}
+              onUploaded={(mediaId, role) => onUploadedMedia(mediaId, role)}
+            />
           </div>
         </Section>
 
