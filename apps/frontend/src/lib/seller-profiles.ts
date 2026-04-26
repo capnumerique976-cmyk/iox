@@ -69,6 +69,57 @@ function qs(params: Record<string, string | number | boolean | undefined>): stri
   return s ? `?${s}` : '';
 }
 
+/**
+ * FP-3 — payload d'auto-édition par le seller connecté.
+ * Aligné sur `UpdateMySellerProfileDto` (backend).
+ * `slug` et `legalName` ne sont volontairement pas exposés (staff only).
+ */
+export interface UpdateMySellerProfileInput {
+  publicDisplayName?: string;
+  country?: string;
+  region?: string;
+  cityOrZone?: string;
+  descriptionShort?: string;
+  descriptionLong?: string;
+  story?: string;
+  languages?: string[];
+  salesEmail?: string;
+  salesPhone?: string;
+  website?: string;
+  supportedIncoterms?: string[];
+  destinationsServed?: string[];
+  averageLeadTimeDays?: number;
+  logoMediaId?: string;
+  bannerMediaId?: string;
+}
+
+/**
+ * FP-3 — projection "mon profil" renvoyée par GET /me.
+ * Sous-ensemble des champs `SellerProfile` utilisé par l'écran d'édition.
+ */
+export interface MySellerProfile {
+  id: string;
+  slug: string;
+  status: SellerProfileStatus;
+  publicDisplayName: string;
+  country: string;
+  region: string | null;
+  cityOrZone: string | null;
+  descriptionShort: string | null;
+  descriptionLong: string | null;
+  story: string | null;
+  languages: string[] | null;
+  salesEmail: string | null;
+  salesPhone: string | null;
+  website: string | null;
+  supportedIncoterms: string[] | null;
+  destinationsServed: string[] | null;
+  averageLeadTimeDays: number | null;
+  logoMediaId: string | null;
+  bannerMediaId: string | null;
+  rejectionReason: string | null;
+}
+
 export const sellerProfilesApi = {
   list: (token: string, params: ListSellerProfilesParams = {}) =>
     api.get<Paginated<SellerProfileRow>>(
@@ -78,6 +129,12 @@ export const sellerProfilesApi = {
 
   get: (id: string, token: string) =>
     api.get<SellerProfileDetail>(`/marketplace/seller-profiles/${id}`, token),
+
+  // FP-3 — auto-édition seller connecté.
+  getMine: (token: string) => api.get<MySellerProfile>('/marketplace/seller-profiles/me', token),
+
+  updateMine: (dto: UpdateMySellerProfileInput, token: string) =>
+    api.patch<MySellerProfile>('/marketplace/seller-profiles/me', dto, token),
 
   approve: (id: string, token: string) =>
     api.post<SellerProfileDetail>(`/marketplace/seller-profiles/${id}/approve`, {}, token),
