@@ -68,6 +68,10 @@ describe('SellerMarketplaceProductsPage (FP-4)', () => {
     expect(screen.getByText('Vanille de Mayotte')).toBeInTheDocument();
     const link = screen.getByTestId('seller-mp-seasonality-mp1') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/seller/marketplace-products/mp1/seasonality');
+    const certLink = screen.getByTestId('seller-mp-certifications-mp1') as HTMLAnchorElement;
+    expect(certLink.getAttribute('href')).toBe(
+      '/seller/marketplace-products/mp1/certifications',
+    );
   });
 
   it('affiche un état vide quand aucune ligne', async () => {

@@ -294,12 +294,21 @@ export default function SellerProfileEditPage() {
         title="Édition de mon profil vendeur"
         subtitle={`Statut actuel : ${profile.status}`}
         actions={
-          <Link
-            href="/seller/dashboard"
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowLeft className="h-3 w-3" /> Cockpit vendeur
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/seller/profile/certifications"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+              data-testid="cert-manage-link"
+            >
+              Gérer mes certifications
+            </Link>
+            <Link
+              href="/seller/dashboard"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-3 w-3" /> Cockpit vendeur
+            </Link>
+          </div>
         }
       />
 
