@@ -10,6 +10,7 @@ import { AuditService } from '../audit/audit.service';
 import {
   CreateSellerProfileDto,
   UpdateSellerProfileDto,
+  UpdateMySellerProfileDto,
   QuerySellerProfilesDto,
   RejectSellerProfileDto,
   SuspendSellerProfileDto,
@@ -95,6 +96,42 @@ export class SellerProfilesService {
     if (!profile) throw new NotFoundException('Profil vendeur introuvable');
     if (actor) await this.ownership.assertSellerProfileOwnership(actor, profile.id);
     return profile;
+  }
+
+  /**
+   * FP-3 — résolution du profil "moi" pour le seller connecté.
+   *
+   * Règles :
+   *  - 0 profil rattaché → NotFound (le compte n'a pas terminé l'onboarding) ;
+   *  - 1 profil → ok, on renvoie la fiche complète ;
+   *  - >1 profil → Conflict : `/me` est ambigu, l'UI doit retomber sur
+   *    `PATCH /:id` en choisissant explicitement le profil.
+   *
+   * Le staff (ADMIN, COORDINATOR, …) sans sellerProfileIds reçoit aussi 404 :
+   * l'endpoint est sémantiquement "mon profil vendeur", pas un accès admin.
+   */
+  async findMine(actor: RequestUser) {
+    const ids = actor.sellerProfileIds ?? [];
+    if (ids.length === 0) {
+      throw new NotFoundException('Aucun profil vendeur rattaché à votre compte');
+    }
+    if (ids.length > 1) {
+      throw new ConflictException(
+        'Plusieurs profils vendeurs sont rattachés à votre compte ; utilisez PATCH /:id explicitement',
+      );
+    }
+    return this.findById(ids[0], actor);
+  }
+
+  /**
+   * FP-3 — auto-édition du profil "moi" par le seller connecté.
+   * Délègue à `update()` qui gère ownership + audit + bascule vitrine
+   * APPROVED → PENDING_REVIEW. Le DTO restreint (UpdateMySellerProfileDto)
+   * empêche déjà la modification de `slug`, `legalName`, `status`, etc.
+   */
+  async updateMine(dto: UpdateMySellerProfileDto, actor: RequestUser) {
+    const me = await this.findMine(actor);
+    return this.update(me.id, dto, actor);
   }
 
   async findByCompanyId(companyId: string) {
