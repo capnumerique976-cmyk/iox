@@ -281,14 +281,23 @@ export default function SellerDashboardPage() {
                 </span>
               </p>
             </div>
-            {profile.value.slug && (
+            <div className="flex flex-wrap items-center gap-2">
+              {/* FP-3 — accès direct à l'auto-édition du profil. */}
               <Link
-                href={`/marketplace/sellers/${profile.value.slug}`}
-                className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                href="/seller/profile/edit"
+                className="inline-flex items-center gap-1 rounded-md border border-premium-accent/40 bg-premium-accent/5 px-2.5 py-1.5 text-xs font-medium text-premium-accent hover:bg-premium-accent/10"
               >
-                Voir fiche publique <ArrowRight className="h-3 w-3" />
+                Éditer mon profil <ArrowRight className="h-3 w-3" />
               </Link>
-            )}
+              {profile.value.slug && (
+                <Link
+                  href={`/marketplace/sellers/${profile.value.slug}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                >
+                  Voir fiche publique <ArrowRight className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
           </div>
         )}
       </section>
@@ -534,6 +543,7 @@ export default function SellerDashboardPage() {
       <section className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Raccourcis</h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+          <QuickLink href="/seller/profile/edit" label="Éditer mon profil vendeur" />
           <QuickLink href="/quote-requests" label="Demandes de devis" />
           <QuickLink href="/seller/documents" label="Documents marketplace" />
           <QuickLink href="/marketplace" label="Voir le catalogue public" />

@@ -75,6 +75,56 @@ export interface ProductOffer {
   isPrimaryOffer: boolean;
 }
 
+// FP-1 — Saisonnalité produit. Mois calendaires en code court anglais,
+// alignés sur l'enum Prisma `SeasonalityMonth`.
+export type SeasonalityMonth =
+  | 'JAN'
+  | 'FEB'
+  | 'MAR'
+  | 'APR'
+  | 'MAY'
+  | 'JUN'
+  | 'JUL'
+  | 'AUG'
+  | 'SEP'
+  | 'OCT'
+  | 'NOV'
+  | 'DEC';
+
+// FP-2 — Certifications structurées projetées par le backend public.
+// Aligné sur l'enum Prisma `CertificationType` ; étendre ici si l'enum
+// backend évolue.
+export type CertificationType =
+  | 'BIO_EU'
+  | 'BIO_USDA'
+  | 'ECOCERT'
+  | 'FAIRTRADE'
+  | 'RAINFOREST_ALLIANCE'
+  | 'HACCP'
+  | 'ISO_22000'
+  | 'ISO_9001'
+  | 'GLOBALGAP'
+  | 'BRC'
+  | 'IFS'
+  | 'KOSHER'
+  | 'HALAL'
+  | 'OTHER';
+
+export type CertificationScope = 'SELLER_PROFILE' | 'MARKETPLACE_PRODUCT';
+
+export interface Certification {
+  id: string;
+  relatedType: CertificationScope;
+  relatedId: string;
+  type: CertificationType;
+  code: string | null;
+  issuingBody: string | null;
+  issuedAt: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  documentMediaId: string | null;
+}
+
 export interface ProductDetail {
   id: string;
   slug: string;
@@ -94,6 +144,10 @@ export interface ProductDetail {
   allergenInfo: string | null;
   defaultUnit: string | null;
   minimumOrderQuantity: number | null;
+  // FP-1 — saisonnalité projetée par le backend public.
+  harvestMonths: SeasonalityMonth[];
+  availabilityMonths: SeasonalityMonth[];
+  isYearRound: boolean;
   exportReadinessStatus: ReadinessStatus;
   category: { id: string; slug: string; nameFr: string; nameEn: string | null } | null;
   seller: {
@@ -118,6 +172,8 @@ export interface ProductDetail {
     validFrom: string | null;
     validUntil: string | null;
   }>;
+  // FP-2 — agrégat certifications publiques (produit + vendeur).
+  certifications: Certification[];
 }
 
 export interface SellerPublic {
@@ -147,4 +203,6 @@ export interface SellerPublic {
     exportReadinessStatus: ReadinessStatus;
     primaryImage: { id: string; publicUrl: string | null; altTextFr: string | null } | null;
   }>;
+  // FP-2 — certifications publiques du vendeur (scope SELLER_PROFILE).
+  certifications: Certification[];
 }

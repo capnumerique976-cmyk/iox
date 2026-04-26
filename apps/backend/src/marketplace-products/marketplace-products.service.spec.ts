@@ -225,6 +225,9 @@ describe('MarketplaceProductsService', () => {
         descriptionShort: 'd',
         packagingDescription: 'p',
         storageConditions: 's',
+        // FP-1 — saisonnalité : produit déclaré disponible toute l'année
+        isYearRound: true,
+        availabilityMonths: [],
       });
       prisma.marketplaceProduct.update.mockResolvedValue({
         id: 'mp1',
@@ -400,6 +403,121 @@ describe('MarketplaceProductsService', () => {
           action: 'MARKETPLACE_PRODUCT_READINESS_CHANGED',
         }),
       );
+    });
+  });
+
+  // ── FP-1 : Saisonnalité ───────────────────────────────────────────────────
+
+  describe('FP-1 saisonnalité', () => {
+    const baseCreateDto = {
+      productId: 'p1',
+      sellerProfileId: 'sp1',
+      slug: 'mp',
+      commercialName: 'Nom',
+      originCountry: 'YT',
+    };
+
+    beforeEach(() => {
+      prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({ id: 'sp1' });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue(null);
+      prisma.marketplaceProduct.create.mockResolvedValue({
+        id: 'mp1',
+        slug: 'mp',
+        sellerProfileId: 'sp1',
+        publicationStatus: MarketplacePublicationStatus.DRAFT,
+      });
+    });
+
+    it("create — isYearRound=true force availabilityMonths à []", async () => {
+      // Si le seller envoie année + une liste, le service écrase la liste pour
+      // garder une source de vérité unique côté DB.
+      await service.create({
+        ...baseCreateDto,
+        isYearRound: true,
+        availabilityMonths: ['JAN', 'FEB'] as never,
+        harvestMonths: ['MAY', 'JUN'] as never,
+      } as never);
+      const data = prisma.marketplaceProduct.create.mock.calls[0][0].data;
+      expect(data.isYearRound).toBe(true);
+      expect(data.availabilityMonths).toEqual([]);
+      expect(data.harvestMonths).toEqual(['MAY', 'JUN']);
+    });
+
+    it('create — mois triés selon ordre calendaire', async () => {
+      await service.create({
+        ...baseCreateDto,
+        availabilityMonths: ['DEC', 'MAR', 'JAN'] as never,
+        harvestMonths: ['NOV', 'JAN'] as never,
+      } as never);
+      const data = prisma.marketplaceProduct.create.mock.calls[0][0].data;
+      expect(data.availabilityMonths).toEqual(['JAN', 'MAR', 'DEC']);
+      expect(data.harvestMonths).toEqual(['JAN', 'NOV']);
+    });
+
+    it("create — completionScore tient compte de la saisonnalité (isYearRound seul suffit)", async () => {
+      await service.create({
+        ...baseCreateDto,
+        isYearRound: true,
+      } as never);
+      const withScore = prisma.marketplaceProduct.create.mock.calls[0][0].data.completionScore;
+
+      prisma.marketplaceProduct.create.mockClear();
+      await service.create(baseCreateDto as never);
+      const withoutScore = prisma.marketplaceProduct.create.mock.calls[0][0].data.completionScore;
+      expect(withScore).toBeGreaterThan(withoutScore);
+    });
+
+    it('update — bascule isYearRound=true vide availabilityMonths', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({
+        id: 'mp1',
+        slug: 'mp',
+        publicationStatus: MarketplacePublicationStatus.DRAFT,
+        availabilityMonths: ['JAN', 'FEB'],
+        harvestMonths: [],
+        isYearRound: false,
+      });
+      prisma.marketplaceProduct.update.mockResolvedValue({ id: 'mp1' });
+      await service.update('mp1', { isYearRound: true });
+      const data = prisma.marketplaceProduct.update.mock.calls[0][0].data;
+      expect(data.isYearRound).toBe(true);
+      expect(data.availabilityMonths).toEqual([]);
+    });
+
+    it('submitForReview — refuse si !isYearRound et availabilityMonths vide', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({
+        id: 'mp1',
+        publicationStatus: MarketplacePublicationStatus.DRAFT,
+        commercialName: 'Nom',
+        slug: 'mp',
+        originCountry: 'YT',
+        descriptionShort: 'd',
+        packagingDescription: 'p',
+        storageConditions: 's',
+        isYearRound: false,
+        availabilityMonths: [],
+      });
+      await expect(service.submitForReview('mp1')).rejects.toThrow(/Saisonnalit/);
+    });
+
+    it('submitForReview — accepte si availabilityMonths non-vide', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({
+        id: 'mp1',
+        publicationStatus: MarketplacePublicationStatus.DRAFT,
+        commercialName: 'Nom',
+        slug: 'mp',
+        originCountry: 'YT',
+        descriptionShort: 'd',
+        packagingDescription: 'p',
+        storageConditions: 's',
+        isYearRound: false,
+        availabilityMonths: ['JUL', 'AUG'],
+      });
+      prisma.marketplaceProduct.update.mockResolvedValue({
+        id: 'mp1',
+        publicationStatus: MarketplacePublicationStatus.IN_REVIEW,
+      });
+      await expect(service.submitForReview('mp1')).resolves.toBeDefined();
     });
   });
 
