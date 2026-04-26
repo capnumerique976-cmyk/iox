@@ -50,7 +50,8 @@ vi.mock('@/lib/auth', async () => {
   };
 });
 
-import SellerMarketplaceProductNewPage, { slugify } from './page';
+import SellerMarketplaceProductNewPage from './page';
+import { slugify } from './slugify';
 
 const myProfile = {
   id: 'sp1',

@@ -41,19 +41,9 @@ const EMPTY: FormState = {
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * Slug ASCII-safe depuis un libellé libre. Diacritiques retirés via NFD,
- * caractères non `[a-z0-9]` remplacés par `-`, doublons compactés, trims.
- */
-export function slugify(input: string): string {
-  return input
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-');
-}
+// `slugify` extrait dans `./slugify.ts` (Next.js interdit les exports
+// nommés non standard sur les modules Page).
+import { slugify } from './slugify';
 
 function validateClient(form: FormState): string | null {
   if (form.commercialName.trim().length < 2)
