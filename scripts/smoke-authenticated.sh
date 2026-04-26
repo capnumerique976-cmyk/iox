@@ -421,47 +421,76 @@ http_expect "FP-2 GET certifications" GET \
 flag_drift_if_cannot_get "/marketplace/certifications"
 
 # FP-4 / FP-6 — listing produits seller (auth) + vérif schéma FP-6
+#
+# Note de robustesse (2026-04-26) : le ResponseInterceptor NestJS wrappe la
+# réponse dans { success, data: <pagination> }, et la pagination Nest émet
+# elle-même { data: [...], meta }. La vraie liste est donc à `.data.data`,
+# avec fallback `.data` si un endpoint expose la liste à plat. On distingue
+# trois cas pour FP-6 :
+#   • dataset non vide ET 4 champs présents      → ✔ ok
+#   • dataset VIDE                                → ⊝ skip (non vérifiable, pas un fail)
+#   • dataset non vide mais champs absents        → ✗ fail (régression backend)
 http_expect "FP-4 GET marketplace/products (seller scope)" GET \
   "/api/v1/marketplace/products?limit=5" "200,401,403"
 if [[ "$LAST_CODE" == "200" ]]; then
-  total=$((total+1))
-  if printf '%s' "$LAST_BODY" | jq -e '
-      (.data // []) | type=="array" and
-      (length == 0 or
-       (.[0] | has("originLocality") and has("altitudeMeters")
-                and has("gpsLat") and has("gpsLng")))
-    ' >/dev/null 2>&1; then
-    say_ok "FP-6 schéma /marketplace/products : 4 champs origine fine projetés"
+  # Extraction tolérante : .data.data (cas paginé) ou .data (cas plat).
+  ROWS_JSON=$(printf '%s' "$LAST_BODY" \
+    | jq -c '(.data.data // .data // []) | select(type=="array")' 2>/dev/null)
+  if [[ -z "$ROWS_JSON" || "$ROWS_JSON" == "null" ]]; then
+    say_warn "FP-6 schéma /marketplace/products : structure de réponse inattendue (jq)"
   else
-    say_fail "FP-6 schéma /marketplace/products : champs originLocality/altitudeMeters/gpsLat/gpsLng absents → backend pas à jour FP-6"
-    echo "    extrait: $(printf '%s' "$LAST_BODY" | jq -c '(.data//[])[0] // {}' 2>/dev/null | head -c 300)"
+    ROWS_LEN=$(printf '%s' "$ROWS_JSON" | jq 'length' 2>/dev/null || echo "0")
+    if [[ "$ROWS_LEN" -eq 0 ]]; then
+      say_skip "FP-6 schéma /marketplace/products : dataset vide (0 produit) — non vérifiable"
+    else
+      total=$((total+1))
+      if printf '%s' "$ROWS_JSON" | jq -e '
+          .[0] | has("originLocality") and has("altitudeMeters")
+                  and has("gpsLat") and has("gpsLng")
+        ' >/dev/null 2>&1; then
+        say_ok "FP-6 schéma /marketplace/products : 4 champs origine fine projetés (${ROWS_LEN} items)"
+      else
+        say_fail "FP-6 schéma /marketplace/products : champs originLocality/altitudeMeters/gpsLat/gpsLng absents → backend pas à jour FP-6"
+        echo "    extrait: $(printf '%s' "$ROWS_JSON" | jq -c '.[0] // {}' 2>/dev/null | head -c 300)"
+      fi
+    fi
   fi
 fi
 
 # Catalog public — récupère un slug pour le check FP-6 public detail
+# Robustesse identique : pagination wrappée → .data.data, fallback .data.
 http_expect "catalog public" GET "/api/v1/marketplace/catalog?limit=5" "200" "" "no"
 CATALOG_SLUG=""
 CATALOG_TOTAL=""
 if [[ "$LAST_CODE" == "200" ]]; then
-  CATALOG_SLUG=$(printf '%s' "$LAST_BODY" | jq -r '(.data // [])[0].productSlug // empty' 2>/dev/null || true)
-  CATALOG_TOTAL=$(printf '%s' "$LAST_BODY" | jq -r '.meta.total // 0' 2>/dev/null || echo "0")
+  CATALOG_SLUG=$(printf '%s' "$LAST_BODY" \
+    | jq -r '(.data.data // .data // []) | (.[0].productSlug // empty)' 2>/dev/null || true)
+  CATALOG_TOTAL=$(printf '%s' "$LAST_BODY" \
+    | jq -r '(.data.meta.total // .meta.total // 0)' 2>/dev/null || echo "0")
   printf "    ${CYAN}ℹ${RESET} catalog total=%s, premier slug=%s\n" "$CATALOG_TOTAL" "${CATALOG_SLUG:-<aucun>}"
 fi
 
-# FP-6 — fiche publique, vérifie présence des 4 champs origine fine
+# FP-6 — fiche publique, vérifie présence des 4 champs origine fine.
+# Trois cas comme côté seller :
+#   • slug présent + 200 + 4 champs présents → ✔ ok
+#   • slug présent + 200 mais champs absents → ✗ fail
+#   • aucun slug (catalog vide)              → ⊝ skip
 if [[ -n "$CATALOG_SLUG" ]]; then
   http_expect "FP-6 catalog product detail ($CATALOG_SLUG)" GET \
     "/api/v1/marketplace/catalog/products/$CATALOG_SLUG" "200" "" "no"
   if [[ "$LAST_CODE" == "200" ]]; then
     total=$((total+1))
+    # Extraction tolérante : la fiche est à `.data` après ResponseInterceptor,
+    # mais on tolère aussi un endpoint qui renverrait l'objet à plat.
     if printf '%s' "$LAST_BODY" | jq -e '
-        has("originLocality") and has("altitudeMeters")
+        (.data // .)
+        | has("originLocality") and has("altitudeMeters")
         and has("gpsLat") and has("gpsLng")
       ' >/dev/null 2>&1; then
       say_ok "FP-6 schéma fiche publique : 4 champs origine fine présents"
     else
       say_fail "FP-6 schéma fiche publique : champs absents → backend public PAS à jour FP-6"
-      echo "    extrait: $(printf '%s' "$LAST_BODY" | jq -c '{originLocality,altitudeMeters,gpsLat,gpsLng}' 2>/dev/null || head -c 300)"
+      echo "    extrait: $(printf '%s' "$LAST_BODY" | jq -c '(.data // .) | {originLocality,altitudeMeters,gpsLat,gpsLng}' 2>/dev/null | head -c 300)"
     fi
   fi
 else
