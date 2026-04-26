@@ -84,9 +84,7 @@ describe('InlineMediaUploader (FP-3.1)', () => {
     uploadMock.mockReset();
     getUrlMock.mockReset();
     // jsdom n'a pas createObjectURL/revokeObjectURL.
-    // @ts-expect-error stub jsdom
     global.URL.createObjectURL = vi.fn(() => 'blob:mock');
-    // @ts-expect-error stub jsdom
     global.URL.revokeObjectURL = vi.fn();
   });
   afterEach(() => vi.clearAllMocks());
