@@ -74,6 +74,14 @@ export interface SellerMarketplaceProduct {
   netWeight?: string | number | null;
   palletization?: string | null;
 
+  // FP-5 — Volumes & capacités. annualProductionCapacity/availableQuantity
+  // arrivent en string (Decimal sérialisé) ou number selon Prisma.
+  annualProductionCapacity?: string | number | null;
+  capacityUnit?: string | null;
+  availableQuantity?: string | number | null;
+  availableQuantityUnit?: string | null;
+  restockFrequency?: string | null;
+
   // Saisonnalité (édition via /seasonality, lecture seule ici)
   harvestMonths: SeasonalityMonth[];
   availabilityMonths: SeasonalityMonth[];
@@ -142,6 +150,13 @@ export interface UpdateMarketplaceProductInput {
   grossWeight?: number;
   netWeight?: number;
   palletization?: string;
+
+  // FP-5 — Volumes & capacités
+  annualProductionCapacity?: number;
+  capacityUnit?: string;
+  availableQuantity?: number;
+  availableQuantityUnit?: string;
+  restockFrequency?: string;
 }
 
 /**
