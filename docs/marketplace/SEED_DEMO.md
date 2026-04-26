@@ -147,6 +147,43 @@ un nouveau seller / produit / certif :
 5. Mettre à jour `apps/backend/src/seed-demo/seed-demo.spec.ts` si la
    cardinalité est testée explicitement (`expect(...).toHaveBeenCalledTimes(N)`).
 
+## SEED-DEMO-FIX (2026-04-27) — MediaAssets PRIMARY APPROVED
+
+Le catalogue public filtre les produits sans `MediaAsset role=PRIMARY
+moderationStatus=APPROVED` lié, même quand `publicationStatus=PUBLISHED`.
+Sans cet asset, le seed historique remontait `0` produits visibles
+malgré 8 produits seedés `PUBLISHED`.
+
+Le runner crée désormais, **après** l'upsert des `marketplaceProduct`, un
+`MediaAsset` par produit demo :
+
+- `relatedType = MARKETPLACE_PRODUCT`, `relatedId = mpProduct.id`
+- `role = PRIMARY`, `moderationStatus = APPROVED`, `mediaType = IMAGE`
+- `storageKey = demo/marketplace-products/{slug}/primary.jpg`
+- `publicUrl = https://placehold.co/800x600/...?text={slug}` (placeholder
+  externe — aucun upload S3, suffisant pour la vitrine)
+- `uploadedByUserId` résolu via : 1) smoke seller (`findUnique` email),
+  2) sinon n'importe quel `ADMIN` (`findFirst`), 3) sinon **skip avec
+  warning** (no-throw, le reste du seed continue).
+
+Puis `marketplaceProduct.update({ data: { mainMediaId } })` lie l'asset.
+
+**Idempotence** : `findFirst` sur `(relatedType, relatedId, role)` →
+update si présent, sinon create. Les 2ᵉ, 3ᵉ… exécutions n'ajoutent
+aucune ligne, mettent uniquement à jour les URLs si le placeholder a
+changé.
+
+Vérification post-seed :
+
+```sql
+SELECT COUNT(*) FROM media_assets
+ WHERE related_type='MARKETPLACE_PRODUCT'
+   AND role='PRIMARY' AND moderation_status='APPROVED';  -- attendu : 8
+
+SELECT COUNT(*) FROM marketplace_products
+ WHERE main_media_id IS NOT NULL;                         -- attendu : 8
+```
+
 ## FAQ
 
 > **J'ai vu des données démo en prod réelle, que faire ?**
