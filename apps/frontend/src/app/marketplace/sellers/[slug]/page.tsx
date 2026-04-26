@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ChevronRight, MapPin, Clock, Globe2, Ship, Package } from 'lucide-react';
 import { fetchSellerBySlug } from '@/lib/marketplace/api';
 import { ReadinessBadge } from '@/components/marketplace/ReadinessBadge';
+import { CertificationBadgeList } from '@/components/marketplace/CertificationBadgeList';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,6 +110,12 @@ export default async function SellerPage({ params }: PageProps) {
           </div>
         </div>
       </header>
+
+      {/* FP-2 — Certifications du vendeur (no-op si liste vide) */}
+      <CertificationBadgeList
+        certifications={seller.certifications}
+        ariaLabel={`Certifications de ${seller.publicDisplayName}`}
+      />
 
       {/* Story / Description */}
       {(seller.descriptionLong || seller.story) && (

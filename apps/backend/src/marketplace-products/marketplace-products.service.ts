@@ -24,6 +24,7 @@ import {
   MarketplaceReviewType,
   MediaAssetRole,
   MediaModerationStatus,
+  SeasonalityMonth,
   SellerProfileStatus,
   RequestUser,
 } from '@iox/shared';
@@ -71,6 +72,12 @@ const SCORED_FIELDS: Array<keyof Prisma.MarketplaceProductUncheckedCreateInput> 
   'nutritionInfoJson',
   'defaultUnit',
   'minimumOrderQuantity',
+  // FP-1 — la saisonnalité compte comme renseignée si :
+  //   - isYearRound = true, OU
+  //   - availabilityMonths a au moins un mois.
+  // Le helper computeCompletionScore traite ce champ via une clé virtuelle
+  // 'seasonalityFilled' (cf. méthode privée).
+  'availabilityMonths',
 ];
 
 @Injectable()
@@ -172,7 +179,11 @@ export class MarketplaceProductsService {
       if (!cat) throw new NotFoundException('Catégorie introuvable');
     }
 
-    const completionScore = this.computeCompletionScore(dto as unknown as Record<string, unknown>);
+    const seasonality = this.normalizeSeasonalityInput(dto);
+    const dataForScore = { ...dto, ...seasonality };
+    const completionScore = this.computeCompletionScore(
+      dataForScore as unknown as Record<string, unknown>,
+    );
 
     const mp = await this.prisma.marketplaceProduct.create({
       data: {
@@ -197,6 +208,15 @@ export class MarketplaceProductsService {
         nutritionInfoJson: dto.nutritionInfoJson as Prisma.InputJsonValue,
         defaultUnit: dto.defaultUnit,
         minimumOrderQuantity: dto.minimumOrderQuantity,
+        ...(seasonality.harvestMonths !== undefined
+          ? { harvestMonths: seasonality.harvestMonths }
+          : {}),
+        ...(seasonality.availabilityMonths !== undefined
+          ? { availabilityMonths: seasonality.availabilityMonths }
+          : {}),
+        ...(seasonality.isYearRound !== undefined
+          ? { isYearRound: seasonality.isYearRound }
+          : {}),
         completionScore,
         publicationStatus: MarketplacePublicationStatus.DRAFT,
         exportReadinessStatus: ExportReadinessStatus.PENDING_QUALITY_REVIEW,
@@ -260,14 +280,27 @@ export class MarketplaceProductsService {
         existing.publicationStatus === MarketplacePublicationStatus.PUBLISHED) &&
       touchesVitrine;
 
+    // FP-1 — normalise la saisonnalité (year-round force availabilityMonths=[]).
+    const seasonality = this.normalizeSeasonalityInput(dto);
+
     // Recalcul du score de complétude avec la projection mergée
-    const merged = { ...existing, ...dto };
+    const merged = { ...existing, ...dto, ...seasonality };
     const completionScore = this.computeCompletionScore(merged as Record<string, unknown>);
 
     const updated = await this.prisma.marketplaceProduct.update({
       where: { id },
       data: {
         ...dto,
+        // surcharge la saisonnalité par les valeurs normalisées (override DTO brut)
+        ...(seasonality.harvestMonths !== undefined
+          ? { harvestMonths: seasonality.harvestMonths }
+          : {}),
+        ...(seasonality.availabilityMonths !== undefined
+          ? { availabilityMonths: seasonality.availabilityMonths }
+          : {}),
+        ...(seasonality.isYearRound !== undefined
+          ? { isYearRound: seasonality.isYearRound }
+          : {}),
         nutritionInfoJson: dto.nutritionInfoJson as Prisma.InputJsonValue | undefined,
         completionScore,
         ...(requiresRecheck ? { publicationStatus: MarketplacePublicationStatus.IN_REVIEW } : {}),
@@ -316,6 +349,20 @@ export class MarketplaceProductsService {
       if (value === null || value === undefined || value === '') {
         throw new BadRequestException(`Champ obligatoire manquant : ${String(f)}`);
       }
+    }
+
+    // FP-1 — Saisonnalité commerciale obligatoire à la soumission :
+    // soit `isYearRound = true`, soit `availabilityMonths` non-vide.
+    // (harvestMonths reste optionnel — produits transformés / stockés.)
+    const isYearRound = (existing as { isYearRound?: boolean }).isYearRound === true;
+    const months =
+      ((existing as { availabilityMonths?: SeasonalityMonth[] }).availabilityMonths ?? []) as
+        SeasonalityMonth[];
+    if (!isYearRound && months.length === 0) {
+      throw new BadRequestException(
+        'Saisonnalité manquante : précisez les mois de disponibilité ' +
+          "ou cochez 'disponible toute l'année'",
+      );
     }
 
     const updated = await this.prisma.marketplaceProduct.update({
@@ -607,11 +654,84 @@ export class MarketplaceProductsService {
     let filled = 0;
     for (const field of SCORED_FIELDS) {
       const v = data[field as string];
+      if (field === 'availabilityMonths') {
+        // Saisonnalité considérée renseignée si "year-round" ou ≥ 1 mois fourni.
+        if (data.isYearRound === true) {
+          filled++;
+          continue;
+        }
+        if (Array.isArray(v) && v.length > 0) filled++;
+        continue;
+      }
       if (v === null || v === undefined) continue;
       if (typeof v === 'string' && v.trim() === '') continue;
-      if (typeof v === 'object' && v !== null && Object.keys(v).length === 0) continue;
+      if (Array.isArray(v) && v.length === 0) continue;
+      if (
+        typeof v === 'object' &&
+        v !== null &&
+        !Array.isArray(v) &&
+        Object.keys(v).length === 0
+      ) {
+        continue;
+      }
       filled++;
     }
     return Math.round((filled / SCORED_FIELDS.length) * 100);
   }
+
+  /**
+   * FP-1 — Normalise la saisonnalité avant écriture DB.
+   *  - Si isYearRound = true, on force availabilityMonths = [] (source of truth = booléen).
+   *  - Sinon on conserve le tableau fourni (peut rester [] avant submit, voir validateSeasonalityForSubmit).
+   *  - Les mois sont triés selon l'ordre calendaire pour stabiliser l'écriture.
+   */
+  private normalizeSeasonalityInput(dto: {
+    harvestMonths?: SeasonalityMonth[];
+    availabilityMonths?: SeasonalityMonth[];
+    isYearRound?: boolean;
+  }): {
+    harvestMonths?: SeasonalityMonth[];
+    availabilityMonths?: SeasonalityMonth[];
+    isYearRound?: boolean;
+  } {
+    const out: {
+      harvestMonths?: SeasonalityMonth[];
+      availabilityMonths?: SeasonalityMonth[];
+      isYearRound?: boolean;
+    } = {};
+    if (dto.harvestMonths !== undefined) {
+      out.harvestMonths = sortMonths(dto.harvestMonths);
+    }
+    if (dto.isYearRound !== undefined) {
+      out.isYearRound = dto.isYearRound;
+      if (dto.isYearRound === true) {
+        out.availabilityMonths = [];
+      } else if (dto.availabilityMonths !== undefined) {
+        out.availabilityMonths = sortMonths(dto.availabilityMonths);
+      }
+    } else if (dto.availabilityMonths !== undefined) {
+      out.availabilityMonths = sortMonths(dto.availabilityMonths);
+    }
+    return out;
+  }
+}
+
+/** Tri stable des mois selon l'ordre calendaire JAN..DEC. */
+const MONTH_ORDER: Record<SeasonalityMonth, number> = {
+  [SeasonalityMonth.JAN]: 0,
+  [SeasonalityMonth.FEB]: 1,
+  [SeasonalityMonth.MAR]: 2,
+  [SeasonalityMonth.APR]: 3,
+  [SeasonalityMonth.MAY]: 4,
+  [SeasonalityMonth.JUN]: 5,
+  [SeasonalityMonth.JUL]: 6,
+  [SeasonalityMonth.AUG]: 7,
+  [SeasonalityMonth.SEP]: 8,
+  [SeasonalityMonth.OCT]: 9,
+  [SeasonalityMonth.NOV]: 10,
+  [SeasonalityMonth.DEC]: 11,
+};
+
+function sortMonths(arr: SeasonalityMonth[]): SeasonalityMonth[] {
+  return [...arr].sort((a, b) => MONTH_ORDER[a] - MONTH_ORDER[b]);
 }

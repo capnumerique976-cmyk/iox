@@ -16,6 +16,7 @@ import { SellerProfilesService } from './seller-profiles.service';
 import {
   CreateSellerProfileDto,
   UpdateSellerProfileDto,
+  UpdateMySellerProfileDto,
   QuerySellerProfilesDto,
   RejectSellerProfileDto,
   SuspendSellerProfileDto,
@@ -53,6 +54,23 @@ export class SellerProfilesController {
   @ApiOperation({ summary: 'Profil vendeur par slug' })
   findBySlug(@Param('slug') slug: string, @CurrentUser() actor: RequestUser) {
     return this.service.findBySlug(slug, actor);
+  }
+
+  // FP-3 — auto-édition profil seller. Route littérale `/me` enregistrée
+  // AVANT `/:id` (Express router ordre-dépendant) pour ne pas être avalée
+  // par le ParseUUIDPipe.
+  @Get('me')
+  @Roles(UserRole.MARKETPLACE_SELLER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Mon profil vendeur (seller connecté)' })
+  findMine(@CurrentUser() actor: RequestUser) {
+    return this.service.findMine(actor);
+  }
+
+  @Patch('me')
+  @Roles(UserRole.MARKETPLACE_SELLER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Auto-édition de mon profil vendeur' })
+  updateMine(@Body() dto: UpdateMySellerProfileDto, @CurrentUser() actor: RequestUser) {
+    return this.service.updateMine(dto, actor);
   }
 
   @Get(':id')

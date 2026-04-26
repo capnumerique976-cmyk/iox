@@ -35,6 +35,7 @@ import { MarketplaceCatalogModule } from './marketplace-catalog/marketplace-cata
 import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
 import { MarketplaceReviewModule } from './marketplace-review/marketplace-review.module';
 import { MarketplaceDocumentsModule } from './marketplace-documents/marketplace-documents.module';
+import { MarketplaceCertificationsModule } from './marketplace-certifications/marketplace-certifications.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
@@ -114,6 +115,8 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
     MarketplaceReviewModule,
     // Module Marketplace — Documents (certifs, COA, FDS, FT) avec vérification
     MarketplaceDocumentsModule,
+    // Module Marketplace — Certifications structurées (FP-2)
+    MarketplaceCertificationsModule,
   ],
   providers: [
     // Rate limiting (doit être AVANT JwtAuthGuard pour protéger /auth/login)

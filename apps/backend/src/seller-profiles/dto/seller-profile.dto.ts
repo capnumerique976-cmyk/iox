@@ -9,6 +9,7 @@ import {
   IsUUID,
   IsArray,
   MinLength,
+  MaxLength,
   Matches,
   Min,
 } from 'class-validator';
@@ -116,6 +117,120 @@ export class UpdateSellerProfileDto {
 
   @ApiPropertyOptional() @IsOptional() @IsUUID() logoMediaId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() bannerMediaId?: string;
+}
+
+/**
+ * FP-3 — DTO d'auto-édition par le seller connecté.
+ *
+ * Volontairement plus restreint que `UpdateSellerProfileDto` (admin) :
+ *  - pas de `slug` (impacte SEO et liens publics, doit rester staff) ;
+ *  - pas de `legalName` (identité légale, staff uniquement) ;
+ *  - bornes longues vs admin pour éviter qu'un seller pousse un payload
+ *    de plusieurs MB dans la base (DoS doux + audit lisible).
+ *
+ * Le ValidationPipe global (`whitelist + forbidNonWhitelisted`) bloque
+ * automatiquement toute clé hors whitelist (slug, status, isFeatured,
+ * companyId, etc.) → on ne réinvente pas la roue ici.
+ */
+export class UpdateMySellerProfileDto {
+  @ApiPropertyOptional({ minLength: 2, maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  publicDisplayName?: string;
+
+  @ApiPropertyOptional({ maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  country?: string;
+
+  @ApiPropertyOptional({ maxLength: 80 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  region?: string;
+
+  @ApiPropertyOptional({ maxLength: 120 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  cityOrZone?: string;
+
+  @ApiPropertyOptional({ maxLength: 280 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  descriptionShort?: string;
+
+  @ApiPropertyOptional({ maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  descriptionLong?: string;
+
+  @ApiPropertyOptional({ maxLength: 4000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  story?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(8, { each: true })
+  languages?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(160)
+  salesEmail?: string;
+
+  @ApiPropertyOptional({ maxLength: 30 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  salesPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUrl({ protocols: ['https', 'http'], require_protocol: true })
+  @MaxLength(255)
+  website?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(8, { each: true })
+  supportedIncoterms?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(3, { each: true })
+  destinationsServed?: string[];
+
+  @ApiPropertyOptional({ minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  averageLeadTimeDays?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  logoMediaId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  bannerMediaId?: string;
 }
 
 export class QuerySellerProfilesDto {

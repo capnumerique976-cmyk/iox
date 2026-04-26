@@ -1,4 +1,6 @@
 import {
+  IsArray,
+  IsBoolean,
   IsString,
   IsOptional,
   IsEnum,
@@ -8,9 +10,14 @@ import {
   MinLength,
   Matches,
   Min,
+  ArrayUnique,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ExportReadinessStatus, MarketplacePublicationStatus } from '@iox/shared';
+import {
+  ExportReadinessStatus,
+  MarketplacePublicationStatus,
+  SeasonalityMonth,
+} from '@iox/shared';
 import { Type } from 'class-transformer';
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -61,6 +68,43 @@ export class CreateMarketplaceProductDto {
   @IsNumber()
   @Min(0)
   minimumOrderQuantity?: number;
+
+  // ─── FP-1 — Saisonnalité ────────────────────────────────────────────────
+  @ApiPropertyOptional({
+    enum: SeasonalityMonth,
+    isArray: true,
+    example: ['JUL', 'AUG', 'SEP'],
+    description: 'Mois de récolte. Tableau de SeasonalityMonth, sans doublon.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(SeasonalityMonth, { each: true })
+  harvestMonths?: SeasonalityMonth[];
+
+  @ApiPropertyOptional({
+    enum: SeasonalityMonth,
+    isArray: true,
+    example: ['SEP', 'OCT', 'NOV', 'DEC'],
+    description:
+      "Mois de disponibilité commerciale. Doit être non-vide si isYearRound=false " +
+      "lors de la soumission produit (vérification au niveau service).",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(SeasonalityMonth, { each: true })
+  availabilityMonths?: SeasonalityMonth[];
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Si true, produit disponible toute l\'année. Dans ce cas availabilityMonths ' +
+      'est ignoré (et normalisé à []) côté service.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isYearRound?: boolean;
 }
 
 export class UpdateMarketplaceProductDto {
@@ -96,6 +140,26 @@ export class UpdateMarketplaceProductDto {
   @IsNumber()
   @Min(0)
   minimumOrderQuantity?: number;
+
+  // ─── FP-1 — Saisonnalité (mêmes règles que Create) ──────────────────────
+  @ApiPropertyOptional({ enum: SeasonalityMonth, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(SeasonalityMonth, { each: true })
+  harvestMonths?: SeasonalityMonth[];
+
+  @ApiPropertyOptional({ enum: SeasonalityMonth, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsEnum(SeasonalityMonth, { each: true })
+  availabilityMonths?: SeasonalityMonth[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isYearRound?: boolean;
 }
 
 export class QueryMarketplaceProductsDto {

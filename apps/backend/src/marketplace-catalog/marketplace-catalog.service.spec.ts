@@ -28,6 +28,7 @@ describe('MarketplaceCatalogService', () => {
     sellerProfile: { findFirst: jest.Mock };
     mediaAsset: { findMany: jest.Mock };
     marketplaceDocument: { findMany: jest.Mock };
+    certification: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -42,6 +43,7 @@ describe('MarketplaceCatalogService', () => {
       sellerProfile: { findFirst: jest.fn() },
       mediaAsset: { findMany: jest.fn() },
       marketplaceDocument: { findMany: jest.fn().mockResolvedValue([]) },
+      certification: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn((ops: Array<Promise<unknown>>) => Promise.all(ops)),
     };
 

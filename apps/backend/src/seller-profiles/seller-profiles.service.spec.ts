@@ -369,6 +369,65 @@ describe('SellerProfilesService', () => {
     });
   });
 
+  describe('findMine / updateMine (FP-3)', () => {
+    const SELLER_ONE: RequestUser = {
+      id: 'u1',
+      email: 'u1@x',
+      role: UserRole.MARKETPLACE_SELLER,
+      sellerProfileIds: ['sp1'],
+      companyIds: [],
+    };
+    const SELLER_NONE: RequestUser = { ...SELLER_ONE, sellerProfileIds: [] };
+    const SELLER_MANY: RequestUser = {
+      ...SELLER_ONE,
+      sellerProfileIds: ['sp1', 'sp2'],
+    };
+
+    it('findMine → 404 si aucun profil rattaché', async () => {
+      await expect(service.findMine(SELLER_NONE)).rejects.toThrow(NotFoundException);
+    });
+
+    it('findMine → 409 si plusieurs profils rattachés', async () => {
+      await expect(service.findMine(SELLER_MANY)).rejects.toThrow(ConflictException);
+    });
+
+    it('findMine → renvoie la fiche unique via findById', async () => {
+      prisma.sellerProfile.findUnique.mockResolvedValueOnce({
+        id: 'sp1',
+        slug: 's',
+        status: SellerProfileStatus.APPROVED,
+      });
+      const res = await service.findMine(SELLER_ONE);
+      expect(res.id).toBe('sp1');
+      expect(prisma.sellerProfile.findUnique).toHaveBeenCalledWith({
+        where: { id: 'sp1' },
+        include: expect.any(Object),
+      });
+    });
+
+    it('updateMine → délègue à update et renvoie le profil mis à jour', async () => {
+      prisma.sellerProfile.findUnique
+        // findById dans findMine
+        .mockResolvedValueOnce({ id: 'sp1', slug: 's', status: SellerProfileStatus.APPROVED })
+        // findUnique du update()
+        .mockResolvedValueOnce({ id: 'sp1', slug: 's', status: SellerProfileStatus.APPROVED });
+      prisma.sellerProfile.update.mockResolvedValue({
+        id: 'sp1',
+        slug: 's',
+        status: SellerProfileStatus.PENDING_REVIEW,
+      });
+      const res = await service.updateMine({ descriptionShort: 'Nouveau pitch' }, SELLER_ONE);
+      // bascule vitrine déclenchée par update()
+      expect(res.status).toBe(SellerProfileStatus.PENDING_REVIEW);
+      const data = prisma.sellerProfile.update.mock.calls[0][0].data;
+      expect(data.descriptionShort).toBe('Nouveau pitch');
+      expect(data.status).toBe(SellerProfileStatus.PENDING_REVIEW);
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'SELLER_PROFILE_UPDATED', userId: 'u1' }),
+      );
+    });
+  });
+
   describe('setFeatured', () => {
     it('refuse featured=true si non APPROVED', async () => {
       prisma.sellerProfile.findUnique.mockResolvedValue({
