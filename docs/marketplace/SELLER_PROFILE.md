@@ -10,7 +10,7 @@
 | ----- | ------------------------------------------- | ------------ |
 | FP-1  | Saisonnalité produit                        | ✅ Livré      |
 | FP-2  | Certifications structurées                  | ✅ Livré      |
-| FP-3  | Auto-édition profil + SeasonalityPicker     | ⏳ À venir    |
+| FP-3  | Auto-édition profil seller (PATCH /me)      | ✅ Livré      |
 | FP-4  | Volumes / capacités / unités typées         | ⏳ À venir    |
 | FP-5  | Histoire producteur + médias enrichis       | ⏳ À venir    |
 
@@ -157,7 +157,7 @@ catalog :
   `prisma.certification.findMany` pour les nouvelles jointures
   (zéro régression sur les 446 tests existants).
 
-### Limites connues / dette future
+### Limites connues FP-2 / dette future
 
 - Pas de cron de transition `VERIFIED → EXPIRED` : actuellement déduit en
   lecture (`validUntil > now`). Stockage à plat reste à un état
@@ -165,3 +165,102 @@ catalog :
 - Pas d'export CSV staff.
 - Pas d'i18n EN du libellé sur le badge (FR-only MVP, aligné sur le
   reste de la fiche produit).
+
+## FP-3 — Auto-édition du profil seller
+
+### Périmètre
+
+Permet au seller connecté (rôle `MARKETPLACE_SELLER`) d'éditer
+**lui-même** sa fiche vendeur sans passer par un admin. Endpoint dédié
+`PATCH /marketplace/seller-profiles/me` qui résout le profil via
+`actor.sellerProfileIds` puis délègue au pipeline de mise à jour
+existant (ownership + audit + bascule vitrine).
+
+### Hors scope FP-3 (volontairement)
+
+- Édition du `slug` (impacte SEO + liens publics) → reste staff via
+  `PATCH /:id`.
+- Édition du `legalName` (identité légale) → idem.
+- Upload d'avatar / bannière depuis ce form : pas d'uploader inline
+  dans ce lot, le téléversement passe par `MediaAsset` standard ou
+  l'écran `/seller/documents`. Les champs `logoMediaId` / `bannerMediaId`
+  sont rendus en lecture seule sur l'écran d'édition.
+- Création de profil par le seller : déjà couvert par `POST /` (DRAFT).
+
+### API
+
+| Verb / Path                                         | Rôles                       | Effet                                                              |
+| --------------------------------------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `GET /marketplace/seller-profiles/me`               | MARKETPLACE_SELLER, ADMIN   | Renvoie le profil unique. 404 si aucun, 409 si plusieurs.          |
+| `PATCH /marketplace/seller-profiles/me`             | MARKETPLACE_SELLER, ADMIN   | Auto-édition restreinte (DTO `UpdateMySellerProfileDto`).          |
+
+Les deux routes sont enregistrées **avant** `/:id` pour ne pas être
+avalées par le `ParseUUIDPipe` (Express router ordre-dépendant).
+
+### DTO `UpdateMySellerProfileDto`
+
+Champs whitelistés (tout le reste rejeté par
+`ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })`) :
+
+- `publicDisplayName` 2–80
+- `country` ≤ 80, `region` ≤ 80, `cityOrZone` ≤ 120
+- `descriptionShort` ≤ 280, `descriptionLong` ≤ 2000, `story` ≤ 4000
+- `languages: string[]` (chaque code ≤ 8)
+- `salesEmail` (IsEmail, ≤ 160), `salesPhone` ≤ 30,
+  `website` (IsUrl http/https, ≤ 255)
+- `supportedIncoterms: string[]` (≤ 8 chars), `destinationsServed: string[]` (≤ 3 chars)
+- `averageLeadTimeDays: int ≥ 0`
+- `logoMediaId`, `bannerMediaId` (UUID)
+
+### Service
+
+- `SellerProfilesService.findMine(actor)` :
+  - 0 profil → `NotFoundException` ("aucun profil rattaché"),
+  - >1 profil → `ConflictException` (utiliser `PATCH /:id`),
+  - 1 profil → délègue à `findById(id, actor)`.
+- `SellerProfilesService.updateMine(dto, actor)` : résout via `findMine`,
+  puis appelle `update(id, dto, actor)` qui gère ownership + audit +
+  bascule `APPROVED → PENDING_REVIEW` quand un champ vitrine change.
+
+### Frontend
+
+- Page `apps/frontend/src/app/(dashboard)/seller/profile/edit/page.tsx`
+  (controlled state, sans react-hook-form, miroir du style de `/profile`).
+- Helper `apps/frontend/src/lib/seller-profiles.ts` : ajout
+  `getMine(token)` + `updateMine(dto, token)` typés.
+- Lien depuis `/seller/dashboard` : badge "Éditer mon profil" à côté
+  de "Voir fiche publique" + raccourci dédié dans la section
+  "Raccourcis".
+- UX :
+  - dirty state via diff JSON ; bouton Enregistrer désactivé tant qu'aucun
+    changement ;
+  - bandeau d'avertissement si profil `APPROVED` ("modifier un champ
+    vitrine repassera la fiche en revue qualité") ;
+  - mapping des erreurs serveur (`ApiError.details` array → join, sinon
+    `.message`) ;
+  - hint contextuel sur les écrans d'erreur 404 (onboarding incomplet)
+    et 409 (plusieurs profils).
+
+### Tests
+
+- Backend : 4 nouveaux cas dans `seller-profiles.service.spec.ts`
+  (findMine 0/1/N, updateMine délègue + bascule vitrine + audit).
+  Total 29/29 sur le module, 450/450 sur le backend.
+- Frontend : 3 cas dans `seller/profile/edit/page.test.tsx`
+  (hydratation + bouton désactivé, payload diff + succès, 404 hint).
+  Total 104/104 sur le frontend.
+
+### Cohérence FP-1 / FP-2
+
+Le PATCH `/me` ne touche aucun champ saisonnalité (FP-1) ni les
+certifications (FP-2). Une bascule en `PENDING_REVIEW` ne dépublie pas
+les certifications déjà `VERIFIED` ni la saisonnalité du produit (les
+deux sont scopés à des entités distinctes).
+
+### Limites connues / dette future
+
+- Multi-profil par user : bloqué côté `/me`. Une UI staff dédiée
+  permettrait de choisir explicitement un profil (hors MVP).
+- Avatar/bannière en lecture seule sur cet écran : un sous-lot
+  `FP-3.1 inline media uploader` permettrait d'unifier l'upload depuis
+  le form sans passer par `/seller/documents`.
