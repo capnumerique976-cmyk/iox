@@ -133,6 +133,12 @@ export interface ProductDetail {
   subtitle: string | null;
   originCountry: string;
   originRegion: string | null;
+  // FP-6 — origine fine projetée publiquement (tous optionnels). Decimal
+  // est sérialisé en string par Prisma → on accepte les deux côté lecture.
+  originLocality: string | null;
+  altitudeMeters: number | null;
+  gpsLat: string | number | null;
+  gpsLng: string | number | null;
   varietySpecies: string | null;
   productionMethod: string | null;
   descriptionShort: string | null;
