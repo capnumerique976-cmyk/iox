@@ -55,18 +55,25 @@ export function SeasonalityCalendar({
   isYearRound,
   ariaLabel,
 }: SeasonalityCalendarProps) {
-  const noDataAtAll =
-    !isYearRound && availabilityMonths.length === 0 && harvestMonths.length === 0;
+  // Coercion défensive : la projection publique peut renvoyer `null`/`undefined`
+  // pour les fiches anciennes ou non renseignées (avant FP-1). On normalise en
+  // tableau vide pour préserver le no-op silencieux ci-dessous.
+  const availability: SeasonalityMonth[] = Array.isArray(availabilityMonths)
+    ? availabilityMonths
+    : [];
+  const harvest: SeasonalityMonth[] = Array.isArray(harvestMonths) ? harvestMonths : [];
+
+  const noDataAtAll = !isYearRound && availability.length === 0 && harvest.length === 0;
   if (noDataAtAll) return null;
 
   const availableSet = new Set<SeasonalityMonth>(
-    isYearRound ? MONTHS.map((m) => m.code) : availabilityMonths,
+    isYearRound ? MONTHS.map((m) => m.code) : availability,
   );
-  const harvestSet = new Set<SeasonalityMonth>(harvestMonths);
+  const harvestSet = new Set<SeasonalityMonth>(harvest);
 
   const summary = isYearRound
     ? "Disponible toute l'année"
-    : `Disponible : ${availabilityMonths.map((m) => FULL_MONTH_NAMES_FR[m]).join(', ') || 'non précisé'}`;
+    : `Disponible : ${availability.map((m) => FULL_MONTH_NAMES_FR[m]).join(', ') || 'non précisé'}`;
 
   return (
     <div

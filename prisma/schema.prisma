@@ -1182,7 +1182,7 @@ model Certification {
   @@index([type])
   @@index([verificationStatus])
   @@index([validUntil])
-  @@unique([relatedType, relatedId, type, code], name: "uniq_certification_scope_type_code")
+  @@unique([relatedType, relatedId, type, code], name: "uniq_certification_scope_type_code", map: "uniq_certification_scope_type_code")
   @@map("marketplace_certifications")
 }
 
