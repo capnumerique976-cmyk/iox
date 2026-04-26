@@ -30,6 +30,9 @@ import {
   ExportReadinessStatus,
   MarketplaceVerificationStatus,
   MarketplaceRelatedEntityType,
+  MediaAssetRole,
+  MediaAssetType,
+  MediaModerationStatus,
 } from '@prisma/client';
 import { DEMO_DATASET, smokeSellerEmail } from './dataset';
 
@@ -51,6 +54,7 @@ export interface RunnerOptions {
     | 'marketplaceProduct'
     | 'marketplaceOffer'
     | 'certification'
+    | 'mediaAsset'
   >;
   env: RunnerEnv;
   log?: (msg: string) => void;
@@ -63,6 +67,7 @@ export interface RunnerSummary {
   offers: number;
   certifications: number;
   smokeSeller: string | null;
+  mediaAssets: number;
 }
 
 const SMOKE_SELLER_DEFAULT_PASSWORD = 'IoxSmoke2026!';
@@ -92,6 +97,7 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     offers: 0,
     certifications: 0,
     smokeSeller: null,
+    mediaAssets: 0,
   };
 
   if (!shouldRun(opts.env)) {
@@ -404,8 +410,105 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     smokeSellerCreated = smokeSellerEmail;
   }
 
+  // --- MediaAssets PRIMARY APPROVED placeholders (SEED-DEMO-FIX) -----------
+  //
+  // Le service `marketplaceProductsApi.publish()` exige au moins 1 MediaAsset
+  // role=PRIMARY moderationStatus=APPROVED rattaché au produit avant de
+  // basculer en PUBLISHED. Le seed force PUBLISHED via upsert direct
+  // (court-circuite ce gate), mais le **catalogue public** filtre sur la
+  // présence d'une image PRIMARY APPROVED pour décider quoi afficher — d'où
+  // les 0 lignes constatées en pré-prod malgré 8 produits PUBLISHED.
+  //
+  // On crée un placeholder par produit (relatedType=MARKETPLACE_PRODUCT,
+  // role=PRIMARY, moderationStatus=APPROVED). storageKey unique et stable
+  // par slug → idempotent : la 2e exécution retombe sur le même asset via
+  // findFirst+update. publicUrl pointe vers placehold.co (aucun upload réel
+  // requis pour la démo).
+  let mediaAssetsCount = 0;
+  // L'uploader doit exister : on prend le smoke seller s'il a été créé,
+  // sinon on tombe sur le 1er admin disponible (toujours présent dans une
+  // DB seedée). Aucun fallback requis quand smokeSellerCreated n'est pas null.
+  let uploaderUserId: string | null = null;
+  if (smokeSellerCreated) {
+    const u = await prisma.user.findUnique({
+      where: { email: smokeSellerCreated },
+      select: { id: true },
+    });
+    uploaderUserId = u?.id ?? null;
+  }
+  if (!uploaderUserId) {
+    const fallback = await prisma.user.findFirst({
+      where: { role: UserRole.ADMIN },
+      select: { id: true },
+    });
+    uploaderUserId = fallback?.id ?? null;
+  }
+
+  if (!uploaderUserId) {
+    log(
+      '⚠️ Demo seed: aucun utilisateur uploader (smoke seller absent et aucun ADMIN) — MediaAssets ignorés.',
+    );
+  } else {
+    for (const [slug, mpId] of mpProductIdBySlug.entries()) {
+      const storageKey = `demo/marketplace-products/${slug}/primary.jpg`;
+      const publicUrl = `https://placehold.co/800x600/e5e7eb/6b7280?text=${encodeURIComponent(slug)}`;
+
+      // Pas d'@@unique (relatedType, relatedId, role) côté schéma → upsert
+      // manuel via findFirst + update/create. La clé naturelle est la triple
+      // (relatedType, relatedId, role=PRIMARY) — un seul PRIMARY par produit
+      // par convention.
+      const existing = await prisma.mediaAsset.findFirst({
+        where: {
+          relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          relatedId: mpId,
+          role: MediaAssetRole.PRIMARY,
+        },
+        select: { id: true },
+      });
+
+      const data = {
+        mediaType: MediaAssetType.IMAGE,
+        role: MediaAssetRole.PRIMARY,
+        storageKey,
+        publicUrl,
+        mimeType: 'image/jpeg',
+        sizeBytes: 0,
+        altTextFr: `Photo principale (placeholder démo) — ${slug}`,
+        altTextEn: `Primary photo (demo placeholder) — ${slug}`,
+        sortOrder: 0,
+        moderationStatus: MediaModerationStatus.APPROVED,
+        moderationReason: null,
+      } as const;
+
+      let assetId: string;
+      if (existing) {
+        await prisma.mediaAsset.update({ where: { id: existing.id }, data });
+        assetId = existing.id;
+      } else {
+        const created = await prisma.mediaAsset.create({
+          data: {
+            ...data,
+            relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+            relatedId: mpId,
+            uploadedByUserId: uploaderUserId,
+          },
+          select: { id: true },
+        });
+        assetId = created.id;
+      }
+      mediaAssetsCount++;
+
+      // Lie le mainMediaId du produit à cet asset si pas déjà fait — permet
+      // au catalogue de résoudre l'image principale sans nouvelle requête.
+      await prisma.marketplaceProduct.update({
+        where: { id: mpId },
+        data: { mainMediaId: assetId },
+      });
+    }
+  }
+
   log(
-    `✅ Demo seed done — sellers: ${sellersCount}, products: ${productsCount}, offers: ${offersCount}, certifications: ${certsCount}, smokeSeller: ${smokeSellerCreated ?? 'n/a'}`,
+    `✅ Demo seed done — sellers: ${sellersCount}, products: ${productsCount}, offers: ${offersCount}, certifications: ${certsCount}, mediaAssets: ${mediaAssetsCount}, smokeSeller: ${smokeSellerCreated ?? 'n/a'}`,
   );
 
   return {
@@ -415,5 +518,6 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     offers: offersCount,
     certifications: certsCount,
     smokeSeller: smokeSellerCreated,
+    mediaAssets: mediaAssetsCount,
   };
 }
