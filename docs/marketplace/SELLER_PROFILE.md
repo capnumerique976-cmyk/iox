@@ -9,7 +9,8 @@
 | Lot   | Sujet                                       | Statut       |
 | ----- | ------------------------------------------- | ------------ |
 | FP-1  | Saisonnalité produit (vitrine + DTO backend)| ✅ Livré      |
-| FP-2  | Certifications structurées                  | ✅ Livré      |
+| FP-2  | Certifications structurées (backend + admin)| ✅ Livré      |
+| FP-2.1| Certifications — édition seller (UI)        | ✅ Livré      |
 | FP-3  | Auto-édition profil seller (PATCH /me)      | ✅ Livré      |
 | FP-4  | Saisonnalité — saisie seller (UI éditable)  | ✅ Livré      |
 | FP-5  | Volumes / capacités / unités typées         | ⏳ À venir    |
@@ -166,6 +167,78 @@ catalog :
 - Pas d'export CSV staff.
 - Pas d'i18n EN du libellé sur le badge (FR-only MVP, aligné sur le
   reste de la fiche produit).
+
+## FP-2.1 — Certifications : édition seller (UI)
+
+### Périmètre
+
+Cette extension de FP-2 expose côté seller l'édition des certifications
+auxquelles il a déjà droit côté backend (le rôle `MARKETPLACE_SELLER`
+est inclus dans `SELLER_ROLES` du controller `/marketplace/certifications`
+depuis FP-2). Aucun changement backend.
+
+Deux écrans :
+
+- `/seller/profile/certifications` — certifications attachées au
+  `SellerProfile` du seller connecté (résolu via
+  `sellerProfilesApi.getMine`, mêmes hints 404/409 que `/seller/profile/edit`).
+- `/seller/marketplace-products/[id]/certifications` — certifications
+  attachées à un `MarketplaceProduct` du seller (résolu via
+  `marketplaceProductsApi.getById`, hints 403/404 miroir page seasonality).
+
+### Composant `SellerCertificationsManager`
+
+Composant unique réutilisable, paramétré par `relatedType` (`SELLER_PROFILE`
+ou `MARKETPLACE_PRODUCT`) + `relatedId`. Gère :
+
+- chargement liste (loading / error / empty / ready),
+- formulaire création OU édition (toggled via `editingId`) avec champs
+  `type`, `issuingBody`, `code`, `issuedAt`, `validFrom`, `validUntil`,
+- validation client (miroir backend, légèrement plus tolérante : on
+  accepte `validUntil === validFrom` côté UI, le backend rejette
+  strictement `<=`),
+- mapping erreurs serveur 4xx (`error.details[]` ou `error.message`),
+- suppression via `useConfirm()` (ConfirmDialog L9-2), tone=danger,
+  message contextuel si la certif est `VERIFIED` (rappel qu'elle
+  disparaîtra de la vitrine publique).
+
+Affichage du statut : `EXPIRED` est dérivé à la volée (
+`verificationStatus===VERIFIED && validUntil <= now`), conformément à la
+convention backend qui ne stocke pas `EXPIRED` (cf. `findPublic`).
+
+### Liens d'accès
+
+- `/seller/profile/edit` : bouton « Gérer mes certifications » dans
+  l'en-tête.
+- `/seller/marketplace-products` : colonne « Certifications » par ligne
+  (à côté de « Saisonnalité »).
+- `/seller/dashboard` : QuickLink « Mes certifications vendeur » dans la
+  section Raccourcis.
+
+### Hors scope FP-2.1 (différé)
+
+- **Champ `documentMediaId` non exposé** dans le formulaire seller :
+  l'uploader PDF de preuve documentaire est différé à FP-3.1+
+  (uploader inline). Le champ DTO `documentMediaId` reste accepté côté
+  backend (un staff peut l'attacher manuellement via API), mais l'UI
+  seller ne le propose pas tant qu'un uploader n'est pas en place.
+- Pas de modification du composant public `CertificationBadgeList.tsx`.
+- Pas de support `MARKETPLACE_OFFER` (hors MVP, voir contexte canonique).
+- Pas d'écran staff verify/reject (hors mandat — les endpoints
+  `/verify` et `/reject` existent déjà côté backend).
+
+### Tests FP-2.1
+
+- `SellerCertificationsManager.test.tsx` — 9 cas (rendu vide / plein,
+  ouverture form, validations OTHER + dates, submit OK, erreur 4xx,
+  suppression annulée, suppression confirmée).
+- `seller/profile/certifications/page.test.tsx` — 3 cas (banner +
+  hints 404/409).
+- `seller/marketplace-products/[id]/certifications/page.test.tsx` —
+  3 cas (banner + hints 403/404).
+- Index produits : ajout d'une assertion sur le lien Certifications.
+
+Frontend : 117 → 132 tests (+15 nets).
 
 ## FP-3 — Auto-édition du profil seller
 
