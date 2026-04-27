@@ -1,4 +1,12 @@
 {
+  "outputStyle": "concise",
+  "showThinkingSummaries": false,
+  "effort": "medium",
+  "env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": "medium",
+    "MAX_THINKING_TOKENS": "10000",
+    "BASH_MAX_OUTPUT_LENGTH": "8192"
+  },
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
