@@ -50,7 +50,17 @@ export class MarketplaceCatalogService {
     const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)));
     const skip = (page - 1) * limit;
 
-    const eligibleProductIds = await this.findProductsWithPrimaryMedia();
+    let eligibleProductIds = await this.findProductsWithPrimaryMedia();
+
+    // MP-FILTERS-1 — `hasPublicDocs=true` : intersection avec les produits
+    // ayant au moins un document PUBLIC + VERIFIED + non expiré. Polymorphe
+    // côté schéma (pas de back-relation Prisma) → pré-requête puis IN.
+    if (query.hasPublicDocs === 'true' && eligibleProductIds.length > 0) {
+      const docIds = await this.findProductsWithPublicDocuments(eligibleProductIds);
+      const docSet = new Set(docIds);
+      eligibleProductIds = eligibleProductIds.filter((id) => docSet.has(id));
+    }
+
     if (eligibleProductIds.length === 0) {
       return {
         data: [],
@@ -525,6 +535,28 @@ export class MarketplaceCatalogService {
    * Liste des marketplaceProductId ayant au moins un MediaAsset PRIMARY APPROVED.
    * Résout la gate polymorphique côté DB en une seule requête.
    */
+  /**
+   * MP-FILTERS-1 — IDs de MarketplaceProduct ayant au moins un document
+   * publiquement consultable (PUBLIC + VERIFIED + non expiré). Restreint à
+   * un sous-ensemble fourni pour limiter le scan.
+   */
+  private async findProductsWithPublicDocuments(productIds: string[]): Promise<string[]> {
+    if (productIds.length === 0) return [];
+    const now = new Date();
+    const rows = await this.prisma.marketplaceDocument.findMany({
+      where: {
+        relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+        relatedId: { in: productIds },
+        visibility: MarketplaceDocumentVisibility.PUBLIC,
+        verificationStatus: MarketplaceVerificationStatus.VERIFIED,
+        OR: [{ validUntil: null }, { validUntil: { gte: now } }],
+      },
+      distinct: ['relatedId'],
+      select: { relatedId: true },
+    });
+    return rows.map((r) => r.relatedId);
+  }
+
   private async findProductsWithPrimaryMedia(): Promise<string[]> {
     const rows = await this.prisma.mediaAsset.findMany({
       where: {
@@ -639,6 +671,36 @@ export class MarketplaceCatalogService {
         { OR: [{ availabilityStart: null }, { availabilityStart: { lte: now } }] },
         { OR: [{ availabilityEnd: null }, { availabilityEnd: { gte: now } }] },
       ];
+    }
+
+    // MP-FILTERS-1 — qualité structurée (FP-7).
+    if (q.qualityAttribute) {
+      mpWhere.qualityAttributes = { has: q.qualityAttribute };
+    }
+
+    // MP-FILTERS-1 — exigence température (FP-8) en contains insensitive.
+    if (q.temperatureRequirements) {
+      mpWhere.temperatureRequirements = {
+        contains: q.temperatureRequirements,
+        mode: 'insensitive',
+      };
+    }
+
+    // MP-FILTERS-1 — saisonnalité (FP-1). Year-round matche tous les mois.
+    // On utilise un AND additif sur mpWhere pour ne pas écraser le OR de
+    // recherche texte (q.q) déjà placé sur `mpWhere.OR`.
+    if (q.seasonalityMonth) {
+      const seasonalityClause = {
+        OR: [
+          { isYearRound: true },
+          { availabilityMonths: { has: q.seasonalityMonth } },
+        ],
+      };
+      mpWhere.AND = mpWhere.AND
+        ? Array.isArray(mpWhere.AND)
+          ? [...mpWhere.AND, seasonalityClause]
+          : [mpWhere.AND, seasonalityClause]
+        : [seasonalityClause];
     }
 
     return where;

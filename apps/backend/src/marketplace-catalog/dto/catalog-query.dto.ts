@@ -1,7 +1,19 @@
-import { IsOptional, IsString, IsEnum, IsBooleanString, IsUUID } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsBooleanString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ExportReadinessStatus, MarketplacePriceMode } from '@iox/shared';
+import {
+  ExportReadinessStatus,
+  MarketplacePriceMode,
+  ProductQualityAttribute,
+  SeasonalityMonth,
+} from '@iox/shared';
 
 export enum CatalogSort {
   FEATURED = 'featured',
@@ -80,4 +92,25 @@ export class CatalogQueryDto {
   @IsOptional()
   @IsEnum(CatalogSort)
   sort?: CatalogSort;
+
+  // MP-FILTERS-1 — filtre par attribut qualité structurée (FP-7).
+  @ApiPropertyOptional({ enum: ProductQualityAttribute })
+  @IsOptional()
+  @IsEnum(ProductQualityAttribute)
+  qualityAttribute?: ProductQualityAttribute;
+
+  // MP-FILTERS-1 — filtre par exigence de température (FP-8). Texte libre,
+  // contains insensitive.
+  @ApiPropertyOptional({ description: 'Exigence de température (contains insensitive)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  temperatureRequirements?: string;
+
+  // MP-FILTERS-1 — filtre par mois calendaire (FP-1). Un produit `isYearRound`
+  // matche tous les mois ; sinon intersection avec `availabilityMonths`.
+  @ApiPropertyOptional({ enum: SeasonalityMonth })
+  @IsOptional()
+  @IsEnum(SeasonalityMonth)
+  seasonalityMonth?: SeasonalityMonth;
 }

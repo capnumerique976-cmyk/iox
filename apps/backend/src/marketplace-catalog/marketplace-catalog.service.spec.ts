@@ -15,6 +15,7 @@ import {
   SellerProfileStatus,
 } from '@iox/shared';
 import { CatalogSort } from './dto/catalog-query.dto';
+import { ProductQualityAttribute, SeasonalityMonth } from '@iox/shared';
 
 describe('MarketplaceCatalogService', () => {
   let service: MarketplaceCatalogService;
@@ -216,6 +217,89 @@ describe('MarketplaceCatalogService', () => {
         onQuote: true,
         primaryImage: { id: 'm1', publicUrl: 'https://cdn/x.jpg' },
       });
+    });
+  });
+
+  // ── MP-FILTERS-1 ─────────────────────────────────────────────────────────
+
+  describe('findCatalog — MP-FILTERS-1', () => {
+    const stubEligibleAndOffers = () => {
+      prisma.mediaAsset.findMany
+        .mockResolvedValueOnce([{ relatedId: 'mp1' }, { relatedId: 'mp2' }])
+        .mockResolvedValueOnce([]);
+      prisma.marketplaceOffer.findMany.mockResolvedValue([]);
+      prisma.marketplaceOffer.count.mockResolvedValue(0);
+    };
+
+    it('qualityAttribute → mpWhere.qualityAttributes = { has }', async () => {
+      stubEligibleAndOffers();
+      await service.findCatalog({ qualityAttribute: ProductQualityAttribute.ORGANIC });
+      const where = prisma.marketplaceOffer.findMany.mock.calls[0][0].where;
+      expect(where.marketplaceProduct.qualityAttributes).toEqual({
+        has: ProductQualityAttribute.ORGANIC,
+      });
+    });
+
+    it('temperatureRequirements → contains insensitive sur mpWhere', async () => {
+      stubEligibleAndOffers();
+      await service.findCatalog({ temperatureRequirements: 'Frozen' });
+      const where = prisma.marketplaceOffer.findMany.mock.calls[0][0].where;
+      expect(where.marketplaceProduct.temperatureRequirements).toEqual({
+        contains: 'Frozen',
+        mode: 'insensitive',
+      });
+    });
+
+    it('seasonalityMonth → AND avec OR isYearRound | availabilityMonths.has', async () => {
+      stubEligibleAndOffers();
+      await service.findCatalog({ seasonalityMonth: SeasonalityMonth.JUN });
+      const where = prisma.marketplaceOffer.findMany.mock.calls[0][0].where;
+      expect(where.marketplaceProduct.AND).toEqual([
+        {
+          OR: [
+            { isYearRound: true },
+            { availabilityMonths: { has: SeasonalityMonth.JUN } },
+          ],
+        },
+      ]);
+    });
+
+    it('combo qualityAttribute + seasonalityMonth + originCountry projeté simultanément', async () => {
+      stubEligibleAndOffers();
+      await service.findCatalog({
+        qualityAttribute: ProductQualityAttribute.VEGAN,
+        seasonalityMonth: SeasonalityMonth.MAR,
+        originCountry: 'YT',
+      });
+      const where = prisma.marketplaceOffer.findMany.mock.calls[0][0].where;
+      expect(where.marketplaceProduct.qualityAttributes).toEqual({
+        has: ProductQualityAttribute.VEGAN,
+      });
+      expect(where.marketplaceProduct.originCountry).toBe('YT');
+      expect(where.marketplaceProduct.AND).toEqual([
+        {
+          OR: [
+            { isYearRound: true },
+            { availabilityMonths: { has: SeasonalityMonth.MAR } },
+          ],
+        },
+      ]);
+    });
+
+    it('hasPublicDocs=true → intersection avec pré-requête doc IDs', async () => {
+      // 1) findProductsWithPrimaryMedia → mp1 + mp2
+      // 2) findProductsWithPublicDocuments → mp2 only
+      // 3) loadPrimaryMediaMap (vide)
+      prisma.mediaAsset.findMany
+        .mockResolvedValueOnce([{ relatedId: 'mp1' }, { relatedId: 'mp2' }])
+        .mockResolvedValueOnce([]);
+      prisma.marketplaceDocument.findMany.mockResolvedValueOnce([{ relatedId: 'mp2' }]);
+      prisma.marketplaceOffer.findMany.mockResolvedValue([]);
+      prisma.marketplaceOffer.count.mockResolvedValue(0);
+
+      await service.findCatalog({ hasPublicDocs: 'true' });
+      const where = prisma.marketplaceOffer.findMany.mock.calls[0][0].where;
+      expect(where.marketplaceProductId).toEqual({ in: ['mp2'] });
     });
   });
 
