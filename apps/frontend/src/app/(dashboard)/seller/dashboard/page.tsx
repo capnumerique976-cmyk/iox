@@ -549,6 +549,7 @@ export default function SellerDashboardPage() {
             label="Mes certifications vendeur"
           />
           <QuickLink href="/seller/marketplace-products" label="Mes produits marketplace" />
+          <QuickLink href="/seller/marketplace-offers" label="Mes offres" />
           <QuickLink href="/quote-requests" label="Demandes de devis" />
           <QuickLink href="/seller/documents" label="Documents marketplace" />
           <QuickLink href="/marketplace" label="Voir le catalogue public" />
