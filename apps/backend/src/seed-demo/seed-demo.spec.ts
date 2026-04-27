@@ -222,6 +222,67 @@ describe('SEED-DEMO runner', () => {
     });
   });
 
+  describe('SEED-DEMO-FIX-2 — hydratation FP-5/FP-7/FP-8', () => {
+    it('chaque produit dispose de qualityAttributes (FP-7) avec >= 2 valeurs', () => {
+      for (const p of DEMO_DATASET.products) {
+        expect(Array.isArray(p.qualityAttributes)).toBe(true);
+        expect(p.qualityAttributes.length).toBeGreaterThanOrEqual(2);
+      }
+    });
+
+    it('au moins 4 produits ont temperatureRequirements (FP-8) non vide', () => {
+      const withTemp = DEMO_DATASET.products.filter(
+        (p) => typeof p.temperatureRequirements === 'string' && p.temperatureRequirements.length > 0,
+      );
+      expect(withTemp.length).toBeGreaterThanOrEqual(4);
+      // Au moins un produit avec "Frozen" pour valider le filtre catalog.
+      expect(
+        DEMO_DATASET.products.some((p) =>
+          p.temperatureRequirements.toLowerCase().includes('frozen'),
+        ),
+      ).toBe(true);
+    });
+
+    it('au moins 4 produits ont packagingFormats (FP-8) non vide', () => {
+      const withFormats = DEMO_DATASET.products.filter(
+        (p) => Array.isArray(p.packagingFormats) && p.packagingFormats.length >= 1,
+      );
+      expect(withFormats.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it('au moins 6 produits ont annualProductionCapacity (FP-5) non null', () => {
+      const withCapacity = DEMO_DATASET.products.filter(
+        (p) => p.annualProductionCapacity != null,
+      );
+      expect(withCapacity.length).toBeGreaterThanOrEqual(6);
+    });
+
+    it('upsert Prisma propage les nouveaux champs FP-5/FP-7/FP-8 (update + create)', async () => {
+      const prismaMock = makePrismaMock();
+      await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      const calls = prismaMock.marketplaceProduct.upsert.mock.calls;
+      expect(calls.length).toBe(DEMO_DATASET.products.length);
+      for (const [arg] of calls) {
+        // FP-7
+        expect(Array.isArray(arg.update.qualityAttributes)).toBe(true);
+        expect(arg.update.qualityAttributes.length).toBeGreaterThanOrEqual(2);
+        expect(Array.isArray(arg.create.qualityAttributes)).toBe(true);
+        // FP-8
+        expect(typeof arg.update.temperatureRequirements).toBe('string');
+        expect(Array.isArray(arg.update.packagingFormats)).toBe(true);
+        expect(arg.update.grossWeight).toBeDefined();
+        expect(arg.update.netWeight).toBeDefined();
+        expect(typeof arg.update.palletization).toBe('string');
+        // FP-5
+        expect(arg.update.annualProductionCapacity).toBeDefined();
+        expect(typeof arg.update.capacityUnit).toBe('string');
+        expect(arg.update.availableQuantity).toBeDefined();
+        expect(typeof arg.update.availableQuantityUnit).toBe('string');
+        expect(typeof arg.update.restockFrequency).toBe('string');
+      }
+    });
+  });
+
   describe('smoke seller', () => {
     it('utilise SMOKE_SELLER_PASSWORD si fourni', async () => {
       const prismaMock = makePrismaMock();
