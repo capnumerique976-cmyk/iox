@@ -22,6 +22,8 @@ import type {
   SendEmailResult,
   RenderedEmail,
   NotifEmailTransportName,
+  ListLogsQuery,
+  ListLogsResult,
 } from './notif-email.types';
 import { NotifEmailError } from './notif-email.types';
 import { NotifEmailTransportFactory } from './transport.factory';
@@ -180,6 +182,60 @@ export class NotifEmailService {
    * Cas typique : DB indisponible ; on préfère perdre l'audit trail
    * plutôt que faire échouer un workflow métier critique.
    */
+  /**
+   * MP-NOTIF-3 — Liste paginée + filtrée des `email_logs` (vue admin).
+   * Lecture seule, pas de side effect. Aucune masking PII car la table
+   * est déjà restreinte aux rôles ADMIN/COORDINATOR côté controller.
+   */
+  async listLogs(query: ListLogsQuery): Promise<ListLogsResult> {
+    const page = Math.max(1, Math.floor(query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(query.limit ?? 20)));
+    const where: Prisma.EmailLogWhereInput = {};
+    if (query.status) where.status = query.status as EmailLogStatus;
+    if (query.templateId) where.templateId = query.templateId;
+    if (query.recipientEmail) {
+      where.recipientEmail = { contains: query.recipientEmail, mode: 'insensitive' };
+    }
+    if (query.createdAtAfter) {
+      const after = new Date(query.createdAtAfter);
+      if (!Number.isNaN(after.getTime())) {
+        where.createdAt = { gte: after };
+      }
+    }
+    const [total, rows] = await Promise.all([
+      this.prisma.emailLog.count({ where }),
+      this.prisma.emailLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+    const data = rows.map((r) => ({
+      id: r.id,
+      transport: r.transport,
+      templateId: r.templateId,
+      recipientEmail: r.recipientEmail,
+      recipientUserId: r.recipientUserId ?? null,
+      subject: r.subject,
+      status: r.status as 'SENT' | 'FAILED' | 'SKIPPED',
+      errorCode: r.errorCode ?? null,
+      errorMessage: r.errorMessage ?? null,
+      providerMessageId: r.providerMessageId ?? null,
+      metadataJson: r.metadataJson ?? null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   private async persistLog(args: PersistLogArgs): Promise<void> {
     try {
       await this.prisma.emailLog.create({

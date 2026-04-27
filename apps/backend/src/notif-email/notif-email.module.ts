@@ -11,6 +11,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { DatabaseModule } from '../database/database.module';
 import { NotifEmailService } from './notif-email.service';
+import { NotifEmailController } from './notif-email.controller';
 import { NotifEmailTransportFactory } from './transport.factory';
 import { MockEmailTransport } from './transports/mock.transport';
 import { SmtpStreamEmailTransport } from './transports/smtp-stream.transport';
@@ -31,7 +32,7 @@ import { UnsubscribeController } from './unsubscribe.controller';
       useFactory: () => ({}),
     }),
   ],
-  controllers: [UnsubscribeController],
+  controllers: [UnsubscribeController, NotifEmailController],
   providers: [
     MockEmailTransport,
     SmtpStreamEmailTransport,
