@@ -1,11 +1,14 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotifEmailService } from '../notif-email/notif-email.service';
 import {
   CreateQuoteRequestDto,
   QueryQuoteRequestsDto,
@@ -94,11 +97,121 @@ const ALLOWED_TRANSITIONS: Record<QuoteRequestStatus, QuoteRequestStatus[]> = {
 
 @Injectable()
 export class QuoteRequestsService {
+  private readonly logger = new Logger(QuoteRequestsService.name);
+
   constructor(
     private prisma: PrismaService,
     private auditService: AuditService,
     private ownership: SellerOwnershipService,
+    // MP-NOTIF-1 phase 1 — émetteur d'emails transactionnels.
+    private notifEmail: NotifEmailService,
+    private config: ConfigService,
   ) {}
+
+  /**
+   * MP-NOTIF-1 phase 1 — Construit l'URL CTA vers la fiche RFQ seller/buyer.
+   * Pas d'environment-specific, on utilise `FRONTEND_URL` (défaut local).
+   */
+  private rfqCtaUrl(rfqId: string, audience: 'seller' | 'buyer'): string {
+    const base = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+    const path = audience === 'seller' ? '/seller/quote-requests' : '/quote-requests';
+    return `${base.replace(/\/$/, '')}${path}/${rfqId}`;
+  }
+
+  /**
+   * MP-NOTIF-1 phase 1 — Notifie l'autre partie d'un message non-interne.
+   * Si l'auteur est seller → notifier buyer. Sinon → notifier seller.
+   * Le staff (admin/coordinator/quality) n'est jamais notifié ici.
+   */
+  private async notifyOtherPartyOnMessage(
+    rfq: {
+      id: string;
+      marketplaceOffer: {
+        title: string;
+        sellerProfile: { publicDisplayName: string; salesEmail: string | null };
+      };
+      buyerUser: { email: string; firstName: string | null; lastName: string | null } | null;
+    },
+    message: {
+      message: string;
+      authorUser: {
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+        role: string;
+      };
+    },
+    actor: RequestUser,
+  ): Promise<void> {
+    const offerTitle = rfq.marketplaceOffer.title;
+    const senderDisplayName = this.formatUserName(
+      message.authorUser.firstName,
+      message.authorUser.lastName,
+      message.authorUser.email,
+    );
+
+    if (this.isSeller(actor)) {
+      // Auteur seller → notifier buyer
+      if (!rfq.buyerUser?.email) return;
+      const recipientDisplayName = this.formatUserName(
+        rfq.buyerUser.firstName,
+        rfq.buyerUser.lastName,
+        rfq.buyerUser.email,
+      );
+      await this.safeNotify('rfq-message-created', rfq.buyerUser.email, {
+        recipientDisplayName,
+        senderDisplayName,
+        offerTitle,
+        messageBody: message.message,
+        ctaUrl: this.rfqCtaUrl(rfq.id, 'buyer'),
+      });
+    } else {
+      // Auteur buyer ou staff → notifier seller (via salesEmail SellerProfile)
+      const sellerEmail = rfq.marketplaceOffer.sellerProfile.salesEmail;
+      if (!sellerEmail) return;
+      await this.safeNotify('rfq-message-created', sellerEmail, {
+        recipientDisplayName: rfq.marketplaceOffer.sellerProfile.publicDisplayName,
+        senderDisplayName,
+        offerTitle,
+        messageBody: message.message,
+        ctaUrl: this.rfqCtaUrl(rfq.id, 'seller'),
+      });
+    }
+  }
+
+  private formatUserName(
+    firstName: string | null,
+    lastName: string | null,
+    fallbackEmail: string,
+  ): string {
+    const full = [firstName, lastName].filter(Boolean).join(' ').trim();
+    return full.length > 0 ? full : fallbackEmail;
+  }
+
+  /**
+   * MP-NOTIF-1 phase 1 — Émet un email transactionnel sans bloquer le
+   * workflow métier en cas d'échec (try/catch silencieux + log warn).
+   * Phase 2 ajoutera EmailLog + retry.
+   */
+  private async safeNotify(
+    templateId: string,
+    to: string,
+    templateData: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const res = await this.notifEmail.send({ to, templateId, templateData });
+      if (!res.success) {
+        this.logger.warn(
+          `notif-email skipped templateId=${templateId} to=${to} error=${res.error ?? 'unknown'}`,
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'unknown';
+      this.logger.error(
+        `notif-email failed templateId=${templateId} to=${to} error=${msg}`,
+      );
+    }
+  }
 
   // ─── Helpers rôles / périmètre ────────────────────────────────────────────
 
@@ -271,6 +384,29 @@ export class QuoteRequestsService {
       },
     });
 
+    // MP-NOTIF-1 phase 1 — Notifie le seller. Pas bloquant : si l'email
+    // échoue (transport, DB, template), la RFQ reste créée et on log warn.
+    const sellerProfile = await this.prisma.sellerProfile.findUnique({
+      where: { id: offer.sellerProfileId },
+      select: { publicDisplayName: true, salesEmail: true },
+    });
+    if (sellerProfile?.salesEmail) {
+      await this.safeNotify('rfq-created-to-seller', sellerProfile.salesEmail, {
+        sellerDisplayName: sellerProfile.publicDisplayName,
+        buyerCompanyName: company.name,
+        offerTitle: offer.title,
+        requestedQuantity: dto.requestedQuantity ?? null,
+        requestedUnit: dto.requestedUnit ?? null,
+        deliveryCountry: dto.deliveryCountry ?? null,
+        message: dto.message ?? null,
+        ctaUrl: this.rfqCtaUrl(rfq.id, 'seller'),
+      });
+    } else {
+      this.logger.warn(
+        `notif-email skipped (no salesEmail) sellerProfileId=${offer.sellerProfileId} rfqId=${rfq.id}`,
+      );
+    }
+
     return rfq;
   }
 
@@ -390,7 +526,19 @@ export class QuoteRequestsService {
   async addMessage(rfqId: string, dto: CreateQuoteRequestMessageDto, actor: RequestUser) {
     const rfq = await this.prisma.quoteRequest.findUnique({
       where: { id: rfqId },
-      include: { marketplaceOffer: { select: { sellerProfileId: true } } },
+      include: {
+        marketplaceOffer: {
+          select: {
+            id: true,
+            title: true,
+            sellerProfileId: true,
+            sellerProfile: {
+              select: { id: true, publicDisplayName: true, salesEmail: true },
+            },
+          },
+        },
+        buyerUser: { select: { id: true, email: true, firstName: true, lastName: true } },
+      },
     });
     if (!rfq) throw new NotFoundException('Demande de devis introuvable');
     this.ensureCanAccess(actor, rfq);
@@ -424,6 +572,12 @@ export class QuoteRequestsService {
       userId: actor.id,
       newData: { messageId: message.id, isInternalNote: isInternal },
     });
+
+    // MP-NOTIF-1 phase 1 — Notifie l'autre partie d'un nouveau message
+    // public (jamais sur une note interne staff). Pas bloquant.
+    if (!isInternal) {
+      await this.notifyOtherPartyOnMessage(rfq, message, actor);
+    }
 
     return message;
   }
