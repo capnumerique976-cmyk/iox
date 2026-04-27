@@ -166,6 +166,54 @@ export interface UpdateMarketplaceOfferInput {
   incoterm?: string;
   departureLocation?: string;
   destinationMarketsJson?: Record<string, unknown>;
+  /**
+   * MP-OFFER-EDIT-2 — Édition seller du scope de visibilité.
+   * Backend rejette `PUBLISHED → PRIVATE` (passer par Suspendre).
+   */
+  visibilityScope?: MarketplaceVisibilityScope;
+}
+
+// ─── MP-OFFER-EDIT-2 — Types batches rattachés ─────────────────────────────
+
+export interface MarketplaceOfferBatchLink {
+  id: string;
+  marketplaceOfferId: string;
+  productBatchId: string;
+  quantityAvailable: string | number;
+  quantityReserved: string | number;
+  exportEligible: boolean;
+  qualityStatus?: string | null;
+  traceabilityStatus?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  productBatch?: {
+    id: string;
+    code: string;
+    quantity: string | number;
+    unit: string;
+    productionDate: string;
+    expiryDate: string | null;
+    status: string;
+  } | null;
+}
+
+export interface AttachOfferBatchInput {
+  productBatchId: string;
+  quantityAvailable: number;
+  exportEligible?: boolean;
+  qualityStatus?: string;
+  traceabilityStatus?: string;
+  notes?: string;
+}
+
+export interface UpdateOfferBatchInput {
+  quantityAvailable?: number;
+  quantityReserved?: number;
+  exportEligible?: boolean;
+  qualityStatus?: string;
+  traceabilityStatus?: string;
+  notes?: string;
 }
 
 /**
@@ -238,4 +286,18 @@ export const marketplaceOffersApi = {
    */
   duplicate: (id: string, token: string) =>
     api.post<MarketplaceOfferDetail>(`/marketplace/offers/${id}/duplicate`, {}, token),
+
+  // ─── MP-OFFER-EDIT-2 — Batches ─────────────────────────────────────────
+
+  listBatches: (offerId: string, token: string) =>
+    api.get<MarketplaceOfferBatchLink[]>(`/marketplace/offers/${offerId}/batches`, token),
+
+  attachBatch: (offerId: string, dto: AttachOfferBatchInput, token: string) =>
+    api.post<MarketplaceOfferBatchLink>(`/marketplace/offers/${offerId}/batches`, dto, token),
+
+  updateBatch: (linkId: string, dto: UpdateOfferBatchInput, token: string) =>
+    api.patch<MarketplaceOfferBatchLink>(`/marketplace/offers/batches/${linkId}`, dto, token),
+
+  detachBatch: (linkId: string, token: string) =>
+    api.delete<{ ok: true }>(`/marketplace/offers/batches/${linkId}`, token),
 };

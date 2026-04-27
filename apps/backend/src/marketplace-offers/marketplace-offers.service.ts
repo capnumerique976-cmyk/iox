@@ -103,6 +103,34 @@ export class MarketplaceOffersService {
     return offer;
   }
 
+  /**
+   * MP-OFFER-EDIT-2 — Liste des `MarketplaceOfferBatch` rattachés à une
+   * offre, avec données du `ProductBatch` joint (référence lot, quantité
+   * d'origine). Utilisé par la page seller pour afficher la section
+   * batches en édition d'offre.
+   */
+  async listOfferBatches(offerId: string, actor?: RequestUser) {
+    if (actor) await this.ownership.assertMarketplaceOfferOwnership(actor, offerId);
+    const links = await this.prisma.marketplaceOfferBatch.findMany({
+      where: { marketplaceOfferId: offerId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        productBatch: {
+          select: {
+            id: true,
+            code: true,
+            quantity: true,
+            unit: true,
+            productionDate: true,
+            expiryDate: true,
+            status: true,
+          },
+        },
+      },
+    });
+    return links;
+  }
+
   /** Catalogue public : PUBLISHED + visibility ≠ PRIVATE. */
   async findPublished(query: QueryMarketplaceOffersDto) {
     const page = query.page ?? 1;
@@ -285,6 +313,19 @@ export class MarketplaceOffersService {
     const unitPrice = dto.unitPrice ?? (existing.unitPrice as unknown as number | null);
     const currency = dto.currency ?? existing.currency;
     this.validatePricing(priceMode, unitPrice, currency);
+
+    // MP-OFFER-EDIT-2 — Garde-fou : une offre PUBLISHED ne peut pas être
+    // basculée en PRIVATE via update. C'est un retrait immédiat du
+    // catalogue qui doit passer par `suspend` (avec raison auditée) pour
+    // garder l'audit trail intact.
+    if (
+      dto.visibilityScope === MarketplaceVisibilityScope.PRIVATE &&
+      existing.publicationStatus === MarketplacePublicationStatus.PUBLISHED
+    ) {
+      throw new BadRequestException(
+        'Une offre publiée ne peut pas passer en PRIVATE — utilisez Suspendre pour la retirer du catalogue.',
+      );
+    }
 
     // Fields métiers impactant vitrine : remettre IN_REVIEW si APPROVED/PUBLISHED
     const vitrine: (keyof UpdateMarketplaceOfferDto)[] = [
