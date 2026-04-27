@@ -415,7 +415,16 @@ export class QuoteRequestsService {
   async updateStatus(id: string, dto: UpdateQuoteRequestStatusDto, actor: RequestUser) {
     const rfq = await this.prisma.quoteRequest.findUnique({
       where: { id },
-      include: { marketplaceOffer: { select: { sellerProfileId: true } } },
+      include: {
+        marketplaceOffer: {
+          select: {
+            id: true,
+            title: true,
+            sellerProfileId: true,
+            sellerProfile: { select: { publicDisplayName: true } },
+          },
+        },
+      },
     });
     if (!rfq) throw new NotFoundException('Demande de devis introuvable');
     this.ensureCanAccess(actor, rfq);
@@ -459,7 +468,70 @@ export class QuoteRequestsService {
       notes: dto.note,
     });
 
+    // MP-NOTIF-2 phase 2 — Notifie le buyer pour les transitions clés.
+    // Skip pour `NEGOTIATING` et `CANCELLED` (ton informel ; pas de notif
+    // dans cette phase). Skip aussi si `notifEmail` n'est pas injecté
+    // (compatibilité tests minimaux).
+    if (this.notifEmail) {
+      await this.notifyOnStatusTransition(updated, dto.status, dto.note);
+    }
+
     return updated;
+  }
+
+  /**
+   * MP-NOTIF-2 phase 2 — Mappe `QuoteRequestStatus` cible → templateId
+   * et émet l'email au buyer (try/catch silencieux via `safeNotify`).
+   */
+  private async notifyOnStatusTransition(
+    updated: Awaited<ReturnType<typeof this.prisma.quoteRequest.findUnique>> &
+      Record<string, unknown>,
+    targetStatus: QuoteRequestStatus,
+    note: string | null | undefined,
+  ): Promise<void> {
+    const TEMPLATE_BY_STATUS: Partial<Record<QuoteRequestStatus, string>> = {
+      [QuoteRequestStatus.QUALIFIED]: 'rfq-qualified',
+      [QuoteRequestStatus.QUOTED]: 'rfq-quoted',
+      [QuoteRequestStatus.WON]: 'rfq-won',
+      [QuoteRequestStatus.LOST]: 'rfq-lost',
+    };
+    const templateId = TEMPLATE_BY_STATUS[targetStatus];
+    if (!templateId) return; // NEGOTIATING / CANCELLED → no-op
+
+    const offer = (updated as { marketplaceOffer?: unknown }).marketplaceOffer as
+      | {
+          title?: string | null;
+          sellerProfile?: { publicDisplayName?: string | null } | null;
+        }
+      | undefined;
+    const buyer = (updated as { buyerUser?: unknown }).buyerUser as
+      | {
+          email?: string | null;
+          firstName?: string | null;
+          lastName?: string | null;
+        }
+      | undefined;
+    if (!offer || !buyer?.email) return;
+
+    const recipientDisplayName = this.formatUserName(
+      buyer.firstName ?? null,
+      buyer.lastName ?? null,
+      buyer.email,
+    );
+    const senderDisplayName = offer.sellerProfile?.publicDisplayName ?? 'Le vendeur';
+    const offerTitle = offer.title ?? 'Votre offre';
+    const ctaUrl = this.rfqCtaUrl(
+      (updated as { id: string }).id,
+      'buyer',
+    );
+
+    await this.safeNotify(templateId, buyer.email, {
+      recipientDisplayName,
+      senderDisplayName,
+      offerTitle,
+      note: note ?? null,
+      ctaUrl,
+    });
   }
 
   // ─── Assignation staff ────────────────────────────────────────────────────
