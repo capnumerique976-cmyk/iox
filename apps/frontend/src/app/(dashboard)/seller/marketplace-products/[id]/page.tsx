@@ -42,6 +42,9 @@ import {
 import type { ProductQualityAttribute } from '@/lib/marketplace/types';
 import { PageHeader } from '@/components/ui/page-header';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+// MP-EDIT-PRODUCT.3-light — image principale via InlineMediaUploader
+import { InlineMediaUploader } from '@/components/marketplace/InlineMediaUploader';
+import { MediaAssetRole, MarketplaceRelatedEntityType } from '@iox/shared';
 
 type LoadState =
   | { kind: 'loading' }
@@ -491,6 +494,32 @@ export default function SellerMarketplaceProductDetailPage() {
       setValidationError(null);
     };
 
+  // MP-EDIT-PRODUCT.3-light — Upload image principale.
+  // Le composant InlineMediaUploader gère l'upload du MediaAsset (PRIMARY,
+  // moderationStatus=PENDING) ; on PATCH ensuite le produit avec
+  // `mainMediaId` puis on re-hydrate. Le produit "disparaît" du catalog
+  // public le temps que le staff approuve le MediaAsset (gate
+  // findProductsWithPrimaryMedia).
+  const onMediaUploaded = useCallback(
+    async (mediaId: string, _role: MediaAssetRole) => {
+      try {
+        const token = authStorage.getAccessToken() ?? '';
+        await marketplaceProductsApi.update(id, { mainMediaId: mediaId }, token);
+        await load();
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Échec de la liaison de l’image au produit';
+        setSubmitError(message);
+        throw err;
+      }
+    },
+    [id, load],
+  );
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!dirty) return;
@@ -788,6 +817,28 @@ export default function SellerMarketplaceProductDetailPage() {
                 data-testid="field-subtitle"
               />
             </Field>
+          </div>
+        </Section>
+
+        <Section title="Image principale (MP-EDIT-PRODUCT.3-light)">
+          <div data-testid="section-main-media" className="space-y-3">
+            <p className="text-xs text-gray-500">
+              L’image téléversée arrive en{' '}
+              <strong>modération en attente</strong>. Le produit peut
+              temporairement disparaître du catalog public le temps que le
+              staff approuve la nouvelle image (comportement attendu).
+            </p>
+            <InlineMediaUploader
+              relatedType={MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT}
+              relatedId={state.product.id}
+              role={MediaAssetRole.PRIMARY}
+              currentMediaId={state.product.mainMediaId ?? null}
+              label="Image principale du produit"
+              previewClassName="aspect-[4/3]"
+              altTextFr={state.product.commercialName}
+              onUploaded={onMediaUploaded}
+              testId="product-main-media"
+            />
           </div>
         </Section>
 

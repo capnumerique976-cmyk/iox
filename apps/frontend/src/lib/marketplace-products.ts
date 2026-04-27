@@ -3,9 +3,16 @@
 // Étendu pour MP-EDIT-PRODUCT.1 — édition des champs textuels sûrs.
 // Le type `UpdateMarketplaceProductInput` n'expose **délibérément** que les
 // champs autorisés au seller. Tenter d'envoyer `slug`, `categoryId`,
-// `mainMediaId`, `publicationStatus` etc. via `update()` sera rejeté par
-// `tsc` à la compilation — défense en profondeur en plus du whitelist
-// backend.
+// `publicationStatus` etc. via `update()` sera rejeté par `tsc` à la
+// compilation — défense en profondeur en plus du whitelist backend.
+//
+// MP-EDIT-PRODUCT.3-light (LOT 3 mandat 14) — assouplissement contrôlé :
+// `mainMediaId` est désormais autorisé dans `UpdateMarketplaceProductInput`.
+// Le seller peut donc téléverser une nouvelle image principale via le
+// composant `InlineMediaUploader` (FP-3.1) sur la page d'édition du
+// produit. Le MediaAsset arrive en `moderationStatus: PENDING` côté
+// backend — le produit "disparaît" du catalog public jusqu'à approbation
+// staff (comportement volontaire de la gate `findProductsWithPrimaryMedia`).
 //
 // Couvre :
 //   - lister les produits du vendeur connecté
@@ -85,6 +92,10 @@ export interface SellerMarketplaceProduct {
   // FP-7 — Qualité structurée (slugs ProductQualityAttribute, max 10).
   qualityAttributes?: ProductQualityAttribute[];
 
+  // MP-EDIT-PRODUCT.3-light — Image principale (média associé).
+  // Le seller peut désormais le modifier via InlineMediaUploader.
+  mainMediaId?: string | null;
+
   // Saisonnalité (édition via /seasonality, lecture seule ici)
   harvestMonths: SeasonalityMonth[];
   availabilityMonths: SeasonalityMonth[];
@@ -111,12 +122,17 @@ export interface UpdateSeasonalityInput {
 /**
  * Champs autorisés en édition seller (MP-EDIT-PRODUCT.1).
  *
- * Les champs interdits (slug, categoryId, productId, sellerProfileId,
- * mainMediaId, harvestMonths, availabilityMonths, isYearRound,
- * minimumOrderQuantity, defaultUnit, nutritionInfoJson, publicationStatus,
- * scoring/audit) **ne figurent pas** dans cette interface. Tout appel
+ * Champs interdits (slug, categoryId, productId, sellerProfileId,
+ * harvestMonths, availabilityMonths, isYearRound, minimumOrderQuantity,
+ * defaultUnit, nutritionInfoJson, publicationStatus, scoring/audit) **ne
+ * figurent pas** dans cette interface. Tout appel
  * `update(id, { slug: '…' }, tok)` sera rejeté par tsc à la compilation
  * (excess property check + objet littéral).
+ *
+ * MP-EDIT-PRODUCT.3-light (LOT 3 mandat 14) — assouplissement explicite :
+ * `mainMediaId` est désormais autorisé (le seller peut changer son image
+ * principale via `InlineMediaUploader`). Tous les autres champs interdits
+ * restent rejetés par tsc.
  */
 export interface UpdateMarketplaceProductInput {
   // Identité publique
@@ -163,6 +179,10 @@ export interface UpdateMarketplaceProductInput {
 
   // FP-7 — Qualité structurée
   qualityAttributes?: ProductQualityAttribute[];
+
+  // MP-EDIT-PRODUCT.3-light — Image principale (média associé). Autorisé
+  // depuis ce lot (auparavant interdit dans MP-EDIT-PRODUCT.1).
+  mainMediaId?: string | null;
 }
 
 /**

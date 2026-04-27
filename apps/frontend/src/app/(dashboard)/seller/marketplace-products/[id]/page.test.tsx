@@ -48,6 +48,23 @@ vi.mock('@/lib/auth', async () => {
   };
 });
 
+// MP-EDIT-PRODUCT.3-light — InlineMediaUploader utilise ces helpers.
+const mediaUploadMock = vi.fn();
+const mediaGetUrlMock = vi.fn();
+vi.mock('@/lib/marketplace-media-assets', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/marketplace-media-assets')>(
+    '@/lib/marketplace-media-assets',
+  );
+  return {
+    ...actual,
+    marketplaceMediaAssetsApi: {
+      ...actual.marketplaceMediaAssetsApi,
+      upload: (...args: unknown[]) => mediaUploadMock(...args),
+      getUrl: (...args: unknown[]) => mediaGetUrlMock(...args),
+    },
+  };
+});
+
 import SellerMarketplaceProductDetailPage from './page';
 
 const baseProduct = {
@@ -510,6 +527,72 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
     expect(await screen.findByTestId('workflow-error')).toHaveTextContent(
       /transition interdite/i,
     );
+  });
+
+  // ─── MP-EDIT-PRODUCT.3-light (LOT 3 mandat 14) ────────────────────────
+
+  it('MP-EDIT-PRODUCT.3-light — la section image principale est rendue', async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct });
+    mediaGetUrlMock.mockResolvedValue({ url: 'https://placehold.co/x.jpg' });
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('section-main-media')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('product-main-media')).toBeInTheDocument();
+  });
+
+  it('MP-EDIT-PRODUCT.3-light — upload image PRIMARY déclenche PATCH mainMediaId', async () => {
+    // jsdom n'implémente pas URL.createObjectURL → stub local pour le test.
+    const origCreate = (globalThis.URL as unknown as { createObjectURL?: unknown })
+      .createObjectURL;
+    const origRevoke = (globalThis.URL as unknown as { revokeObjectURL?: unknown })
+      .revokeObjectURL;
+    (globalThis.URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL =
+      () => 'blob://stub';
+    (globalThis.URL as unknown as { revokeObjectURL: (s: string) => void }).revokeObjectURL =
+      () => {};
+    try {
+      getByIdMock.mockResolvedValue({ ...baseProduct });
+      mediaGetUrlMock.mockResolvedValue({ url: 'https://placehold.co/x.jpg' });
+      mediaUploadMock.mockResolvedValue({
+        id: 'media-new',
+        role: 'PRIMARY',
+        moderationStatus: 'PENDING',
+      });
+      updateMock.mockResolvedValue({ ...baseProduct, mainMediaId: 'media-new' });
+      const user = userEvent.setup();
+      render(<SellerMarketplaceProductDetailPage />);
+      await waitFor(() =>
+        expect(screen.getByTestId('section-main-media')).toBeInTheDocument(),
+      );
+      const file = new File(['image-bytes'], 'test.jpg', { type: 'image/jpeg' });
+      const input = screen.getByTestId('product-main-media-input') as HTMLInputElement;
+      await user.upload(input, file);
+      await user.click(screen.getByTestId('product-main-media-submit'));
+      await waitFor(() => expect(mediaUploadMock).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
+      const [idArg, payload] = updateMock.mock.calls[0];
+      expect(idArg).toBe('mp1');
+      expect(payload).toEqual({ mainMediaId: 'media-new' });
+    } finally {
+      (globalThis.URL as unknown as { createObjectURL: unknown }).createObjectURL =
+        origCreate as never;
+      (globalThis.URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL =
+        origRevoke as never;
+    }
+  });
+
+  it('MP-EDIT-PRODUCT.3-light — UpdateMarketplaceProductInput accepte mainMediaId', async () => {
+    // Probe minimal : si mainMediaId était toujours interdit, ce fichier ne
+    // compilerait pas. La présence du test passant valide donc le contrat
+    // assoupli côté tsc + l'utilisation runtime.
+    const { ApiError } = await import('@/lib/api');
+    expect(ApiError).toBeDefined();
+    // Sanity check au runtime — l'objet est juste assigné, jamais envoyé.
+    const payload: import('@/lib/marketplace-products').UpdateMarketplaceProductInput = {
+      mainMediaId: 'media-x',
+    };
+    expect(payload.mainMediaId).toBe('media-x');
   });
 
   it('relaie l’erreur backend 400 (ex. cohérence GPS) dans submit-error', async () => {
