@@ -17,13 +17,22 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'o1' }),
+  useRouter: () => ({ push: pushMock }),
+}));
+
+// MP-OFFER-DUPLICATE — confirm dialog mock partagé entre les tests.
+const confirmMock = vi.fn();
+vi.mock('@/components/ui/confirm-dialog', () => ({
+  useConfirm: () => confirmMock,
 }));
 
 const getByIdMock = vi.fn();
 const updateMock = vi.fn();
 const submitMock = vi.fn();
+const duplicateMock = vi.fn();
 vi.mock('@/lib/marketplace-offers', async () => {
   const actual = await vi.importActual<typeof import('@/lib/marketplace-offers')>(
     '@/lib/marketplace-offers',
@@ -35,6 +44,7 @@ vi.mock('@/lib/marketplace-offers', async () => {
       getById: (...args: unknown[]) => getByIdMock(...args),
       update: (...args: unknown[]) => updateMock(...args),
       submit: (...args: unknown[]) => submitMock(...args),
+      duplicate: (...args: unknown[]) => duplicateMock(...args),
     },
   };
 });
@@ -96,6 +106,9 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-VIEW)', () => {
     getByIdMock.mockReset();
     updateMock.mockReset();
     submitMock.mockReset();
+    duplicateMock.mockReset();
+    pushMock.mockReset();
+    confirmMock.mockReset();
   });
   afterEach(() => vi.clearAllMocks());
 
@@ -223,5 +236,55 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-VIEW)', () => {
       target: { value: 'Patché' },
     });
     expect(screen.getByTestId('review-warning')).toBeInTheDocument();
+  });
+
+  // ── MP-OFFER-DUPLICATE ──────────────────────────────────────────────
+
+  it('MP-OFFER-DUPLICATE — bouton Dupliquer visible en mode lecture', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('btn-duplicate-offer')).toBeInTheDocument(),
+    );
+  });
+
+  it('MP-OFFER-DUPLICATE — clic + confirm OK → API call → redirect vers nouvelle URL', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    confirmMock.mockResolvedValue(true);
+    duplicateMock.mockResolvedValue({ id: 'copy-1' });
+    render(<SellerMarketplaceOfferDetailPage />);
+    const btn = await screen.findByTestId('btn-duplicate-offer');
+    fireEvent.click(btn);
+    await waitFor(() => expect(duplicateMock).toHaveBeenCalledTimes(1));
+    expect(duplicateMock.mock.calls[0][0]).toBe('o1');
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith('/seller/marketplace-offers/copy-1'),
+    );
+  });
+
+  it('MP-OFFER-DUPLICATE — confirm refusé → ni API ni redirect', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    confirmMock.mockResolvedValue(false);
+    render(<SellerMarketplaceOfferDetailPage />);
+    const btn = await screen.findByTestId('btn-duplicate-offer');
+    fireEvent.click(btn);
+    // Laisser éventuelles micro-tasks se résoudre.
+    await new Promise((r) => setTimeout(r, 10));
+    expect(duplicateMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('MP-OFFER-DUPLICATE — erreur API → submit-error affiché, pas de redirect', async () => {
+    const { ApiError } = await import('@/lib/api');
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    confirmMock.mockResolvedValue(true);
+    duplicateMock.mockRejectedValue(
+      new ApiError('CONFLICT', 'Offre verrouillée', undefined, 'rid', 409),
+    );
+    render(<SellerMarketplaceOfferDetailPage />);
+    const btn = await screen.findByTestId('btn-duplicate-offer');
+    fireEvent.click(btn);
+    expect(await screen.findByTestId('submit-error')).toHaveTextContent(/Offre verrouillée/i);
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });
