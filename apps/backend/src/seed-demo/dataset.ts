@@ -11,6 +11,7 @@
 import {
   CertificationType,
   MarketplacePriceMode,
+  ProductQualityAttribute,
   SeasonalityMonth,
 } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -67,6 +68,20 @@ interface DemoProduct {
   availabilityMonths: SeasonalityMonth[];
   isYearRound: boolean;
   publishedAt: Date;
+  // SEED-DEMO-FIX-2 — FP-7 (qualité structurée).
+  qualityAttributes: ProductQualityAttribute[];
+  // SEED-DEMO-FIX-2 — FP-8 (logistique structurée).
+  packagingFormats: string[];
+  temperatureRequirements: string;
+  grossWeight: Prisma.Decimal;
+  netWeight: Prisma.Decimal;
+  palletization: string;
+  // SEED-DEMO-FIX-2 — FP-5 (volumes & capacités).
+  annualProductionCapacity: Prisma.Decimal;
+  capacityUnit: string;
+  availableQuantity: Prisma.Decimal;
+  availableQuantityUnit: string;
+  restockFrequency: string;
   offer: {
     priceMode: MarketplacePriceMode;
     unitPrice: Prisma.Decimal | null;
@@ -220,6 +235,22 @@ export const DEMO_DATASET: {
       availabilityMonths: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
       isYearRound: true,
       publishedAt: PUBLISHED_AT,
+      qualityAttributes: [
+        ProductQualityAttribute.ORGANIC,
+        ProductQualityAttribute.FAIR_TRADE,
+        ProductQualityAttribute.HAND_HARVESTED,
+        ProductQualityAttribute.TRADITIONAL,
+      ],
+      packagingFormats: ['250g vacuum', '500g vacuum', 'carton 1kg'],
+      temperatureRequirements: 'Cool 4-15°C, dry',
+      grossWeight: D('0.280'),
+      netWeight: D('0.250'),
+      palletization: 'Carton 12 unités, palette 80 cartons',
+      annualProductionCapacity: D('800.000'),
+      capacityUnit: 'kg/an',
+      availableQuantity: D('120.000'),
+      availableQuantityUnit: 'kg',
+      restockFrequency: 'seasonal',
       offer: {
         priceMode: MarketplacePriceMode.FIXED,
         unitPrice: D('420.00'),
@@ -256,6 +287,21 @@ export const DEMO_DATASET: {
       availabilityMonths: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
       isYearRound: true,
       publishedAt: PUBLISHED_AT,
+      qualityAttributes: [
+        ProductQualityAttribute.ORGANIC,
+        ProductQualityAttribute.FAIR_TRADE,
+        ProductQualityAttribute.SMALL_BATCH,
+      ],
+      packagingFormats: ['100g aluminium pouch', 'carton x12'],
+      temperatureRequirements: 'Cool 4-15°C, dry',
+      grossWeight: D('0.115'),
+      netWeight: D('0.100'),
+      palletization: 'Carton 12 sachets, palette 100 cartons',
+      annualProductionCapacity: D('200.000'),
+      capacityUnit: 'kg/an',
+      availableQuantity: D('45.000'),
+      availableQuantityUnit: 'kg',
+      restockFrequency: 'seasonal',
       offer: {
         priceMode: MarketplacePriceMode.FROM_PRICE,
         unitPrice: D('780.00'),
@@ -293,6 +339,20 @@ export const DEMO_DATASET: {
       availabilityMonths: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
       isYearRound: true,
       publishedAt: PUBLISHED_AT,
+      qualityAttributes: [
+        ProductQualityAttribute.WILD_HARVESTED,
+        ProductQualityAttribute.RAW,
+      ],
+      packagingFormats: ['filet 1kg vacuum', 'carton 5kg vacuum'],
+      temperatureRequirements: 'Frozen ≤ -18°C',
+      grossWeight: D('5.300'),
+      netWeight: D('5.000'),
+      palletization: 'Carton 5kg, palette 200 cartons (1 tonne)',
+      annualProductionCapacity: D('45000.000'),
+      capacityUnit: 'kg/an',
+      availableQuantity: D('800.000'),
+      availableQuantityUnit: 'kg',
+      restockFrequency: 'weekly',
       offer: {
         priceMode: MarketplacePriceMode.FIXED,
         unitPrice: D('14.50'),
@@ -330,6 +390,20 @@ export const DEMO_DATASET: {
       availabilityMonths: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
       isYearRound: true,
       publishedAt: PUBLISHED_AT,
+      qualityAttributes: [
+        ProductQualityAttribute.WILD_HARVESTED,
+        ProductQualityAttribute.TRADITIONAL,
+      ],
+      packagingFormats: ['boîte 200g', 'carton 24 unités'],
+      temperatureRequirements: 'Ambient',
+      grossWeight: D('5.400'),
+      netWeight: D('4.800'),
+      palletization: 'Carton 24 boîtes, palette 64 cartons',
+      annualProductionCapacity: D('60000.000'),
+      capacityUnit: 'unités/an',
+      availableQuantity: D('5400.000'),
+      availableQuantityUnit: 'unités',
+      restockFrequency: 'monthly',
       offer: {
         priceMode: MarketplacePriceMode.FROM_PRICE,
         unitPrice: D('3.20'),
@@ -367,6 +441,22 @@ export const DEMO_DATASET: {
       availabilityMonths: ['NOV', 'DEC', 'JAN', 'FEB', 'MAR', 'APR'],
       isYearRound: false,
       publishedAt: PUBLISHED_AT,
+      qualityAttributes: [
+        ProductQualityAttribute.HANDMADE,
+        ProductQualityAttribute.ARTISANAL,
+        ProductQualityAttribute.COLD_PRESSED,
+        ProductQualityAttribute.SMALL_BATCH,
+      ],
+      packagingFormats: ['100mL flacon ambré étain', '1L bidon inox'],
+      temperatureRequirements: 'Cool 4-20°C, dark',
+      grossWeight: D('0.200'),
+      netWeight: D('0.100'),
+      palletization: 'Carton 24 flacons 100mL, palette 60 cartons',
+      annualProductionCapacity: D('45.000'),
+      capacityUnit: 'kg/an',
+      availableQuantity: D('12.000'),
+      availableQuantityUnit: 'kg',
+      restockFrequency: 'monthly',
       offer: {
         priceMode: MarketplacePriceMode.QUOTE_ONLY,
         unitPrice: null,
@@ -404,6 +494,21 @@ export const DEMO_DATASET: {
       availabilityMonths: ['NOV', 'DEC', 'JAN', 'FEB', 'MAR', 'APR'],
       isYearRound: false,
       publishedAt: PUBLISHED_AT,
+      qualityAttributes: [
+        ProductQualityAttribute.HANDMADE,
+        ProductQualityAttribute.ARTISANAL,
+        ProductQualityAttribute.TRADITIONAL,
+      ],
+      packagingFormats: ['5kg bidon inox', '25kg bidon inox'],
+      temperatureRequirements: 'Cool 4-20°C, dark',
+      grossWeight: D('5.400'),
+      netWeight: D('5.000'),
+      palletization: 'Bidon 5kg, palette 32 bidons (1 tonne)',
+      annualProductionCapacity: D('320.000'),
+      capacityUnit: 'kg/an',
+      availableQuantity: D('80.000'),
+      availableQuantityUnit: 'kg',
+      restockFrequency: 'monthly',
       offer: {
         priceMode: MarketplacePriceMode.FIXED,
         unitPrice: D('165.00'),
@@ -441,6 +546,21 @@ export const DEMO_DATASET: {
       availabilityMonths: ['NOV', 'DEC', 'JAN', 'FEB'],
       isYearRound: false,
       publishedAt: PUBLISHED_AT,
+      qualityAttributes: [
+        ProductQualityAttribute.ORGANIC,
+        ProductQualityAttribute.HAND_HARVESTED,
+        ProductQualityAttribute.SMALL_BATCH,
+      ],
+      packagingFormats: ['plateau 4kg', 'carton 10kg'],
+      temperatureRequirements: 'Cool 8-12°C',
+      grossWeight: D('4.200'),
+      netWeight: D('4.000'),
+      palletization: 'Plateau alvéolé 4kg, palette 200 plateaux',
+      annualProductionCapacity: D('25000.000'),
+      capacityUnit: 'kg/an',
+      availableQuantity: D('1200.000'),
+      availableQuantityUnit: 'kg',
+      restockFrequency: 'seasonal',
       offer: {
         priceMode: MarketplacePriceMode.FROM_PRICE,
         unitPrice: D('5.80'),
@@ -477,6 +597,20 @@ export const DEMO_DATASET: {
       availabilityMonths: ['MAR', 'APR', 'MAY', 'OCT', 'NOV'],
       isYearRound: false,
       publishedAt: PUBLISHED_AT,
+      qualityAttributes: [
+        ProductQualityAttribute.ORGANIC,
+        ProductQualityAttribute.HAND_HARVESTED,
+      ],
+      packagingFormats: ['cagette 4kg réutilisable', 'carton 8kg'],
+      temperatureRequirements: 'Cool 8-12°C',
+      grossWeight: D('4.300'),
+      netWeight: D('4.000'),
+      palletization: 'Cagette 4kg, palette 180 cagettes',
+      annualProductionCapacity: D('6000.000'),
+      capacityUnit: 'kg/an',
+      availableQuantity: D('300.000'),
+      availableQuantityUnit: 'kg',
+      restockFrequency: 'seasonal',
       offer: {
         priceMode: MarketplacePriceMode.QUOTE_ONLY,
         unitPrice: null,
