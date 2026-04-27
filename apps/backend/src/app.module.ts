@@ -36,6 +36,7 @@ import { QuoteRequestsModule } from './quote-requests/quote-requests.module';
 import { MarketplaceReviewModule } from './marketplace-review/marketplace-review.module';
 import { MarketplaceDocumentsModule } from './marketplace-documents/marketplace-documents.module';
 import { MarketplaceCertificationsModule } from './marketplace-certifications/marketplace-certifications.module';
+import { NotifEmailModule } from './notif-email/notif-email.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
@@ -117,6 +118,8 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
     MarketplaceDocumentsModule,
     // Module Marketplace — Certifications structurées (FP-2)
     MarketplaceCertificationsModule,
+    // Module Marketplace — Emails transactionnels (MP-NOTIF-1 phase 1)
+    NotifEmailModule,
   ],
   providers: [
     // Rate limiting (doit être AVANT JwtAuthGuard pour protéger /auth/login)

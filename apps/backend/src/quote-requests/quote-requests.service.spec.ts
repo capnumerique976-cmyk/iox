@@ -1,9 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { QuoteRequestsService } from './quote-requests.service';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import { NotifEmailService } from '../notif-email/notif-email.service';
 import {
   MarketplacePublicationStatus,
   MarketplaceVisibilityScope,
@@ -44,9 +46,12 @@ describe('QuoteRequestsService', () => {
     marketplaceOffer: { findUnique: jest.Mock };
     company: { findUnique: jest.Mock };
     user: { findUnique: jest.Mock };
+    sellerProfile: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
   let audit: { log: jest.Mock };
+  let notifEmail: { send: jest.Mock };
+  let config: { get: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -64,9 +69,19 @@ describe('QuoteRequestsService', () => {
       marketplaceOffer: { findUnique: jest.fn() },
       company: { findUnique: jest.fn() },
       user: { findUnique: jest.fn() },
+      sellerProfile: { findUnique: jest.fn() },
       $transaction: jest.fn((ops: Array<Promise<unknown>>) => Promise.all(ops)),
     };
     audit = { log: jest.fn().mockResolvedValue(undefined) };
+    notifEmail = {
+      send: jest.fn().mockResolvedValue({ success: true, messageId: 'mock-1', transport: 'mock' }),
+    };
+    config = {
+      get: jest.fn((key: string) => {
+        if (key === 'FRONTEND_URL') return 'http://localhost:3000';
+        return undefined;
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -88,6 +103,8 @@ describe('QuoteRequestsService', () => {
             canReadSellerProfile: () => true,
           },
         },
+        { provide: NotifEmailService, useValue: notifEmail },
+        { provide: ConfigService, useValue: config },
       ],
     }).compile();
 
@@ -107,6 +124,8 @@ describe('QuoteRequestsService', () => {
 
     const publishedOffer = {
       id: 'off-1',
+      title: 'Vanille Bourbon Grade A — offre principale',
+      sellerProfileId: 'sp-1',
       publicationStatus: MarketplacePublicationStatus.PUBLISHED,
       visibilityScope: MarketplaceVisibilityScope.BUYERS_ONLY,
       sellerProfile: { id: 'sp-1', status: SellerProfileStatus.APPROVED },
@@ -115,7 +134,7 @@ describe('QuoteRequestsService', () => {
 
     it('crée une RFQ valide sur offre publiée', async () => {
       prisma.marketplaceOffer.findUnique.mockResolvedValue(publishedOffer);
-      prisma.company.findUnique.mockResolvedValue({ id: 'co-1' });
+      prisma.company.findUnique.mockResolvedValue({ id: 'co-1', name: 'Acme Foods' });
       prisma.quoteRequest.create.mockResolvedValue({
         id: 'rfq-1',
         ...dto,
@@ -123,6 +142,10 @@ describe('QuoteRequestsService', () => {
         status: QuoteRequestStatus.NEW,
       });
       prisma.quoteRequestMessage.create.mockResolvedValue({ id: 'msg-1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({
+        publicDisplayName: 'Coop Vanille',
+        salesEmail: 'sales@coop-vanille.demo',
+      });
 
       const out = await service.create(dto, BUYER);
       expect(out.id).toBe('rfq-1');
@@ -132,6 +155,79 @@ describe('QuoteRequestsService', () => {
           action: 'QUOTE_REQUEST_CREATED',
         }),
       );
+    });
+
+    // ── MP-NOTIF-1 phase 1 ─────────────────────────────────────────────────
+    it('MP-NOTIF-1 — appelle NotifEmailService.send vers seller.salesEmail après create', async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue(publishedOffer);
+      prisma.company.findUnique.mockResolvedValue({ id: 'co-1', name: 'Acme Foods' });
+      prisma.quoteRequest.create.mockResolvedValue({
+        id: 'rfq-1',
+        ...dto,
+        buyerUserId: BUYER.id,
+        status: QuoteRequestStatus.NEW,
+      });
+      prisma.quoteRequestMessage.create.mockResolvedValue({ id: 'msg-1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({
+        publicDisplayName: 'Coop Vanille',
+        salesEmail: 'sales@coop-vanille.demo',
+      });
+
+      await service.create(dto, BUYER);
+      expect(notifEmail.send).toHaveBeenCalledTimes(1);
+      const arg = notifEmail.send.mock.calls[0][0];
+      expect(arg.templateId).toBe('rfq-created-to-seller');
+      expect(arg.to).toBe('sales@coop-vanille.demo');
+      expect(arg.templateData).toMatchObject({
+        sellerDisplayName: 'Coop Vanille',
+        buyerCompanyName: 'Acme Foods',
+        offerTitle: publishedOffer.title,
+        requestedQuantity: 500,
+        requestedUnit: 'kg',
+      });
+      expect(typeof arg.templateData.ctaUrl).toBe('string');
+      expect(arg.templateData.ctaUrl).toContain('/seller/quote-requests/rfq-1');
+    });
+
+    it('MP-NOTIF-1 — RFQ créée même si salesEmail absent (skip silencieux)', async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue(publishedOffer);
+      prisma.company.findUnique.mockResolvedValue({ id: 'co-1', name: 'Acme Foods' });
+      prisma.quoteRequest.create.mockResolvedValue({
+        id: 'rfq-2',
+        ...dto,
+        buyerUserId: BUYER.id,
+        status: QuoteRequestStatus.NEW,
+      });
+      prisma.quoteRequestMessage.create.mockResolvedValue({ id: 'msg-1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({
+        publicDisplayName: 'Coop sans email',
+        salesEmail: null,
+      });
+
+      const out = await service.create(dto, BUYER);
+      expect(out.id).toBe('rfq-2');
+      expect(notifEmail.send).not.toHaveBeenCalled();
+    });
+
+    it('MP-NOTIF-1 — RFQ créée même si transport notif throw (try/catch silencieux)', async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue(publishedOffer);
+      prisma.company.findUnique.mockResolvedValue({ id: 'co-1', name: 'Acme Foods' });
+      prisma.quoteRequest.create.mockResolvedValue({
+        id: 'rfq-3',
+        ...dto,
+        buyerUserId: BUYER.id,
+        status: QuoteRequestStatus.NEW,
+      });
+      prisma.quoteRequestMessage.create.mockResolvedValue({ id: 'msg-1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({
+        publicDisplayName: 'Coop Vanille',
+        salesEmail: 'sales@coop-vanille.demo',
+      });
+      notifEmail.send.mockRejectedValueOnce(new Error('boom transport'));
+
+      const out = await service.create(dto, BUYER);
+      expect(out.id).toBe('rfq-3');
+      expect(notifEmail.send).toHaveBeenCalledTimes(1);
     });
 
     it('404 si offre inexistante', async () => {
@@ -386,7 +482,22 @@ describe('QuoteRequestsService', () => {
     const rfq = {
       id: 'rfq-1',
       buyerUserId: BUYER.id,
-      marketplaceOffer: { sellerProfileId: 'sp-1' },
+      marketplaceOffer: {
+        id: 'off-1',
+        title: 'Vanille Bourbon Grade A — offre principale',
+        sellerProfileId: 'sp-1',
+        sellerProfile: {
+          id: 'sp-1',
+          publicDisplayName: 'Coop Vanille',
+          salesEmail: 'sales@coop-vanille.demo',
+        },
+      },
+      buyerUser: {
+        id: 'buyer-1',
+        email: 'buyer@acme.demo',
+        firstName: 'Alice',
+        lastName: 'Acheteuse',
+      },
     };
 
     it('findMessages buyer → filtre isInternalNote=false', async () => {
@@ -419,24 +530,95 @@ describe('QuoteRequestsService', () => {
 
     it('addMessage seller : note interne OK + audit approprié', async () => {
       prisma.quoteRequest.findUnique.mockResolvedValue(rfq);
-      prisma.quoteRequestMessage.create.mockResolvedValue({ id: 'm-1', isInternalNote: true });
+      prisma.quoteRequestMessage.create.mockResolvedValue({
+        id: 'm-1',
+        message: 'note',
+        isInternalNote: true,
+        authorUser: { firstName: 'S', lastName: 'L', email: 'sl@x', role: 'MARKETPLACE_SELLER' },
+      });
       await service.addMessage('rfq-1', { message: 'note', isInternalNote: true }, SELLER);
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'QUOTE_REQUEST_INTERNAL_NOTE_ADDED',
         }),
       );
+      // MP-NOTIF-1 : note interne ne déclenche PAS de notif
+      expect(notifEmail.send).not.toHaveBeenCalled();
     });
 
     it('addMessage buyer visible : audit MESSAGE_ADDED', async () => {
       prisma.quoteRequest.findUnique.mockResolvedValue(rfq);
-      prisma.quoteRequestMessage.create.mockResolvedValue({ id: 'm-2', isInternalNote: false });
+      prisma.quoteRequestMessage.create.mockResolvedValue({
+        id: 'm-2',
+        message: 'hello',
+        isInternalNote: false,
+        authorUser: {
+          firstName: 'Alice',
+          lastName: 'Acheteuse',
+          email: 'buyer@acme.demo',
+          role: 'MARKETPLACE_BUYER',
+        },
+      });
       await service.addMessage('rfq-1', { message: 'hello' }, BUYER);
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'QUOTE_REQUEST_MESSAGE_ADDED',
         }),
       );
+    });
+
+    // ── MP-NOTIF-1 phase 1 ─────────────────────────────────────────────────
+    it('MP-NOTIF-1 — buyer envoie un message → notifie le seller (salesEmail)', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue(rfq);
+      prisma.quoteRequestMessage.create.mockResolvedValue({
+        id: 'm-3',
+        message: 'Pouvez-vous chiffrer ?',
+        isInternalNote: false,
+        authorUser: {
+          firstName: 'Alice',
+          lastName: 'Acheteuse',
+          email: 'buyer@acme.demo',
+          role: 'MARKETPLACE_BUYER',
+        },
+      });
+      await service.addMessage('rfq-1', { message: 'Pouvez-vous chiffrer ?' }, BUYER);
+      expect(notifEmail.send).toHaveBeenCalledTimes(1);
+      const arg = notifEmail.send.mock.calls[0][0];
+      expect(arg.templateId).toBe('rfq-message-created');
+      expect(arg.to).toBe('sales@coop-vanille.demo');
+      expect(arg.templateData).toMatchObject({
+        recipientDisplayName: 'Coop Vanille',
+        senderDisplayName: 'Alice Acheteuse',
+        offerTitle: 'Vanille Bourbon Grade A — offre principale',
+        messageBody: 'Pouvez-vous chiffrer ?',
+      });
+      expect(String(arg.templateData.ctaUrl)).toContain('/seller/quote-requests/rfq-1');
+    });
+
+    it('MP-NOTIF-1 — seller envoie un message → notifie le buyer (email user)', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue(rfq);
+      prisma.quoteRequestMessage.create.mockResolvedValue({
+        id: 'm-4',
+        message: 'Devis 1850 EUR/tonne CIF.',
+        isInternalNote: false,
+        authorUser: {
+          firstName: 'Boris',
+          lastName: 'Vendeur',
+          email: 'sales@coop-vanille.demo',
+          role: 'MARKETPLACE_SELLER',
+        },
+      });
+      await service.addMessage('rfq-1', { message: 'Devis 1850 EUR/tonne CIF.' }, SELLER);
+      expect(notifEmail.send).toHaveBeenCalledTimes(1);
+      const arg = notifEmail.send.mock.calls[0][0];
+      expect(arg.to).toBe('buyer@acme.demo');
+      expect(arg.templateData).toMatchObject({
+        recipientDisplayName: 'Alice Acheteuse',
+        senderDisplayName: 'Boris Vendeur',
+        offerTitle: 'Vanille Bourbon Grade A — offre principale',
+        messageBody: 'Devis 1850 EUR/tonne CIF.',
+      });
+      expect(String(arg.templateData.ctaUrl)).toContain('/quote-requests/rfq-1');
     });
 
     it('404 si RFQ introuvable pour messages', async () => {
