@@ -38,6 +38,12 @@ export interface SendEmailInput {
    * `{ sourceEntity: 'QuoteRequest', sourceId: '<uuid>' }`.
    */
   metadata?: Record<string, unknown>;
+  /**
+   * MP-NOTIF-2 — Catégorie d'unsubscribe à appliquer (défaut
+   * `TRANSACTIONAL`). Si l'email destinataire a opt-out de cette
+   * catégorie OU de `ALL`, le service skip l'envoi (EmailLog SKIPPED).
+   */
+  unsubscribeType?: 'ALL' | 'RFQ_NOTIFICATIONS' | 'TRANSACTIONAL';
 }
 
 export interface SendEmailResult {

@@ -7,23 +7,39 @@
 // tests d'injecter le même singleton et asserter sur `getSent()`.
 
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { DatabaseModule } from '../database/database.module';
 import { NotifEmailService } from './notif-email.service';
 import { NotifEmailTransportFactory } from './transport.factory';
 import { MockEmailTransport } from './transports/mock.transport';
 import { SmtpStreamEmailTransport } from './transports/smtp-stream.transport';
 import { ResendEmailTransport } from './transports/resend.transport';
+import { UnsubscribeService } from './unsubscribe.service';
+import { UnsubscribeController } from './unsubscribe.controller';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule],
+  imports: [
+    ConfigModule,
+    DatabaseModule,
+    // MP-NOTIF-2 — JwtModule local pour signer/vérifier les tokens
+    // unsubscribe ; le secret est résolu dynamiquement dans
+    // `UnsubscribeService.resolveSecret`.
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: () => ({}),
+    }),
+  ],
+  controllers: [UnsubscribeController],
   providers: [
     MockEmailTransport,
     SmtpStreamEmailTransport,
     ResendEmailTransport,
     NotifEmailTransportFactory,
+    UnsubscribeService,
     NotifEmailService,
   ],
-  exports: [NotifEmailService, MockEmailTransport],
+  exports: [NotifEmailService, MockEmailTransport, UnsubscribeService],
 })
 export class NotifEmailModule {}

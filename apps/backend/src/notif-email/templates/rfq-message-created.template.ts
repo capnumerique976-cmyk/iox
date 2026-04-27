@@ -5,6 +5,7 @@
 // l'autre partie (buyer si l'auteur est seller, et vice-versa).
 
 import type { EmailTemplate } from '../notif-email.types';
+import { renderFooterHtml, renderFooterText } from './footer';
 
 export interface RfqMessageCreatedTemplateData {
   recipientDisplayName: string;
@@ -12,6 +13,8 @@ export interface RfqMessageCreatedTemplateData {
   offerTitle: string;
   messageBody: string;
   ctaUrl: string;
+  /** MP-NOTIF-2 — injecté automatiquement par NotifEmailService. */
+  unsubscribeUrl?: string;
   [key: string]: unknown;
 }
 
@@ -42,9 +45,7 @@ export const rfqMessageCreatedTemplate: EmailTemplate<RfqMessageCreatedTemplateD
       '',
       `Voir et répondre : ${data.ctaUrl}`,
       '',
-      '— IOX (Indian Ocean Xchange)',
-      'Vous recevez cet email parce que vous participez à cette demande de devis.',
-      // TODO MP-NOTIF-2 : lien de désinscription / préférences
+      renderFooterText(data),
     ].join('\n');
   },
 
@@ -76,11 +77,7 @@ export const rfqMessageCreatedTemplate: EmailTemplate<RfqMessageCreatedTemplateD
   <div style="text-align:center;margin:24px 0;">
     <a href="${safe.ctaUrl}" style="display:inline-block;padding:12px 24px;background:#0ea5e9;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;border-radius:6px;">Voir et répondre</a>
   </div>
-  <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;line-height:1.5;border-top:1px solid #e5e7eb;padding-top:16px;">
-    IOX — Indian Ocean Xchange<br>
-    Vous recevez cet email parce que vous participez à cette demande de devis.
-    <!-- TODO MP-NOTIF-2 : lien de désinscription / préférences -->
-  </p>
+  ${renderFooterHtml(data)}
 </div>
 </body>
 </html>`;

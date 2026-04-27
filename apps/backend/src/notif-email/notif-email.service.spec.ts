@@ -16,6 +16,7 @@ import { MockEmailTransport } from './transports/mock.transport';
 import { SmtpStreamEmailTransport } from './transports/smtp-stream.transport';
 import { ResendEmailTransport } from './transports/resend.transport';
 import { PrismaService } from '../database/prisma.service';
+import { UnsubscribeService } from './unsubscribe.service';
 
 describe('NotifEmailService', () => {
   let service: NotifEmailService;
@@ -23,6 +24,10 @@ describe('NotifEmailService', () => {
   let smtpStreamTransport: SmtpStreamEmailTransport;
   let config: { get: jest.Mock };
   let prisma: { emailLog: { create: jest.Mock } };
+  let unsubscribeService: {
+    isUnsubscribed: jest.Mock;
+    generateToken: jest.Mock;
+  };
 
   beforeEach(async () => {
     config = {
@@ -37,6 +42,10 @@ describe('NotifEmailService', () => {
         create: jest.fn().mockResolvedValue({ id: 'log-1' }),
       },
     };
+    unsubscribeService = {
+      isUnsubscribed: jest.fn().mockResolvedValue(false),
+      generateToken: jest.fn().mockReturnValue('jwt.token.signed'),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -47,6 +56,7 @@ describe('NotifEmailService', () => {
         ResendEmailTransport,
         { provide: ConfigService, useValue: config },
         { provide: PrismaService, useValue: prisma },
+        { provide: UnsubscribeService, useValue: unsubscribeService },
       ],
     }).compile();
 
@@ -236,5 +246,75 @@ describe('NotifEmailService', () => {
     });
     expect(res.success).toBe(true);
     expect(prisma.emailLog.create).toHaveBeenCalledTimes(1);
+  });
+
+  // ── MP-NOTIF-2 — Unsubscribe checks ──────────────────────────────────
+
+  it('MP-NOTIF-2 — destinataire désinscrit → transport NOT called, EmailLog SKIPPED', async () => {
+    unsubscribeService.isUnsubscribed.mockResolvedValueOnce(true);
+    const sendSpy = jest.spyOn(mockTransport, 'send');
+    const res = await service.send({
+      to: 'optedout@x.test',
+      subject: 'Hi',
+      text: 'World',
+      unsubscribeType: 'RFQ_NOTIFICATIONS',
+    });
+    expect(res.success).toBe(true);
+    expect(sendSpy).not.toHaveBeenCalled();
+    expect(prisma.emailLog.create).toHaveBeenCalledTimes(1);
+    const data = prisma.emailLog.create.mock.calls[0][0].data;
+    expect(data.status).toBe('SKIPPED');
+    expect(data.errorCode).toBe('UNSUBSCRIBED');
+    expect(data.errorMessage).toContain('RFQ_NOTIFICATIONS');
+  });
+
+  it('MP-NOTIF-2 — un destinataire désinscrit, l\'autre non → transport called pour le seul opt-in', async () => {
+    unsubscribeService.isUnsubscribed.mockImplementation((email: string) =>
+      Promise.resolve(email === 'optedout@x.test'),
+    );
+    const sendSpy = jest.spyOn(mockTransport, 'send');
+    const res = await service.send({
+      to: ['optedout@x.test', 'optin@x.test'],
+      subject: 'Hi',
+      text: 'World',
+    });
+    expect(res.success).toBe(true);
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const renderedTo = sendSpy.mock.calls[0][0].to;
+    expect(renderedTo).toEqual(['optin@x.test']);
+    // 1 SKIPPED + 1 SENT
+    const statuses = prisma.emailLog.create.mock.calls.map(
+      (c) => c[0].data.status,
+    );
+    expect(statuses.sort()).toEqual(['SENT', 'SKIPPED']);
+  });
+
+  it('MP-NOTIF-2 — service template injecte unsubscribeUrl dans templateData', async () => {
+    unsubscribeService.generateToken.mockReturnValue('signed.jwt');
+    config.get.mockImplementation((k: string) => {
+      if (k === 'NOTIF_EMAIL_FROM') return 'noreply@iox.test';
+      if (k === 'NOTIF_EMAIL_TRANSPORT') return 'mock';
+      if (k === 'FRONTEND_URL') return 'https://iox.mycloud.yt';
+      return undefined;
+    });
+    const res = await service.send({
+      to: 'x@y.test',
+      templateId: 'rfq-created-to-seller',
+      templateData: {
+        sellerDisplayName: 'Coop',
+        buyerCompanyName: 'Acme',
+        offerTitle: 'Vanille',
+        requestedQuantity: 100,
+        requestedUnit: 'kg',
+        deliveryCountry: 'FR',
+        message: null,
+        ctaUrl: 'https://iox.mycloud.yt/seller/quote-requests/x',
+      },
+    });
+    expect(res.success).toBe(true);
+    const sent = mockTransport.getSent();
+    expect(sent[0].html).toContain('signed.jwt');
+    expect(sent[0].html).toContain('Se désabonner');
+    expect(sent[0].text).toContain('signed.jwt');
   });
 });

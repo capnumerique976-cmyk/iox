@@ -15,7 +15,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EmailLogStatus, Prisma } from '@prisma/client';
+import { EmailLogStatus, EmailUnsubscribeType, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import type {
   SendEmailInput,
@@ -26,6 +26,7 @@ import type {
 import { NotifEmailError } from './notif-email.types';
 import { NotifEmailTransportFactory } from './transport.factory';
 import { getTemplate } from './templates';
+import { UnsubscribeService } from './unsubscribe.service';
 
 interface PersistLogArgs {
   transport: NotifEmailTransportName;
@@ -48,14 +49,64 @@ export class NotifEmailService {
     private readonly factory: NotifEmailTransportFactory,
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly unsubscribeService: UnsubscribeService,
   ) {}
 
   async send(input: SendEmailInput): Promise<SendEmailResult> {
     const transport = this.factory.resolve();
     const templateIdForLog = input.templateId ?? 'raw';
+    const unsubscribeType: EmailUnsubscribeType =
+      (input.unsubscribeType as EmailUnsubscribeType | undefined) ??
+      EmailUnsubscribeType.TRANSACTIONAL;
+
+    // MP-NOTIF-2 — Vérifie unsubscribe par destinataire avant tout envoi.
+    const recipients = this.normalizeRecipients(input.to);
+    const filteredRecipients: string[] = [];
+    for (const recipient of recipients) {
+      let isOptedOut = false;
+      try {
+        isOptedOut = await this.unsubscribeService.isUnsubscribed(
+          recipient,
+          unsubscribeType,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'unknown';
+        this.logger.warn(`unsubscribe check failed (treat as opted-in) error=${msg}`);
+        isOptedOut = false;
+      }
+      if (isOptedOut) {
+        this.logger.log(
+          `email skipped UNSUBSCRIBED recipient=${recipient} type=${unsubscribeType}`,
+        );
+        await this.persistLog({
+          transport: transport.name,
+          templateId: templateIdForLog,
+          recipientEmail: recipient,
+          recipientUserId: input.recipientUserId,
+          subject:
+            (input.templateId ? `[template:${input.templateId}]` : input.subject) ??
+            'unsubscribed',
+          status: EmailLogStatus.SKIPPED,
+          errorCode: 'UNSUBSCRIBED',
+          errorMessage: `recipient opted-out of ${unsubscribeType}`,
+          metadata: input.metadata,
+        });
+      } else {
+        filteredRecipients.push(recipient);
+      }
+    }
+    if (filteredRecipients.length === 0 && recipients.length > 0) {
+      // Tous les destinataires sont désinscrits → skip silencieux mais
+      // succès logique (pas d'erreur métier remontée à l'appelant).
+      return {
+        success: true,
+        messageId: '',
+        transport: transport.name,
+      };
+    }
 
     try {
-      const rendered = this.render(input);
+      const rendered = this.render({ ...input, to: filteredRecipients });
 
       const { messageId } = await transport.send(rendered);
       this.logger.log(
@@ -170,7 +221,30 @@ export class NotifEmailService {
           `Template inconnu: ${input.templateId}`,
         );
       }
-      const data = input.templateData ?? {};
+      // MP-NOTIF-2 — Injecte automatiquement `unsubscribeUrl` dans le
+      // payload template (footer commun). Le service tente de générer un
+      // token signé pour le 1er destinataire ; si le secret JWT est
+      // absent (env de test minimal), on injecte une chaîne vide et
+      // chaque template doit se comporter en no-op sur ce cas.
+      const firstRecipient = to[0];
+      const unsubType: EmailUnsubscribeType =
+        (input.unsubscribeType as EmailUnsubscribeType | undefined) ??
+        EmailUnsubscribeType.TRANSACTIONAL;
+      let unsubscribeUrl = '';
+      try {
+        const token = this.unsubscribeService.generateToken(firstRecipient, unsubType);
+        const base =
+          this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+        const apiBase = base.replace(/\/$/, '');
+        unsubscribeUrl = `${apiBase}/api/v1/notif-email/unsubscribe?token=${encodeURIComponent(token)}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'unknown';
+        this.logger.warn(`unsubscribe URL generation failed error=${msg}`);
+      }
+      const data: Record<string, unknown> = {
+        ...(input.templateData ?? {}),
+        unsubscribeUrl,
+      };
       return {
         to,
         from,
