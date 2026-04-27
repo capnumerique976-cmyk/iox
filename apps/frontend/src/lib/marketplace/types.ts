@@ -91,6 +91,28 @@ export type SeasonalityMonth =
   | 'NOV'
   | 'DEC';
 
+// FP-7 — Attributs qualité structurés (enum miroir Prisma
+// `ProductQualityAttribute`). Étendre ici si l'enum backend évolue.
+export type ProductQualityAttribute =
+  | 'NON_GMO'
+  | 'ORGANIC'
+  | 'HANDMADE'
+  | 'TRADITIONAL'
+  | 'HAND_HARVESTED'
+  | 'GLUTEN_FREE'
+  | 'LACTOSE_FREE'
+  | 'VEGAN'
+  | 'VEGETARIAN'
+  | 'KOSHER'
+  | 'HALAL'
+  | 'WILD_HARVESTED'
+  | 'SMALL_BATCH'
+  | 'COLD_PRESSED'
+  | 'RAW'
+  | 'FAIR_TRADE'
+  | 'ARTISANAL'
+  | 'OTHER';
+
 // FP-2 — Certifications structurées projetées par le backend public.
 // Aligné sur l'enum Prisma `CertificationType` ; étendre ici si l'enum
 // backend évolue.
@@ -163,6 +185,8 @@ export interface ProductDetail {
   availableQuantity: number | null;
   availableQuantityUnit: string | null;
   restockFrequency: string | null;
+  // FP-7 — qualité structurée projetée publiquement (défaut [] côté backend).
+  qualityAttributes: ProductQualityAttribute[];
   // FP-1 — saisonnalité projetée par le backend public.
   harvestMonths: SeasonalityMonth[];
   availabilityMonths: SeasonalityMonth[];

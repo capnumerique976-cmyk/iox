@@ -20,6 +20,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ExportReadinessStatus,
   MarketplacePublicationStatus,
+  ProductQualityAttribute,
   SeasonalityMonth,
 } from '@iox/shared';
 import { Type } from 'class-transformer';
@@ -167,6 +168,20 @@ export class CreateMarketplaceProductDto {
   @IsString()
   @MaxLength(30)
   restockFrequency?: string;
+
+  // ─── FP-7 — Qualité structurée ──────────────────────────────────────────
+  @ApiPropertyOptional({
+    enum: ProductQualityAttribute,
+    isArray: true,
+    example: [ProductQualityAttribute.ORGANIC, ProductQualityAttribute.HAND_HARVESTED],
+    description: 'Attributs qualité structurés (max 10).',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ProductQualityAttribute, { each: true })
+  @ArrayUnique()
+  @ArrayMaxSize(10)
+  qualityAttributes?: ProductQualityAttribute[];
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -329,6 +344,15 @@ export class UpdateMarketplaceProductDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30)
   restockFrequency?: string;
+
+  // FP-7 — qualité structurée (mêmes règles que Create).
+  @ApiPropertyOptional({ enum: ProductQualityAttribute, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ProductQualityAttribute, { each: true })
+  @ArrayUnique()
+  @ArrayMaxSize(10)
+  qualityAttributes?: ProductQualityAttribute[];
 
   @ApiPropertyOptional()
   @IsOptional()

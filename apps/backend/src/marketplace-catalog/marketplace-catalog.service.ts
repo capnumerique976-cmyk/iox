@@ -292,6 +292,8 @@ export class MarketplaceCatalogService {
         product.availableQuantity != null ? Number(product.availableQuantity) : null,
       availableQuantityUnit: product.availableQuantityUnit,
       restockFrequency: product.restockFrequency,
+      // FP-7 — qualité structurée (lecture publique).
+      qualityAttributes: product.qualityAttributes ?? [],
       // FP-1 — saisonnalité (lecture publique, écriture côté seller).
       harvestMonths: product.harvestMonths ?? [],
       availabilityMonths: product.availabilityMonths ?? [],

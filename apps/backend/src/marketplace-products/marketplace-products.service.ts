@@ -223,6 +223,8 @@ export class MarketplaceProductsService {
         availableQuantity: dto.availableQuantity,
         availableQuantityUnit: dto.availableQuantityUnit,
         restockFrequency: dto.restockFrequency,
+        // FP-7 — qualité structurée
+        qualityAttributes: dto.qualityAttributes ?? [],
         nutritionInfoJson: dto.nutritionInfoJson as Prisma.InputJsonValue,
         defaultUnit: dto.defaultUnit,
         minimumOrderQuantity: dto.minimumOrderQuantity,
@@ -303,6 +305,8 @@ export class MarketplaceProductsService {
       'availableQuantity',
       'availableQuantityUnit',
       'restockFrequency',
+      // FP-7 — qualité structurée fait partie de la vitrine publique
+      'qualityAttributes',
     ];
     const touchesVitrine = vitrine.some((f) => dto[f] !== undefined);
     const requiresRecheck =

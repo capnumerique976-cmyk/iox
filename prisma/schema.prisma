@@ -881,6 +881,32 @@ enum SeasonalityMonth {
   DEC
 }
 
+// FP-7 — Attributs qualité structurés portés par MarketplaceProduct.
+// Enum fermé MVP. Étendre ici puis créer une migration `ALTER TYPE ... ADD
+// VALUE` (Prisma le fait via `prisma migrate dev` après ajout de la valeur).
+// Ne JAMAIS supprimer une valeur — créer une nouvelle valeur à la place pour
+// préserver les données existantes.
+enum ProductQualityAttribute {
+  NON_GMO
+  ORGANIC
+  HANDMADE
+  TRADITIONAL
+  HAND_HARVESTED
+  GLUTEN_FREE
+  LACTOSE_FREE
+  VEGAN
+  VEGETARIAN
+  KOSHER
+  HALAL
+  WILD_HARVESTED
+  SMALL_BATCH
+  COLD_PRESSED
+  RAW
+  FAIR_TRADE
+  ARTISANAL
+  OTHER
+}
+
 // ─── SELLER PROFILE (extension vitrine d'une Company) ─────────────────────────
 
 model SellerProfile {
@@ -1009,6 +1035,11 @@ model MarketplaceProduct {
   availableQuantity        Decimal?                     @map("available_quantity") @db.Decimal(14, 3)
   availableQuantityUnit    String?                      @map("available_quantity_unit")
   restockFrequency         String?                      @map("restock_frequency")
+
+  // FP-7 — Qualité structurée (enum array fermé, défaut tableau vide).
+  // 18 valeurs MVP — non-OGM, bio, fait main, etc. Étendre l'enum
+  // `ProductQualityAttribute` plus bas pour ajouter une valeur.
+  qualityAttributes        ProductQualityAttribute[]    @default([]) @map("quality_attributes")
 
   defaultUnit              String?                      @map("default_unit")
   minimumOrderQuantity     Decimal?                     @map("minimum_order_quantity") @db.Decimal(12, 3)

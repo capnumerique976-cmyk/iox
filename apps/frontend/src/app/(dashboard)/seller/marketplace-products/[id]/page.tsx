@@ -39,6 +39,7 @@ import {
   type SellerMarketplaceProduct,
   type UpdateMarketplaceProductInput,
 } from '@/lib/marketplace-products';
+import type { ProductQualityAttribute } from '@/lib/marketplace/types';
 import { PageHeader } from '@/components/ui/page-header';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 
@@ -83,7 +84,53 @@ interface FormState {
   availableQuantity: string;
   availableQuantityUnit: string;
   restockFrequency: string;
+  // FP-7 — Qualité structurée (multi-select sur enum, max 10)
+  qualityAttributes: ProductQualityAttribute[];
 }
+
+// FP-7 — Libellés FR des attributs qualité (ordre = ordre d'affichage UI).
+// Garde-fou : si l'enum backend ajoute une valeur non listée, le badge tombe
+// en fallback sur le slug brut (cf. composant TagToggle).
+const QUALITY_ATTRIBUTE_LABELS: Record<ProductQualityAttribute, string> = {
+  ORGANIC: 'Bio',
+  NON_GMO: 'Non-OGM',
+  HANDMADE: 'Fait main',
+  ARTISANAL: 'Artisanal',
+  TRADITIONAL: 'Tradition',
+  HAND_HARVESTED: 'Récolte manuelle',
+  WILD_HARVESTED: 'Cueillette sauvage',
+  SMALL_BATCH: 'Petite série',
+  COLD_PRESSED: 'Pressé à froid',
+  RAW: 'Cru / non transformé',
+  FAIR_TRADE: 'Équitable',
+  GLUTEN_FREE: 'Sans gluten',
+  LACTOSE_FREE: 'Sans lactose',
+  VEGAN: 'Vegan',
+  VEGETARIAN: 'Végétarien',
+  KOSHER: 'Casher',
+  HALAL: 'Halal',
+  OTHER: 'Autre',
+};
+const QUALITY_ATTRIBUTE_ORDER: ProductQualityAttribute[] = [
+  'ORGANIC',
+  'NON_GMO',
+  'HANDMADE',
+  'ARTISANAL',
+  'TRADITIONAL',
+  'HAND_HARVESTED',
+  'WILD_HARVESTED',
+  'SMALL_BATCH',
+  'COLD_PRESSED',
+  'RAW',
+  'FAIR_TRADE',
+  'GLUTEN_FREE',
+  'LACTOSE_FREE',
+  'VEGAN',
+  'VEGETARIAN',
+  'KOSHER',
+  'HALAL',
+  'OTHER',
+];
 
 const EMPTY: FormState = {
   commercialName: '',
@@ -114,6 +161,7 @@ const EMPTY: FormState = {
   availableQuantity: '',
   availableQuantityUnit: '',
   restockFrequency: '',
+  qualityAttributes: [],
 };
 
 function gpsToString(v: string | number | null | undefined): string {
@@ -154,7 +202,22 @@ function fromProduct(p: SellerMarketplaceProduct): FormState {
     availableQuantity: gpsToString(p.availableQuantity),
     availableQuantityUnit: p.availableQuantityUnit ?? '',
     restockFrequency: p.restockFrequency ?? '',
+    qualityAttributes: [...(p.qualityAttributes ?? [])],
   };
+}
+
+/**
+ * FP-7 — Compare deux listes de qualityAttributes par contenu (ordre indifférent).
+ * Sert au diff PATCH pour ne PAS envoyer le champ si rien n'a changé.
+ */
+function qualityAttributesEqual(
+  a: ProductQualityAttribute[],
+  b: ProductQualityAttribute[],
+): boolean {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  return sa.every((v, i) => v === sb[i]);
 }
 
 /**
@@ -269,6 +332,10 @@ function buildPayload(
     setStr('availableQuantityUnit', current.availableQuantityUnit.trim());
   if (current.restockFrequency !== initial.restockFrequency)
     setStr('restockFrequency', current.restockFrequency.trim());
+  // FP-7 — qualité structurée (envoie le tableau si différence par contenu)
+  if (!qualityAttributesEqual(current.qualityAttributes, initial.qualityAttributes)) {
+    out.qualityAttributes = [...current.qualityAttributes];
+  }
   return out;
 }
 
@@ -349,6 +416,9 @@ function validateClient(form: FormState): string | null {
     return 'L’unité de quantité disponible est limitée à 20 caractères.';
   if (form.restockFrequency.length > 30)
     return 'La fréquence de réapprovisionnement est limitée à 30 caractères.';
+  // FP-7 — qualité structurée
+  if (form.qualityAttributes.length > 10)
+    return 'Au plus 10 attributs qualité peuvent être sélectionnés.';
   return null;
 }
 
@@ -1019,6 +1089,54 @@ export default function SellerMarketplaceProductDetailPage() {
               data-testid="field-restockFrequency"
             />
           </Field>
+        </Section>
+
+        <Section title="Qualité structurée (FP-7)">
+          <p className="text-xs text-gray-500" data-testid="quality-help">
+            Sélectionnez les attributs qualité qui caractérisent ce produit (max 10).
+            Ils s’afficheront comme badges sur la fiche publique.
+          </p>
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label="Attributs qualité"
+            data-testid="quality-attributes-group"
+          >
+            {QUALITY_ATTRIBUTE_ORDER.map((attr) => {
+              const selected = form.qualityAttributes.includes(attr);
+              const disabled = !selected && form.qualityAttributes.length >= 10;
+              return (
+                <button
+                  key={attr}
+                  type="button"
+                  data-testid={`quality-attr-${attr}`}
+                  data-selected={selected}
+                  disabled={disabled}
+                  aria-pressed={selected}
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      qualityAttributes: selected
+                        ? f.qualityAttributes.filter((v) => v !== attr)
+                        : [...f.qualityAttributes, attr],
+                    }))
+                  }
+                  className={
+                    selected
+                      ? 'rounded-full border border-premium-accent bg-premium-accent/10 px-3 py-1 text-xs font-medium text-premium-accent'
+                      : disabled
+                        ? 'cursor-not-allowed rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-400'
+                        : 'rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700 hover:border-premium-accent/60 hover:text-premium-accent'
+                  }
+                >
+                  {QUALITY_ATTRIBUTE_LABELS[attr]}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-[11px] text-gray-400" data-testid="quality-count">
+            {form.qualityAttributes.length} / 10 sélectionné(s)
+          </p>
         </Section>
 
         <Section title="Lecture seule (édition réservée à d’autres écrans)">

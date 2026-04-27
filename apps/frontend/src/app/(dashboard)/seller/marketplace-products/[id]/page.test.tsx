@@ -335,6 +335,76 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
     expect(updateMock).not.toHaveBeenCalled();
   });
 
+  // ── FP-7 — Qualité structurée ──────────────────────────────────────────
+
+  it('FP-7 — hydrate les attributs sélectionnés depuis le produit', async () => {
+    getByIdMock.mockResolvedValue({
+      ...baseProduct,
+      qualityAttributes: ['ORGANIC', 'HAND_HARVESTED'],
+    });
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('quality-attributes-group')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('quality-attr-ORGANIC')).toHaveAttribute(
+      'data-selected',
+      'true',
+    );
+    expect(screen.getByTestId('quality-attr-HAND_HARVESTED')).toHaveAttribute(
+      'data-selected',
+      'true',
+    );
+    expect(screen.getByTestId('quality-attr-VEGAN')).toHaveAttribute(
+      'data-selected',
+      'false',
+    );
+    expect(screen.getByTestId('quality-count')).toHaveTextContent('2 / 10');
+  });
+
+  it('FP-7 — toggle envoie le tableau modifié dans le PATCH (diff par contenu)', async () => {
+    getByIdMock.mockResolvedValue({
+      ...baseProduct,
+      qualityAttributes: ['ORGANIC'],
+    });
+    updateMock.mockResolvedValue({
+      ...baseProduct,
+      qualityAttributes: ['ORGANIC', 'VEGAN'],
+    });
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('quality-attr-VEGAN')).toBeInTheDocument(),
+    );
+    await user.click(screen.getByTestId('quality-attr-VEGAN'));
+    await user.click(screen.getByTestId('submit-product'));
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
+    const [, payload] = updateMock.mock.calls[0];
+    expect(payload.qualityAttributes).toEqual(['ORGANIC', 'VEGAN']);
+  });
+
+  it('FP-7 — désactive les autres tags quand 10 sont déjà sélectionnés', async () => {
+    const ten = [
+      'ORGANIC',
+      'NON_GMO',
+      'HANDMADE',
+      'ARTISANAL',
+      'TRADITIONAL',
+      'HAND_HARVESTED',
+      'WILD_HARVESTED',
+      'SMALL_BATCH',
+      'COLD_PRESSED',
+      'RAW',
+    ];
+    getByIdMock.mockResolvedValue({ ...baseProduct, qualityAttributes: ten });
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('quality-attr-VEGAN')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('quality-attr-VEGAN')).toBeDisabled();
+    expect(screen.getByTestId('quality-attr-ORGANIC')).not.toBeDisabled();
+    expect(screen.getByTestId('quality-count')).toHaveTextContent('10 / 10');
+  });
+
   // ── MP-EDIT-PRODUCT.2 — workflow submit/archive ────────────────────────
 
   it('MP-EDIT-PRODUCT.2 — action Soumettre visible si DRAFT, masquée si IN_REVIEW', async () => {

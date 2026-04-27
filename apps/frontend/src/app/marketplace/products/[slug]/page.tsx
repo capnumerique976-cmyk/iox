@@ -12,6 +12,7 @@ import {
   ImageIcon,
 } from 'lucide-react';
 import { fetchProductBySlug, fetchSellerBySlug } from '@/lib/marketplace/api';
+import type { ProductQualityAttribute } from '@/lib/marketplace/types';
 import { ReadinessBadge } from '@/components/marketplace/ReadinessBadge';
 import { PriceTag } from '@/components/marketplace/PriceTag';
 import { FavoriteButton } from '@/components/marketplace/FavoriteButton';
@@ -20,6 +21,30 @@ import { SeasonalityCalendar } from '@/components/marketplace/SeasonalityCalenda
 import { CertificationBadgeList } from '@/components/marketplace/CertificationBadgeList';
 
 export const dynamic = 'force-dynamic';
+
+// FP-7 — Libellés FR des attributs qualité (cohérent avec la page seller).
+// Si l'enum backend ajoute une valeur non listée, le composant tombe en
+// fallback sur le slug brut.
+const QUALITY_ATTRIBUTE_LABEL_FR: Record<ProductQualityAttribute, string> = {
+  ORGANIC: 'Bio',
+  NON_GMO: 'Non-OGM',
+  HANDMADE: 'Fait main',
+  ARTISANAL: 'Artisanal',
+  TRADITIONAL: 'Tradition',
+  HAND_HARVESTED: 'Récolte manuelle',
+  WILD_HARVESTED: 'Cueillette sauvage',
+  SMALL_BATCH: 'Petite série',
+  COLD_PRESSED: 'Pressé à froid',
+  RAW: 'Cru / non transformé',
+  FAIR_TRADE: 'Équitable',
+  GLUTEN_FREE: 'Sans gluten',
+  LACTOSE_FREE: 'Sans lactose',
+  VEGAN: 'Vegan',
+  VEGETARIAN: 'Végétarien',
+  KOSHER: 'Casher',
+  HALAL: 'Halal',
+  OTHER: 'Autre',
+};
 
 interface PageProps {
   params: { slug: string };
@@ -502,6 +527,31 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   </>
                 )}
               </dl>
+            </div>
+          )}
+
+          {/* FP-7 — Qualité structurée (badges, no-op si tableau vide) */}
+          {(product.qualityAttributes?.length ?? 0) > 0 && (
+            <div
+              className="iox-glass relative mt-4 overflow-hidden rounded-2xl p-5"
+              data-testid="product-quality"
+            >
+              <span
+                aria-hidden
+                className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
+              />
+              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">Qualité</h2>
+              <div className="flex flex-wrap gap-2 pl-3">
+                {product.qualityAttributes.map((attr) => (
+                  <span
+                    key={attr}
+                    data-testid={`quality-badge-${attr}`}
+                    className="inline-flex items-center rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-2.5 py-0.5 text-[11px] font-medium text-[#00D4FF]"
+                  >
+                    {QUALITY_ATTRIBUTE_LABEL_FR[attr] ?? attr}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
