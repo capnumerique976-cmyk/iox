@@ -29,7 +29,7 @@ import {
   SellerProfileStatus,
   RequestUser,
 } from '@iox/shared';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { MarketplaceReviewService } from '../marketplace-review/marketplace-review.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
 
@@ -197,6 +197,81 @@ export class MarketplaceOffersService {
     });
 
     return offer;
+  }
+
+  /**
+   * MP-OFFER-DUPLICATE — Clone une offre du seller en un nouveau brouillon
+   * éditable. Toutes les références de cycle de vie sont reset (statuts,
+   * dates workflow, featuredRank, rejectionReason). Pas de duplication des
+   * `MarketplaceOfferBatch` — V1 V2 cloners ces liens si besoin métier.
+   *
+   * Permissions :
+   *   - admin / coordinator → clone n'importe quelle offre.
+   *   - seller → clone uniquement les offres dont il est propriétaire
+   *     (assertMarketplaceOfferOwnership).
+   */
+  async duplicate(id: string, actor: RequestUser) {
+    if (this.ownership.isSeller(actor)) {
+      // Vérifie ownership (jette ForbiddenException si non-propriétaire).
+      await this.ownership.assertMarketplaceOfferOwnership(actor, id);
+    }
+
+    const source = await this.prisma.marketplaceOffer.findUnique({ where: { id } });
+    if (!source) throw new NotFoundException('Offre marketplace introuvable');
+
+    const COPY_PREFIX = '(copie) ';
+    const TITLE_MAX = 100;
+    // Tronque si nécessaire pour respecter la limite (suffixe "…" si tronqué).
+    const truncated = source.title.slice(0, TITLE_MAX - COPY_PREFIX.length);
+    const newTitle = `${COPY_PREFIX}${truncated}`;
+
+    const created = await this.prisma.marketplaceOffer.create({
+      data: {
+        marketplaceProductId: source.marketplaceProductId,
+        sellerProfileId: source.sellerProfileId,
+        title: newTitle,
+        shortDescription: source.shortDescription,
+        priceMode: source.priceMode,
+        unitPrice: source.unitPrice,
+        currency: source.currency,
+        moq: source.moq,
+        availableQuantity: source.availableQuantity,
+        leadTimeDays: source.leadTimeDays,
+        incoterm: source.incoterm,
+        departureLocation: source.departureLocation,
+        destinationMarketsJson:
+          (source.destinationMarketsJson as Prisma.InputJsonValue | null) ?? Prisma.JsonNull,
+        visibilityScope: source.visibilityScope,
+        // Reset cycle de vie
+        availabilityStart: null,
+        availabilityEnd: null,
+        publicationStatus: MarketplacePublicationStatus.DRAFT,
+        exportReadinessStatus: ExportReadinessStatus.PENDING_QUALITY_REVIEW,
+        featuredRank: null,
+        rejectionReason: null,
+        submittedAt: null,
+        approvedAt: null,
+        publishedAt: null,
+        suspendedAt: null,
+        createdById: actor.id,
+        updatedById: actor.id,
+      },
+      include: OFFER_INCLUDE,
+    });
+
+    await this.auditService.log({
+      action: 'MARKETPLACE_OFFER_DUPLICATED',
+      entityType: EntityType.MARKETPLACE_OFFER,
+      entityId: created.id,
+      userId: actor.id,
+      newData: {
+        sourceOfferId: id,
+        marketplaceProductId: created.marketplaceProductId,
+        sellerProfileId: created.sellerProfileId,
+      },
+    });
+
+    return created;
   }
 
   async update(id: string, dto: UpdateMarketplaceOfferDto, actor?: RequestUser) {
