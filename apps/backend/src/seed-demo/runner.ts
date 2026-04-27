@@ -22,9 +22,13 @@ import {
   PrismaClient,
   UserRole,
   BeneficiaryStatus,
+  DocumentStatus,
+  EntityType,
   ProductStatus,
+  QuoteRequestStatus,
   SellerProfileStatus,
   MarketplacePublicationStatus,
+  MarketplaceDocumentVisibility,
   MarketplacePriceMode,
   MarketplaceVisibilityScope,
   ExportReadinessStatus,
@@ -33,8 +37,14 @@ import {
   MediaAssetRole,
   MediaAssetType,
   MediaModerationStatus,
+  Prisma,
 } from '@prisma/client';
-import { DEMO_DATASET, smokeSellerEmail } from './dataset';
+import {
+  DEMO_DATASET,
+  smokeSellerEmail,
+  SMOKE_BUYER_EMAIL,
+  SMOKE_BUYER_COMPANY_CODE,
+} from './dataset';
 
 export interface RunnerEnv {
   IOX_DEMO_SEED?: string;
@@ -55,6 +65,11 @@ export interface RunnerOptions {
     | 'marketplaceOffer'
     | 'certification'
     | 'mediaAsset'
+    // SEED-DEMO-FIX-3 :
+    | 'document'
+    | 'marketplaceDocument'
+    | 'quoteRequest'
+    | 'quoteRequestMessage'
   >;
   env: RunnerEnv;
   log?: (msg: string) => void;
@@ -68,9 +83,18 @@ export interface RunnerSummary {
   certifications: number;
   smokeSeller: string | null;
   mediaAssets: number;
+  // SEED-DEMO-FIX-3
+  publicDocs: number;
+  quoteRequests: number;
+  quoteRequestMessages: number;
+  smokeBuyer: string | null;
 }
 
 const SMOKE_SELLER_DEFAULT_PASSWORD = 'IoxSmoke2026!';
+
+// SEED-DEMO-FIX-3 — bornes de validité des documents PUBLIC seedés.
+const SEED_VALID_FROM = new Date('2025-01-01T00:00:00.000Z');
+const SEED_VALID_UNTIL = new Date('2027-12-31T00:00:00.000Z');
 
 /**
  * Vérifie les garde-fous d'environnement.
@@ -98,6 +122,10 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     certifications: 0,
     smokeSeller: null,
     mediaAssets: 0,
+    publicDocs: 0,
+    quoteRequests: 0,
+    quoteRequestMessages: 0,
+    smokeBuyer: null,
   };
 
   if (!shouldRun(opts.env)) {
@@ -503,8 +531,233 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     }
   }
 
+  // ─── SEED-DEMO-FIX-3 — MarketplaceDocument PUBLIC ────────────────────────
+  //
+  // 1 Document MCH par produit demo cible + 1 MarketplaceDocument PUBLIC le
+  // référençant. Le filtre catalog `?hasPublicDocs=true` lit cette table.
+  // Pas d'unique index `(relatedType, relatedId, documentType)` côté
+  // schema → idempotence via lookup `Document.code` (unique implicite via
+  // upsert sur `code`) puis `MarketplaceDocument.documentId` (un PUBLIC par
+  // document MCH suffit en démo).
+  let publicDocsCount = 0;
+  if (uploaderUserId) {
+    for (const doc of DEMO_DATASET.publicDocuments) {
+      const mpId = mpProductIdBySlug.get(doc.productSlug);
+      if (!mpId) continue;
+
+      // Document MCH (idempotence via `storageKey` — pas d'unique formel
+      // sur le schéma, mais le storageKey est unique par convention seed).
+      // Le seed n'a pas l'autonomie de créer un fichier réel : storageKey
+      // pointe vers un placeholder, sizeBytes synthétique. Suffisant pour
+      // la démo (le filtre catalog ne télécharge pas le fichier).
+      const existingDoc = await prisma.document.findFirst({
+        where: { storageKey: doc.storageKey },
+        select: { id: true },
+      });
+      const mchDoc = existingDoc
+        ? await prisma.document.update({
+            where: { id: existingDoc.id },
+            data: { name: doc.documentName, status: DocumentStatus.ACTIVE },
+          })
+        : await prisma.document.create({
+            data: {
+              name: doc.documentName,
+              originalFilename: doc.documentName,
+              mimeType: 'application/pdf',
+              storageKey: doc.storageKey,
+              sizeBytes: doc.fileSize,
+              status: DocumentStatus.ACTIVE,
+              linkedEntityType: EntityType.MARKETPLACE_PRODUCT,
+              linkedEntityId: mpId,
+            },
+          });
+
+      // MarketplaceDocument (1 PUBLIC par produit). Idempotence via
+      // findFirst sur (relatedId + documentId).
+      const existing = await prisma.marketplaceDocument.findFirst({
+        where: {
+          relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          relatedId: mpId,
+          documentId: mchDoc.id,
+        },
+        select: { id: true },
+      });
+      const data = {
+        title: doc.marketplaceTitle,
+        documentType: doc.documentType,
+        visibility: MarketplaceDocumentVisibility.PUBLIC,
+        verificationStatus: MarketplaceVerificationStatus.VERIFIED,
+        validFrom: SEED_VALID_FROM,
+        validUntil: SEED_VALID_UNTIL,
+      } as const;
+      if (existing) {
+        await prisma.marketplaceDocument.update({ where: { id: existing.id }, data });
+      } else {
+        await prisma.marketplaceDocument.create({
+          data: {
+            ...data,
+            relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+            relatedId: mpId,
+            documentId: mchDoc.id,
+            createdById: uploaderUserId,
+          },
+        });
+      }
+      publicDocsCount++;
+    }
+  } else {
+    log('⚠️ Demo seed: aucun uploader → skip MarketplaceDocument PUBLIC.');
+  }
+
+  // ─── SEED-DEMO-FIX-3 — Smoke buyer + Company ─────────────────────────────
+  let smokeBuyerCreated: string | null = null;
+  let smokeBuyerUserId: string | null = null;
+  {
+    const smokeBuyerPassword = env.SMOKE_SELLER_PASSWORD ?? SMOKE_SELLER_DEFAULT_PASSWORD;
+    const smokeBuyerHash = await bcrypt.hash(smokeBuyerPassword, 10);
+
+    const buyerCompany = await prisma.company.upsert({
+      where: { code: SMOKE_BUYER_COMPANY_CODE },
+      update: { name: 'Acme Foods Importer (demo)', country: 'FR', isActive: true },
+      create: {
+        code: SMOKE_BUYER_COMPANY_CODE,
+        name: 'Acme Foods Importer (demo)',
+        types: ['BUYER'],
+        country: 'FR',
+        city: 'Paris',
+        isActive: true,
+      },
+    });
+
+    const buyerUser = await prisma.user.upsert({
+      where: { email: SMOKE_BUYER_EMAIL },
+      update: {
+        passwordHash: smokeBuyerHash,
+        role: UserRole.MARKETPLACE_BUYER,
+      },
+      create: {
+        email: SMOKE_BUYER_EMAIL,
+        passwordHash: smokeBuyerHash,
+        firstName: 'Smoke',
+        lastName: 'Buyer',
+        role: UserRole.MARKETPLACE_BUYER,
+      },
+    });
+
+    await prisma.userCompanyMembership.upsert({
+      where: {
+        userId_companyId: { userId: buyerUser.id, companyId: buyerCompany.id },
+      },
+      update: { isPrimary: true },
+      create: {
+        userId: buyerUser.id,
+        companyId: buyerCompany.id,
+        isPrimary: true,
+      },
+    });
+
+    smokeBuyerCreated = SMOKE_BUYER_EMAIL;
+    smokeBuyerUserId = buyerUser.id;
+  }
+
+  // ─── SEED-DEMO-FIX-3 — QuoteRequest + QuoteRequestMessage ────────────────
+  //
+  // Pas d'index unique sur RFQ (buyer x offer) → idempotence via le
+  // findFirst sur le triplet (buyerCompanyId, marketplaceOfferId, message)
+  // approximé par le `seedKey` injecté en `targetMarket` (champ utilisé
+  // comme tag interne — pas affiché côté UI).
+  let rfqCount = 0;
+  let rfqMessagesCount = 0;
+  if (smokeBuyerUserId) {
+    const buyerCompany = await prisma.company.findUnique({
+      where: { code: SMOKE_BUYER_COMPANY_CODE },
+      select: { id: true },
+    });
+    if (!buyerCompany) {
+      throw new Error('Demo seed: smoke-buyer Company introuvable post-upsert');
+    }
+
+    for (const rfqDef of DEMO_DATASET.quoteRequests) {
+      // Localiser l'offre cible : 1ère offre publiable du produit demo.
+      const mpId = mpProductIdBySlug.get(rfqDef.productSlug);
+      if (!mpId) continue;
+      const targetOffer = await prisma.marketplaceOffer.findFirst({
+        where: { marketplaceProductId: mpId },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (!targetOffer) continue;
+
+      const existingRfq = await prisma.quoteRequest.findFirst({
+        where: {
+          buyerCompanyId: buyerCompany.id,
+          marketplaceOfferId: targetOffer.id,
+          targetMarket: rfqDef.seedKey,
+        },
+        select: { id: true },
+      });
+      const rfqData = {
+        requestedQuantity: new Prisma.Decimal(rfqDef.requestedQuantity),
+        requestedUnit: rfqDef.requestedUnit,
+        deliveryCountry: rfqDef.deliveryCountry,
+        targetMarket: rfqDef.seedKey,
+        message: rfqDef.initialMessage,
+        status: QuoteRequestStatus[rfqDef.status],
+      } as const;
+
+      let rfqId: string;
+      if (existingRfq) {
+        await prisma.quoteRequest.update({ where: { id: existingRfq.id }, data: rfqData });
+        rfqId = existingRfq.id;
+      } else {
+        const created = await prisma.quoteRequest.create({
+          data: {
+            ...rfqData,
+            buyerCompanyId: buyerCompany.id,
+            buyerUserId: smokeBuyerUserId,
+            marketplaceOfferId: targetOffer.id,
+          },
+          select: { id: true },
+        });
+        rfqId = created.id;
+      }
+      rfqCount++;
+
+      // 2 messages par RFQ : init buyer + reply seller. Auteurs :
+      // smokeBuyerUserId pour init, smoke-seller pour la reply (déjà créé
+      // avant — uploaderUserId fallback admin si absent).
+      const sellerAuthorId = uploaderUserId ?? smokeBuyerUserId;
+
+      const messages = [
+        { authorUserId: smokeBuyerUserId, message: rfqDef.initialMessage },
+        { authorUserId: sellerAuthorId, message: rfqDef.sellerReply },
+      ];
+      for (const m of messages) {
+        const existingMsg = await prisma.quoteRequestMessage.findFirst({
+          where: {
+            quoteRequestId: rfqId,
+            authorUserId: m.authorUserId,
+            message: m.message,
+          },
+          select: { id: true },
+        });
+        if (!existingMsg) {
+          await prisma.quoteRequestMessage.create({
+            data: {
+              quoteRequestId: rfqId,
+              authorUserId: m.authorUserId,
+              message: m.message,
+              isInternalNote: false,
+            },
+          });
+        }
+        rfqMessagesCount++;
+      }
+    }
+  }
+
   log(
-    `✅ Demo seed done — sellers: ${sellersCount}, products: ${productsCount}, offers: ${offersCount}, certifications: ${certsCount}, mediaAssets: ${mediaAssetsCount}, smokeSeller: ${smokeSellerCreated ?? 'n/a'}`,
+    `✅ Demo seed done — sellers: ${sellersCount}, products: ${productsCount}, offers: ${offersCount}, certifications: ${certsCount}, mediaAssets: ${mediaAssetsCount}, publicDocs: ${publicDocsCount}, quoteRequests: ${rfqCount}, quoteRequestMessages: ${rfqMessagesCount}, smokeSeller: ${smokeSellerCreated ?? 'n/a'}, smokeBuyer: ${smokeBuyerCreated ?? 'n/a'}`,
   );
 
   return {
@@ -515,5 +768,9 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     certifications: certsCount,
     smokeSeller: smokeSellerCreated,
     mediaAssets: mediaAssetsCount,
+    publicDocs: publicDocsCount,
+    quoteRequests: rfqCount,
+    quoteRequestMessages: rfqMessagesCount,
+    smokeBuyer: smokeBuyerCreated,
   };
 }
