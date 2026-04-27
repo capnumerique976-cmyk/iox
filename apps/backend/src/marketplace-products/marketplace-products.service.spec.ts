@@ -281,6 +281,48 @@ describe('MarketplaceProductsService', () => {
       expect(data.publicationStatus).toBe(MarketplacePublicationStatus.IN_REVIEW);
       expect(data.packagingFormats).toEqual(['1kg', '5kg']);
     });
+
+    // ── FP-5 — Volumes et capacités ──────────────────────────────────────
+    it('FP-5 — propage les 5 champs volumes & capacités au create', async () => {
+      prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({ id: 'sp1' });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue(null);
+      prisma.marketplaceProduct.create.mockResolvedValue({ id: 'mp1' });
+      await service.create({
+        productId: 'p1',
+        sellerProfileId: 'sp1',
+        slug: 'mp',
+        commercialName: 'Nom',
+        originCountry: 'YT',
+        annualProductionCapacity: 1200,
+        capacityUnit: 'kg',
+        availableQuantity: 250,
+        availableQuantityUnit: 'kg',
+        restockFrequency: 'monthly',
+      });
+      const data = prisma.marketplaceProduct.create.mock.calls[0][0].data;
+      expect(data.annualProductionCapacity).toBe(1200);
+      expect(data.capacityUnit).toBe('kg');
+      expect(data.availableQuantity).toBe(250);
+      expect(data.availableQuantityUnit).toBe('kg');
+      expect(data.restockFrequency).toBe('monthly');
+    });
+
+    it('FP-5 — un patch volumes sur un produit APPROVED déclenche IN_REVIEW', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({
+        id: 'mp1',
+        slug: 'mp',
+        publicationStatus: MarketplacePublicationStatus.APPROVED,
+      });
+      prisma.marketplaceProduct.update.mockResolvedValue({
+        id: 'mp1',
+        publicationStatus: MarketplacePublicationStatus.IN_REVIEW,
+      });
+      await service.update('mp1', { availableQuantity: 500 });
+      const data = prisma.marketplaceProduct.update.mock.calls[0][0].data;
+      expect(data.publicationStatus).toBe(MarketplacePublicationStatus.IN_REVIEW);
+      expect(data.availableQuantity).toBe(500);
+    });
   });
 
   // ── Workflow ──────────────────────────────────────────────────────────────

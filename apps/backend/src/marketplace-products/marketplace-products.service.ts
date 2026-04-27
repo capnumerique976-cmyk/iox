@@ -217,6 +217,12 @@ export class MarketplaceProductsService {
         grossWeight: dto.grossWeight,
         netWeight: dto.netWeight,
         palletization: dto.palletization,
+        // FP-5 — volumes & capacités
+        annualProductionCapacity: dto.annualProductionCapacity,
+        capacityUnit: dto.capacityUnit,
+        availableQuantity: dto.availableQuantity,
+        availableQuantityUnit: dto.availableQuantityUnit,
+        restockFrequency: dto.restockFrequency,
         nutritionInfoJson: dto.nutritionInfoJson as Prisma.InputJsonValue,
         defaultUnit: dto.defaultUnit,
         minimumOrderQuantity: dto.minimumOrderQuantity,
@@ -291,6 +297,12 @@ export class MarketplaceProductsService {
       'grossWeight',
       'netWeight',
       'palletization',
+      // FP-5 — volumes & capacités font partie de la vitrine publique
+      'annualProductionCapacity',
+      'capacityUnit',
+      'availableQuantity',
+      'availableQuantityUnit',
+      'restockFrequency',
     ];
     const touchesVitrine = vitrine.some((f) => dto[f] !== undefined);
     const requiresRecheck =

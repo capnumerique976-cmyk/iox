@@ -275,6 +275,23 @@ export class MarketplaceCatalogService {
       minimumOrderQuantity: product.minimumOrderQuantity
         ? Number(product.minimumOrderQuantity)
         : null,
+      // FP-8 — logistique structurée (rattrapage projection : FP-8 avait
+      // étendu schéma + DTO + UI seller mais oublié la projection publique).
+      packagingFormats: product.packagingFormats ?? [],
+      temperatureRequirements: product.temperatureRequirements,
+      grossWeight: product.grossWeight != null ? Number(product.grossWeight) : null,
+      netWeight: product.netWeight != null ? Number(product.netWeight) : null,
+      palletization: product.palletization,
+      // FP-5 — volumes et capacités.
+      annualProductionCapacity:
+        product.annualProductionCapacity != null
+          ? Number(product.annualProductionCapacity)
+          : null,
+      capacityUnit: product.capacityUnit,
+      availableQuantity:
+        product.availableQuantity != null ? Number(product.availableQuantity) : null,
+      availableQuantityUnit: product.availableQuantityUnit,
+      restockFrequency: product.restockFrequency,
       // FP-1 — saisonnalité (lecture publique, écriture côté seller).
       harvestMonths: product.harvestMonths ?? [],
       availabilityMonths: product.availabilityMonths ?? [],

@@ -276,6 +276,65 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
     expect(updateMock).not.toHaveBeenCalled();
   });
 
+  // ── FP-5 — Volumes et capacités ────────────────────────────────────────
+
+  it('FP-5 — hydrate les 5 champs volumes & capacités depuis le produit', async () => {
+    getByIdMock.mockResolvedValue({
+      ...baseProduct,
+      annualProductionCapacity: '1200.000',
+      capacityUnit: 'kg',
+      availableQuantity: '500.500',
+      availableQuantityUnit: 't',
+      restockFrequency: 'hebdomadaire',
+    });
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('field-annualProductionCapacity')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('field-annualProductionCapacity')).toHaveValue(1200);
+    expect(screen.getByTestId('field-capacityUnit')).toHaveValue('kg');
+    expect(screen.getByTestId('field-availableQuantity')).toHaveValue(500.5);
+    expect(screen.getByTestId('field-availableQuantityUnit')).toHaveValue('t');
+    expect(screen.getByTestId('field-restockFrequency')).toHaveValue('hebdomadaire');
+  });
+
+  it('FP-5 — PATCH diff envoie les volumes saisis (numériques + chaînes)', async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct });
+    updateMock.mockResolvedValue({ ...baseProduct });
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('field-annualProductionCapacity')).toBeInTheDocument(),
+    );
+    await user.type(screen.getByTestId('field-annualProductionCapacity'), '750');
+    await user.type(screen.getByTestId('field-capacityUnit'), 'kg');
+    await user.type(screen.getByTestId('field-availableQuantity'), '300');
+    await user.type(screen.getByTestId('field-availableQuantityUnit'), 'palettes');
+    await user.type(screen.getByTestId('field-restockFrequency'), 'mensuel');
+    await user.click(screen.getByTestId('submit-product'));
+
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
+    const [, payload] = updateMock.mock.calls[0];
+    expect(payload.annualProductionCapacity).toBe(750);
+    expect(payload.capacityUnit).toBe('kg');
+    expect(payload.availableQuantity).toBe(300);
+    expect(payload.availableQuantityUnit).toBe('palettes');
+    expect(payload.restockFrequency).toBe('mensuel');
+  });
+
+  it('FP-5 — refuse availableQuantity > 1 000 000 000 (validation client)', async () => {
+    getByIdMock.mockResolvedValue({ ...baseProduct });
+    const user = userEvent.setup();
+    render(<SellerMarketplaceProductDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('field-availableQuantity')).toBeInTheDocument(),
+    );
+    await user.type(screen.getByTestId('field-availableQuantity'), '2000000000');
+    await user.click(screen.getByTestId('submit-product'));
+    expect(screen.getByTestId('validation-error')).toHaveTextContent(/Quantité disponible/i);
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
   // ── MP-EDIT-PRODUCT.2 — workflow submit/archive ────────────────────────
 
   it('MP-EDIT-PRODUCT.2 — action Soumettre visible si DRAFT, masquée si IN_REVIEW', async () => {

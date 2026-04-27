@@ -133,6 +133,41 @@ export class CreateMarketplaceProductDto {
   @MaxLength(500)
   palletization?: string;
 
+  // ─── FP-5 — Volumes et capacités ───────────────────────────────────────
+  @ApiPropertyOptional({ example: 1200, description: 'Capacité de production annuelle (unité libre).' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1_000_000_000)
+  annualProductionCapacity?: number;
+
+  @ApiPropertyOptional({ example: 'kg', description: 'Unité associée à annualProductionCapacity.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  capacityUnit?: string;
+
+  @ApiPropertyOptional({ example: 250, description: 'Stock total disponible (vitrine, distinct de l\'offer.availableQuantity).' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1_000_000_000)
+  availableQuantity?: number;
+
+  @ApiPropertyOptional({ example: 'kg', description: 'Unité associée à availableQuantity.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  availableQuantityUnit?: string;
+
+  @ApiPropertyOptional({ example: 'monthly', description: 'Fréquence de réapprovisionnement (libre, ex. weekly/monthly/quarterly/seasonal/ad_hoc/on_demand).' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  restockFrequency?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsObject()
@@ -268,6 +303,32 @@ export class UpdateMarketplaceProductDto {
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500)
   palletization?: string;
+
+  // ─── FP-5 — Volumes et capacités (mêmes règles que Create) ─────────────
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1_000_000_000)
+  annualProductionCapacity?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20)
+  capacityUnit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1_000_000_000)
+  availableQuantity?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20)
+  availableQuantityUnit?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30)
+  restockFrequency?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

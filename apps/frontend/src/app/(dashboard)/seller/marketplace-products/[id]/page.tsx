@@ -77,6 +77,12 @@ interface FormState {
   grossWeight: string;
   netWeight: string;
   palletization: string;
+  // FP-5 — Volumes & capacités
+  annualProductionCapacity: string;
+  capacityUnit: string;
+  availableQuantity: string;
+  availableQuantityUnit: string;
+  restockFrequency: string;
 }
 
 const EMPTY: FormState = {
@@ -103,6 +109,11 @@ const EMPTY: FormState = {
   grossWeight: '',
   netWeight: '',
   palletization: '',
+  annualProductionCapacity: '',
+  capacityUnit: '',
+  availableQuantity: '',
+  availableQuantityUnit: '',
+  restockFrequency: '',
 };
 
 function gpsToString(v: string | number | null | undefined): string {
@@ -138,6 +149,11 @@ function fromProduct(p: SellerMarketplaceProduct): FormState {
     grossWeight: gpsToString(p.grossWeight),
     netWeight: gpsToString(p.netWeight),
     palletization: p.palletization ?? '',
+    annualProductionCapacity: gpsToString(p.annualProductionCapacity),
+    capacityUnit: p.capacityUnit ?? '',
+    availableQuantity: gpsToString(p.availableQuantity),
+    availableQuantityUnit: p.availableQuantityUnit ?? '',
+    restockFrequency: p.restockFrequency ?? '',
   };
 }
 
@@ -232,6 +248,27 @@ function buildPayload(
     const n = Number.parseFloat(current.netWeight);
     if (Number.isFinite(n)) out.netWeight = n;
   }
+  // FP-5 — volumes & capacités (diff)
+  if (
+    current.annualProductionCapacity !== initial.annualProductionCapacity &&
+    current.annualProductionCapacity.trim() !== ''
+  ) {
+    const n = Number.parseFloat(current.annualProductionCapacity);
+    if (Number.isFinite(n)) out.annualProductionCapacity = n;
+  }
+  if (current.capacityUnit !== initial.capacityUnit)
+    setStr('capacityUnit', current.capacityUnit.trim());
+  if (
+    current.availableQuantity !== initial.availableQuantity &&
+    current.availableQuantity.trim() !== ''
+  ) {
+    const n = Number.parseFloat(current.availableQuantity);
+    if (Number.isFinite(n)) out.availableQuantity = n;
+  }
+  if (current.availableQuantityUnit !== initial.availableQuantityUnit)
+    setStr('availableQuantityUnit', current.availableQuantityUnit.trim());
+  if (current.restockFrequency !== initial.restockFrequency)
+    setStr('restockFrequency', current.restockFrequency.trim());
   return out;
 }
 
@@ -296,6 +333,22 @@ function validateClient(form: FormState): string | null {
     if (!Number.isFinite(n) || n < 0 || n > 100000)
       return `${label} doit être un nombre entre 0 et 100000 kg.`;
   }
+  // FP-5 — volumes & capacités
+  for (const [label, raw] of [
+    ['Capacité annuelle de production', form.annualProductionCapacity],
+    ['Quantité disponible', form.availableQuantity],
+  ] as const) {
+    if (raw.trim() === '') continue;
+    const n = Number.parseFloat(raw);
+    if (!Number.isFinite(n) || n < 0 || n > 1_000_000_000)
+      return `${label} doit être un nombre ≥ 0 et ≤ 1 000 000 000.`;
+  }
+  if (form.capacityUnit.length > 20)
+    return 'L’unité de capacité est limitée à 20 caractères.';
+  if (form.availableQuantityUnit.length > 20)
+    return 'L’unité de quantité disponible est limitée à 20 caractères.';
+  if (form.restockFrequency.length > 30)
+    return 'La fréquence de réapprovisionnement est limitée à 30 caractères.';
   return null;
 }
 
@@ -896,6 +949,74 @@ export default function SellerMarketplaceProductDetailPage() {
               maxLength={500}
               className={textareaCls}
               data-testid="field-palletization"
+            />
+          </Field>
+        </Section>
+
+        <Section title="Volumes et capacités (FP-5)">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field
+              label="Capacité annuelle de production"
+              hint="Volume total produit / an. ≥ 0, ≤ 1 000 000 000."
+            >
+              <input
+                type="number"
+                step="0.001"
+                min={0}
+                max={1_000_000_000}
+                value={form.annualProductionCapacity}
+                onChange={set('annualProductionCapacity')}
+                className={inputCls}
+                data-testid="field-annualProductionCapacity"
+              />
+            </Field>
+            <Field label="Unité de capacité" hint="Ex. kg, t, L, hL — max 20 caractères">
+              <input
+                type="text"
+                value={form.capacityUnit}
+                onChange={set('capacityUnit')}
+                maxLength={20}
+                className={inputCls}
+                data-testid="field-capacityUnit"
+              />
+            </Field>
+            <Field
+              label="Quantité disponible (stock)"
+              hint="Stock total dispo agrégé (≠ quota par offre commerciale). ≥ 0, ≤ 1 000 000 000."
+            >
+              <input
+                type="number"
+                step="0.001"
+                min={0}
+                max={1_000_000_000}
+                value={form.availableQuantity}
+                onChange={set('availableQuantity')}
+                className={inputCls}
+                data-testid="field-availableQuantity"
+              />
+            </Field>
+            <Field label="Unité de quantité" hint="Ex. kg, t, palettes — max 20 caractères">
+              <input
+                type="text"
+                value={form.availableQuantityUnit}
+                onChange={set('availableQuantityUnit')}
+                maxLength={20}
+                className={inputCls}
+                data-testid="field-availableQuantityUnit"
+              />
+            </Field>
+          </div>
+          <Field
+            label="Fréquence de réapprovisionnement"
+            hint="Texte libre court, ex. « hebdomadaire », « mensuel », « à la demande » — max 30 caractères."
+          >
+            <input
+              type="text"
+              value={form.restockFrequency}
+              onChange={set('restockFrequency')}
+              maxLength={30}
+              className={inputCls}
+              data-testid="field-restockFrequency"
             />
           </Field>
         </Section>
