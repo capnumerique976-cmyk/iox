@@ -323,6 +323,42 @@ describe('MarketplaceProductsService', () => {
       expect(data.publicationStatus).toBe(MarketplacePublicationStatus.IN_REVIEW);
       expect(data.availableQuantity).toBe(500);
     });
+
+    // ── FP-7 — Qualité structurée ────────────────────────────────────────
+    it('FP-7 — propage qualityAttributes au create (défaut [] si non fourni)', async () => {
+      prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
+      prisma.sellerProfile.findUnique.mockResolvedValue({ id: 'sp1' });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue(null);
+      prisma.marketplaceProduct.create.mockResolvedValue({ id: 'mp1' });
+      await service.create({
+        productId: 'p1',
+        sellerProfileId: 'sp1',
+        slug: 'mp',
+        commercialName: 'Nom',
+        originCountry: 'YT',
+        qualityAttributes: ['ORGANIC', 'HAND_HARVESTED'] as never,
+      });
+      const data = prisma.marketplaceProduct.create.mock.calls[0][0].data;
+      expect(data.qualityAttributes).toEqual(['ORGANIC', 'HAND_HARVESTED']);
+    });
+
+    it('FP-7 — un patch qualityAttributes sur un produit PUBLISHED déclenche IN_REVIEW', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({
+        id: 'mp1',
+        slug: 'mp',
+        publicationStatus: MarketplacePublicationStatus.PUBLISHED,
+      });
+      prisma.marketplaceProduct.update.mockResolvedValue({
+        id: 'mp1',
+        publicationStatus: MarketplacePublicationStatus.IN_REVIEW,
+      });
+      await service.update('mp1', {
+        qualityAttributes: ['VEGAN', 'NON_GMO'] as never,
+      });
+      const data = prisma.marketplaceProduct.update.mock.calls[0][0].data;
+      expect(data.publicationStatus).toBe(MarketplacePublicationStatus.IN_REVIEW);
+      expect(data.qualityAttributes).toEqual(['VEGAN', 'NON_GMO']);
+    });
   });
 
   // ── Workflow ──────────────────────────────────────────────────────────────

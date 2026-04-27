@@ -14,7 +14,7 @@
 //   - PATCH ciblé édition de contenu (MP-EDIT-PRODUCT.1)
 
 import { api } from './api';
-import type { SeasonalityMonth } from './marketplace/types';
+import type { ProductQualityAttribute, SeasonalityMonth } from './marketplace/types';
 
 export type MarketplacePublicationStatus =
   | 'DRAFT'
@@ -81,6 +81,9 @@ export interface SellerMarketplaceProduct {
   availableQuantity?: string | number | null;
   availableQuantityUnit?: string | null;
   restockFrequency?: string | null;
+
+  // FP-7 — Qualité structurée (slugs ProductQualityAttribute, max 10).
+  qualityAttributes?: ProductQualityAttribute[];
 
   // Saisonnalité (édition via /seasonality, lecture seule ici)
   harvestMonths: SeasonalityMonth[];
@@ -157,6 +160,9 @@ export interface UpdateMarketplaceProductInput {
   availableQuantity?: number;
   availableQuantityUnit?: string;
   restockFrequency?: string;
+
+  // FP-7 — Qualité structurée
+  qualityAttributes?: ProductQualityAttribute[];
 }
 
 /**

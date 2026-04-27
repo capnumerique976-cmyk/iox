@@ -166,6 +166,29 @@ export enum SeasonalityMonth {
   DEC = 'DEC',
 }
 
+// FP-7 — Attributs qualité structurés portés par MarketplaceProduct.
+// Miroir strict de l'enum Prisma `ProductQualityAttribute`.
+export enum ProductQualityAttribute {
+  NON_GMO = 'NON_GMO',
+  ORGANIC = 'ORGANIC',
+  HANDMADE = 'HANDMADE',
+  TRADITIONAL = 'TRADITIONAL',
+  HAND_HARVESTED = 'HAND_HARVESTED',
+  GLUTEN_FREE = 'GLUTEN_FREE',
+  LACTOSE_FREE = 'LACTOSE_FREE',
+  VEGAN = 'VEGAN',
+  VEGETARIAN = 'VEGETARIAN',
+  KOSHER = 'KOSHER',
+  HALAL = 'HALAL',
+  WILD_HARVESTED = 'WILD_HARVESTED',
+  SMALL_BATCH = 'SMALL_BATCH',
+  COLD_PRESSED = 'COLD_PRESSED',
+  RAW = 'RAW',
+  FAIR_TRADE = 'FAIR_TRADE',
+  ARTISANAL = 'ARTISANAL',
+  OTHER = 'OTHER',
+}
+
 export const SEASONALITY_MONTHS_ORDERED: SeasonalityMonth[] = [
   SeasonalityMonth.JAN,
   SeasonalityMonth.FEB,
