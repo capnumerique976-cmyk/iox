@@ -17,14 +17,34 @@ interface MockedPrisma {
   product: { upsert: jest.Mock };
   sellerProfile: { upsert: jest.Mock };
   marketplaceProduct: { upsert: jest.Mock; update: jest.Mock };
-  marketplaceOffer: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
+  marketplaceOffer: {
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+  };
   certification: { upsert: jest.Mock };
   mediaAsset: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
+  // SEED-DEMO-FIX-3
+  document: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
+  marketplaceDocument: {
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+  };
+  quoteRequest: {
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+  };
+  quoteRequestMessage: { findFirst: jest.Mock; create: jest.Mock };
 }
 
 function makePrismaMock(opts: {
   offerExists?: boolean;
   mediaAssetExists?: boolean;
+  publicDocExists?: boolean;
+  rfqExists?: boolean;
+  rfqMessageExists?: boolean;
 } = {}): MockedPrisma {
   // Les upserts renvoient un objet avec `id` dérivé de la clé naturelle —
   // suffisant pour que le runner enchaîne les FK.
@@ -68,9 +88,17 @@ function makePrismaMock(opts: {
       update: jest.fn().mockResolvedValue({ id: 'mock-mp-id' }),
     },
     marketplaceOffer: {
-      findFirst: jest
-        .fn()
-        .mockResolvedValue(opts.offerExists ? { id: 'existing-offer-id' } : null),
+      // findFirst sert deux usages :
+      //  1. recherche "offre principale du produit" (looks up `where.marketplaceProductId`)
+      //     → renvoie toujours un id pour permettre au RFQ-seed de cibler l'offre.
+      //  2. recherche "offre déjà créée pour ce produit + ce title" (looks up `where.title`)
+      //     → respecte `opts.offerExists` (existante vs nouvelle).
+      findFirst: jest.fn().mockImplementation(({ where }: { where: Record<string, unknown> }) => {
+        if (where && 'title' in where) {
+          return Promise.resolve(opts.offerExists ? { id: 'existing-offer-id' } : null);
+        }
+        return Promise.resolve({ id: 'mock-offer-id' });
+      }),
       create: jest.fn().mockResolvedValue({ id: 'mock-offer-id' }),
       update: jest.fn().mockResolvedValue({ id: 'existing-offer-id' }),
     },
@@ -81,6 +109,34 @@ function makePrismaMock(opts: {
         .mockResolvedValue(opts.mediaAssetExists ? { id: 'existing-media-id' } : null),
       create: jest.fn().mockResolvedValue({ id: 'mock-media-id' }),
       update: jest.fn().mockResolvedValue({ id: 'existing-media-id' }),
+    },
+    // SEED-DEMO-FIX-3
+    document: {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(opts.publicDocExists ? { id: 'existing-doc-id' } : null),
+      create: jest.fn().mockResolvedValue({ id: 'mock-doc-id' }),
+      update: jest.fn().mockResolvedValue({ id: 'existing-doc-id' }),
+    },
+    marketplaceDocument: {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(opts.publicDocExists ? { id: 'existing-mp-doc-id' } : null),
+      create: jest.fn().mockResolvedValue({ id: 'mock-mp-doc-id' }),
+      update: jest.fn().mockResolvedValue({ id: 'existing-mp-doc-id' }),
+    },
+    quoteRequest: {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(opts.rfqExists ? { id: 'existing-rfq-id' } : null),
+      create: jest.fn().mockResolvedValue({ id: 'mock-rfq-id' }),
+      update: jest.fn().mockResolvedValue({ id: 'existing-rfq-id' }),
+    },
+    quoteRequestMessage: {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(opts.rfqMessageExists ? { id: 'existing-msg-id' } : null),
+      create: jest.fn().mockResolvedValue({ id: 'mock-msg-id' }),
     },
   };
 }
@@ -139,8 +195,9 @@ describe('SEED-DEMO runner', () => {
         // SEED-DEMO-FIX : 1 MediaAsset PRIMARY APPROVED par produit demo.
         mediaAssets: DEMO_DATASET.products.length,
       });
+      // SEED-DEMO-FIX-3 : +1 Company pour le smoke-buyer.
       expect(prismaMock.company.upsert).toHaveBeenCalledTimes(
-        DEMO_DATASET.sellers.length,
+        DEMO_DATASET.sellers.length + 1,
       );
       expect(prismaMock.product.upsert).toHaveBeenCalledTimes(
         DEMO_DATASET.products.length,
@@ -284,7 +341,7 @@ describe('SEED-DEMO runner', () => {
   });
 
   describe('smoke seller', () => {
-    it('utilise SMOKE_SELLER_PASSWORD si fourni', async () => {
+    it('utilise SMOKE_SELLER_PASSWORD si fourni (smoke-seller + smoke-buyer)', async () => {
       const prismaMock = makePrismaMock();
       await runDemoSeed(
         buildOpts(
@@ -292,16 +349,100 @@ describe('SEED-DEMO runner', () => {
           prismaMock,
         ),
       );
-      expect(prismaMock.user.upsert).toHaveBeenCalledTimes(1);
-      const call = prismaMock.user.upsert.mock.calls[0][0];
-      expect(call.where.email).toBe('smoke-seller@iox.mch');
-      expect(call.create.email).toBe('smoke-seller@iox.mch');
-      expect(call.create.role).toBe('MARKETPLACE_SELLER');
+      // SEED-DEMO-FIX-3 : 2 user.upsert (smoke-seller puis smoke-buyer).
+      expect(prismaMock.user.upsert).toHaveBeenCalledTimes(2);
+      const sellerCall = prismaMock.user.upsert.mock.calls.find(
+        (c) => c[0].where.email === 'smoke-seller@iox.mch',
+      );
+      const buyerCall = prismaMock.user.upsert.mock.calls.find(
+        (c) => c[0].where.email === 'smoke-buyer@iox.mch',
+      );
+      expect(sellerCall).toBeDefined();
+      expect(buyerCall).toBeDefined();
+      expect(sellerCall![0].create.role).toBe('MARKETPLACE_SELLER');
+      expect(buyerCall![0].create.role).toBe('MARKETPLACE_BUYER');
       // bcrypt produit un hash > 50 chars : on vérifie juste qu'il est non vide
       // et différent du mot de passe en clair.
-      expect(typeof call.create.passwordHash).toBe('string');
-      expect(call.create.passwordHash.length).toBeGreaterThan(20);
-      expect(call.create.passwordHash).not.toBe('CustomPwd!');
+      expect(typeof sellerCall![0].create.passwordHash).toBe('string');
+      expect(sellerCall![0].create.passwordHash.length).toBeGreaterThan(20);
+      expect(sellerCall![0].create.passwordHash).not.toBe('CustomPwd!');
+    });
+  });
+
+  // ── SEED-DEMO-FIX-3 ────────────────────────────────────────────────────
+
+  describe('SEED-DEMO-FIX-3 — MarketplaceDocument PUBLIC + RFQ', () => {
+    it('summary expose publicDocs/quoteRequests/quoteRequestMessages cohérents', async () => {
+      const prismaMock = makePrismaMock();
+      const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(summary).toMatchObject({
+        publicDocs: DEMO_DATASET.publicDocuments.length,
+        quoteRequests: DEMO_DATASET.quoteRequests.length,
+        quoteRequestMessages: DEMO_DATASET.quoteRequests.length * 2,
+        smokeBuyer: 'smoke-buyer@iox.mch',
+      });
+    });
+
+    it('crée 1 MarketplaceDocument PUBLIC par produit cible (1ʳᵉ exécution)', async () => {
+      const prismaMock = makePrismaMock();
+      await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(prismaMock.marketplaceDocument.create).toHaveBeenCalledTimes(
+        DEMO_DATASET.publicDocuments.length,
+      );
+      for (const [arg] of prismaMock.marketplaceDocument.create.mock.calls) {
+        expect(arg.data.visibility).toBe('PUBLIC');
+        expect(arg.data.verificationStatus).toBe('VERIFIED');
+        expect(arg.data.relatedType).toBe('MARKETPLACE_PRODUCT');
+      }
+    });
+
+    it("idempotent : 2ᵉ run avec docs/RFQ déjà présents → 0 create, N updates", async () => {
+      const prismaMock = makePrismaMock({
+        publicDocExists: true,
+        rfqExists: true,
+        rfqMessageExists: true,
+      });
+      const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(prismaMock.marketplaceDocument.create).not.toHaveBeenCalled();
+      expect(prismaMock.marketplaceDocument.update).toHaveBeenCalledTimes(
+        DEMO_DATASET.publicDocuments.length,
+      );
+      expect(prismaMock.quoteRequest.create).not.toHaveBeenCalled();
+      expect(prismaMock.quoteRequestMessage.create).not.toHaveBeenCalled();
+      expect(summary.publicDocs).toBe(DEMO_DATASET.publicDocuments.length);
+    });
+
+    it("crée 2 RFQ + 4 messages (1ʳᵉ exécution, RFQ absentes)", async () => {
+      const prismaMock = makePrismaMock();
+      await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(prismaMock.quoteRequest.create).toHaveBeenCalledTimes(
+        DEMO_DATASET.quoteRequests.length,
+      );
+      expect(prismaMock.quoteRequestMessage.create).toHaveBeenCalledTimes(
+        DEMO_DATASET.quoteRequests.length * 2,
+      );
+      // Les RFQ portent un `targetMarket` = seedKey (pour idempotence).
+      const targetMarkets = prismaMock.quoteRequest.create.mock.calls.map(
+        (c) => c[0].data.targetMarket,
+      );
+      expect(targetMarkets).toEqual(
+        expect.arrayContaining(['rfq-vanille-poudre-init', 'rfq-mangue-maya-quoted']),
+      );
+    });
+
+    it('compte smoke-buyer créé avec role MARKETPLACE_BUYER + Company DEMO-BUYER-001', async () => {
+      const prismaMock = makePrismaMock();
+      await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      const buyerUserCall = prismaMock.user.upsert.mock.calls.find(
+        (c) => c[0].where.email === 'smoke-buyer@iox.mch',
+      );
+      expect(buyerUserCall).toBeDefined();
+      expect(buyerUserCall![0].create.role).toBe('MARKETPLACE_BUYER');
+      const buyerCompanyCall = prismaMock.company.upsert.mock.calls.find(
+        (c) => c[0].where.code === 'DEMO-BUYER-001',
+      );
+      expect(buyerCompanyCall).toBeDefined();
+      expect(buyerCompanyCall![0].create.types).toContain('BUYER');
     });
   });
 });

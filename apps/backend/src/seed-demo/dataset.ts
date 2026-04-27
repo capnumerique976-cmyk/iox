@@ -103,6 +103,35 @@ interface DemoCertification {
   validUntil: Date;
 }
 
+// SEED-DEMO-FIX-3 — Documents PUBLIC attachés à un produit demo.
+interface DemoPublicDocument {
+  /** Slug du MarketplaceProduct cible. */
+  productSlug: string;
+  /** Code naturel idempotent du Document MCH (lookup `where: { code: ... }`). */
+  documentCode: string;
+  documentName: string;
+  documentType: 'TECHNICAL_DATA_SHEET' | 'PHYTOSANITARY_CERTIFICATE';
+  marketplaceTitle: string;
+  storageKey: string; // chemin MinIO factice
+  fileSize: number; // octets factices
+}
+
+// SEED-DEMO-FIX-3 — Demande de devis demo (idempotence via productSlug).
+interface DemoQuoteRequest {
+  /** Identifiant naturel pour idempotence (`productSlug` + ordre seedAt). */
+  seedKey: string;
+  buyerEmail: 'smoke-buyer@iox.mch';
+  /** Slug du MarketplaceProduct dont l'offre principale est ciblée. */
+  productSlug: string;
+  requestedQuantity: string;
+  requestedUnit: string;
+  deliveryCountry: string;
+  status: 'NEW' | 'QUALIFIED' | 'QUOTED';
+  initialMessage: string;
+  /** Réplique du seller (ajoutée comme `QuoteRequestMessage`). */
+  sellerReply: string;
+}
+
 const D = (v: string) => new Prisma.Decimal(v);
 const T = (iso: string) => new Date(iso);
 
@@ -111,10 +140,15 @@ const PUBLISHED_AT = T('2026-04-15T08:00:00.000Z');
 const VALID_FROM = T('2025-01-01T00:00:00.000Z');
 const VALID_UNTIL = T('2027-12-31T00:00:00.000Z');
 
+export const SMOKE_BUYER_EMAIL = 'smoke-buyer@iox.mch';
+export const SMOKE_BUYER_COMPANY_CODE = 'DEMO-BUYER-001';
+
 export const DEMO_DATASET: {
   sellers: DemoSeller[];
   products: DemoProduct[];
   certifications: DemoCertification[];
+  publicDocuments: DemoPublicDocument[];
+  quoteRequests: DemoQuoteRequest[];
 } = {
   sellers: [
     {
@@ -679,6 +713,76 @@ export const DEMO_DATASET: {
       issuingBody: 'GLOBALG.A.P.',
       validFrom: VALID_FROM,
       validUntil: VALID_UNTIL,
+    },
+  ],
+
+  // SEED-DEMO-FIX-3 — 4 documents PUBLIC (1 par seller principal) pour
+  // que le filtre catalog `?hasPublicDocs=true` retourne 4.
+  publicDocuments: [
+    {
+      productSlug: 'demo-vanille-bourbon-grade-a',
+      documentCode: 'DEMO-DOC-001',
+      documentName: 'fiche-technique-vanille-bourbon.pdf',
+      documentType: 'TECHNICAL_DATA_SHEET',
+      marketplaceTitle: 'Fiche technique — Vanille Bourbon Grade A',
+      storageKey: 'demo/marketplace-documents/fiche-technique-vanille-bourbon.pdf',
+      fileSize: 124567,
+    },
+    {
+      productSlug: 'demo-thon-jaune-iqf',
+      documentCode: 'DEMO-DOC-002',
+      documentName: 'certificat-sanitaire-thon-jaune.pdf',
+      documentType: 'PHYTOSANITARY_CERTIFICATE',
+      marketplaceTitle: 'Certificat sanitaire — Thon jaune IQF',
+      storageKey: 'demo/marketplace-documents/certificat-sanitaire-thon-jaune.pdf',
+      fileSize: 98421,
+    },
+    {
+      productSlug: 'demo-ylang-extra',
+      documentCode: 'DEMO-DOC-003',
+      documentName: 'fiche-technique-ylang-extra.pdf',
+      documentType: 'TECHNICAL_DATA_SHEET',
+      marketplaceTitle: 'Fiche technique — Ylang-Ylang Extra',
+      storageKey: 'demo/marketplace-documents/fiche-technique-ylang-extra.pdf',
+      fileSize: 156789,
+    },
+    {
+      productSlug: 'demo-mangue-maya',
+      documentCode: 'DEMO-DOC-004',
+      documentName: 'certificat-phytosanitaire-mangue-maya.pdf',
+      documentType: 'PHYTOSANITARY_CERTIFICATE',
+      marketplaceTitle: 'Certificat phytosanitaire — Mangue Maya',
+      storageKey: 'demo/marketplace-documents/certificat-phytosanitaire-mangue-maya.pdf',
+      fileSize: 87654,
+    },
+  ],
+
+  // SEED-DEMO-FIX-3 — 2 RFQ entre smoke-buyer et 2 sellers, avec une
+  // réplique seller chacune (4 messages au total).
+  quoteRequests: [
+    {
+      seedKey: 'rfq-vanille-poudre-init',
+      buyerEmail: 'smoke-buyer@iox.mch',
+      productSlug: 'demo-vanille-poudre',
+      requestedQuantity: '10',
+      requestedUnit: 'kg',
+      deliveryCountry: 'FR',
+      status: 'NEW',
+      initialMessage:
+        "Bonjour, intéressé par 10 kg pour début juin. Possibilité d'envoi échantillon ?",
+      sellerReply:
+        'Bonjour, merci pour votre intérêt. Échantillon possible 250g. Je vous fais un devis ferme dans la journée.',
+    },
+    {
+      seedKey: 'rfq-mangue-maya-quoted',
+      buyerEmail: 'smoke-buyer@iox.mch',
+      productSlug: 'demo-mangue-maya',
+      requestedQuantity: '500',
+      requestedUnit: 'kg',
+      deliveryCountry: 'FR',
+      status: 'QUOTED',
+      initialMessage: 'Demande de devis pour 500 kg, livraison Marseille fin mai.',
+      sellerReply: 'Devis 1850 EUR/tonne CIF Marseille, MOQ 500kg respecté. Validité 30j.',
     },
   ],
 };
