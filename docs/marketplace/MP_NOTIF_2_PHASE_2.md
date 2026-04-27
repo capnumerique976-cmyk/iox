@@ -163,6 +163,74 @@ affichent un lien « Se désabonner de ces notifications ».
 Si le secret JWT ou `FRONTEND_URL` est absent (env minimal), l'URL est
 vide et le footer affiche le placeholder sans lien.
 
-## LOT 3 — Transitions RFQ (à venir dans le mandat)
+## LOT 3 — Notifications transitions status RFQ
 
-(Doc complète sera ajoutée par le lot suivant)
+### 4 nouveaux templates
+
+Tous partagent un helper commun `templates/rfq-transition.helper.ts`
+(structure : titre + intro + note seller optionnelle + CTA + footer
+unsubscribe).
+
+| templateId | Statut cible | Sujet FR | Couleur accent |
+|------------|--------------|----------|----------------|
+| `rfq-qualified` | QUALIFIED | "Votre demande de devis a été qualifiée — {offer}" | bleu cyan |
+| `rfq-quoted` | QUOTED | "Devis disponible pour votre demande — {offer}" | bleu cyan |
+| `rfq-won` | WON | "Bonne nouvelle, votre demande est confirmée — {offer}" | vert |
+| `rfq-lost` | LOST | "Mise à jour sur votre demande — {offer}" (ton neutre) | gris |
+
+`templateData` commun (`RfqTransitionTemplateData`) :
+```ts
+{
+  recipientDisplayName: string;
+  senderDisplayName: string;       // SellerProfile.publicDisplayName
+  offerTitle: string;
+  note: string | null;             // dto.note du PATCH /status
+  ctaUrl: string;                  // /quote-requests/{id} (buyer-side)
+  unsubscribeUrl?: string;         // injecté auto par le service
+}
+```
+
+### Branchement `QuoteRequestsService.updateStatus`
+
+Helper privé `notifyOnStatusTransition(updated, targetStatus, note)` :
+- mappe le statut cible vers le templateId via `TEMPLATE_BY_STATUS`.
+- skip pour `NEGOTIATING` et `CANCELLED` (no-op silencieux).
+- charge `marketplaceOffer.title` + `sellerProfile.publicDisplayName` +
+  `buyerUser.email` depuis l'objet retourné par `prisma.update` (le
+  service étend `findUnique` pour inclure ces champs avant la
+  transition).
+- appelle `safeNotify` (helper existant) — try/catch silencieux + log
+  warn. Une défaillance d'envoi ne casse pas la persistance status
+  (audit déjà loggé avant la notif).
+
+### Events couverts (tableau récap final)
+
+| Event | Service | TemplateId | Destinataire | unsubscribeType |
+|-------|---------|------------|--------------|-----------------|
+| RFQ créée | `create` | `rfq-created-to-seller` | seller (`salesEmail`) | RFQ_NOTIFICATIONS |
+| Message public ajouté | `addMessage` | `rfq-message-created` | autre partie | RFQ_NOTIFICATIONS |
+| Status → QUALIFIED | `updateStatus` | `rfq-qualified` | buyer | RFQ_NOTIFICATIONS |
+| Status → QUOTED | `updateStatus` | `rfq-quoted` | buyer | RFQ_NOTIFICATIONS |
+| Status → WON | `updateStatus` | `rfq-won` | buyer | RFQ_NOTIFICATIONS |
+| Status → LOST | `updateStatus` | `rfq-lost` | buyer | RFQ_NOTIFICATIONS |
+
+### Tests
+
+- `templates/rfq-transitions.template.spec.ts` — 4 templates × 5 cas =
+  20 specs (subject, html, text, XSS guard, note null).
+- `quote-requests.service.spec.ts` — 7 specs MP-NOTIF-2 (4 transitions
+  notifient, 2 transitions skip, 1 cas safeNotify catch).
+
+## TODO phase 3+ (MP-NOTIF-3)
+
+- Page frontend conviviale `/unsubscribe?token=...` (HTML, copy FR,
+  retour utilisateur friendly).
+- Notif transitions `NEGOTIATING`, `CANCELLED`, `ASSIGNED`.
+- Préférences utilisateur fines (par templateId, pas seulement par
+  catégorie).
+- Retry queue pour les échecs Resend (backoff exponentiel + Bull/cron).
+- Tests d'intégration MailHog (déjà up sur compose dev `:8025`) pour
+  validation MIME bout-en-bout.
+- Token unsubscribe **opaque** (pas JWT) côté URL pour éviter de
+  dévoiler la structure du payload.
+

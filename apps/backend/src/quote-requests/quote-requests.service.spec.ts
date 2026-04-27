@@ -444,6 +444,110 @@ describe('QuoteRequestsService', () => {
       const out = await service.updateStatus('rfq-1', { status: QuoteRequestStatus.WON }, SELLER);
       expect(out.status).toBe(QuoteRequestStatus.WON);
     });
+
+    // ── MP-NOTIF-2 phase 2 — Notif transitions ─────────────────────────
+
+    /**
+     * Fixture enrichie pour les tests de notif transition : la RFQ
+     * retournée par `update` doit inclure marketplaceOffer (avec title +
+     * sellerProfile) et buyerUser (avec email). Le service skip la notif
+     * silencieusement si l'un de ces champs manque (cas des tests legacy).
+     */
+    const richUpdated = (status: QuoteRequestStatus) => ({
+      id: 'rfq-1',
+      status,
+      buyerUser: {
+        email: 'alice@buyer.demo',
+        firstName: 'Alice',
+        lastName: 'Buyer',
+      },
+      marketplaceOffer: {
+        id: 'off-1',
+        title: 'Vanille Bourbon Grade A',
+        sellerProfileId: 'sp-1',
+        sellerProfile: { publicDisplayName: 'Coop Vanille' },
+      },
+    });
+
+    const fromStatusSetup = (current: QuoteRequestStatus) => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...baseRfq,
+        status: current,
+      });
+    };
+
+    it('MP-NOTIF-2 — NEW→QUALIFIED par seller → notif rfq-qualified vers buyer', async () => {
+      fromStatusSetup(QuoteRequestStatus.NEW);
+      prisma.quoteRequest.update.mockResolvedValue(richUpdated(QuoteRequestStatus.QUALIFIED));
+      await service.updateStatus('rfq-1', { status: QuoteRequestStatus.QUALIFIED }, SELLER);
+      expect(notifEmail.send).toHaveBeenCalledTimes(1);
+      const arg = notifEmail.send.mock.calls[0][0];
+      expect(arg.templateId).toBe('rfq-qualified');
+      expect(arg.to).toBe('alice@buyer.demo');
+      expect(arg.templateData).toMatchObject({
+        recipientDisplayName: 'Alice Buyer',
+        senderDisplayName: 'Coop Vanille',
+        offerTitle: 'Vanille Bourbon Grade A',
+      });
+    });
+
+    it('MP-NOTIF-2 — QUALIFIED→QUOTED par seller → notif rfq-quoted', async () => {
+      fromStatusSetup(QuoteRequestStatus.QUALIFIED);
+      prisma.quoteRequest.update.mockResolvedValue(richUpdated(QuoteRequestStatus.QUOTED));
+      await service.updateStatus(
+        'rfq-1',
+        { status: QuoteRequestStatus.QUOTED, note: 'Devis 1850 EUR/t.' },
+        SELLER,
+      );
+      expect(notifEmail.send).toHaveBeenCalledTimes(1);
+      expect(notifEmail.send.mock.calls[0][0].templateId).toBe('rfq-quoted');
+      expect(notifEmail.send.mock.calls[0][0].templateData.note).toBe('Devis 1850 EUR/t.');
+    });
+
+    it('MP-NOTIF-2 — QUOTED→WON par seller → notif rfq-won', async () => {
+      fromStatusSetup(QuoteRequestStatus.QUOTED);
+      prisma.quoteRequest.update.mockResolvedValue(richUpdated(QuoteRequestStatus.WON));
+      await service.updateStatus('rfq-1', { status: QuoteRequestStatus.WON }, SELLER);
+      expect(notifEmail.send).toHaveBeenCalledTimes(1);
+      expect(notifEmail.send.mock.calls[0][0].templateId).toBe('rfq-won');
+    });
+
+    it('MP-NOTIF-2 — QUOTED→LOST par seller → notif rfq-lost', async () => {
+      fromStatusSetup(QuoteRequestStatus.QUOTED);
+      prisma.quoteRequest.update.mockResolvedValue(richUpdated(QuoteRequestStatus.LOST));
+      await service.updateStatus('rfq-1', { status: QuoteRequestStatus.LOST }, SELLER);
+      expect(notifEmail.send).toHaveBeenCalledTimes(1);
+      expect(notifEmail.send.mock.calls[0][0].templateId).toBe('rfq-lost');
+    });
+
+    it('MP-NOTIF-2 — QUOTED→NEGOTIATING → PAS de notif', async () => {
+      fromStatusSetup(QuoteRequestStatus.QUOTED);
+      prisma.quoteRequest.update.mockResolvedValue(richUpdated(QuoteRequestStatus.NEGOTIATING));
+      await service.updateStatus('rfq-1', { status: QuoteRequestStatus.NEGOTIATING }, SELLER);
+      expect(notifEmail.send).not.toHaveBeenCalled();
+    });
+
+    it('MP-NOTIF-2 — NEW→CANCELLED par buyer → PAS de notif (skip status)', async () => {
+      fromStatusSetup(QuoteRequestStatus.NEW);
+      prisma.quoteRequest.update.mockResolvedValue(richUpdated(QuoteRequestStatus.CANCELLED));
+      await service.updateStatus('rfq-1', { status: QuoteRequestStatus.CANCELLED }, BUYER);
+      expect(notifEmail.send).not.toHaveBeenCalled();
+    });
+
+    it('MP-NOTIF-2 — notifEmail throw → la transition status est tout de même persistée', async () => {
+      fromStatusSetup(QuoteRequestStatus.NEW);
+      prisma.quoteRequest.update.mockResolvedValue(richUpdated(QuoteRequestStatus.QUALIFIED));
+      notifEmail.send.mockRejectedValueOnce(new Error('boom transport'));
+      const out = await service.updateStatus(
+        'rfq-1',
+        { status: QuoteRequestStatus.QUALIFIED },
+        SELLER,
+      );
+      expect(out.status).toBe(QuoteRequestStatus.QUALIFIED);
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'QUOTE_REQUEST_STATUS_CHANGED' }),
+      );
+    });
   });
 
   // ── assign ─────────────────────────────────────────────────────────────────

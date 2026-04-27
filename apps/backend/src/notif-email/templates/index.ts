@@ -11,10 +11,19 @@
 import type { EmailTemplate } from '../notif-email.types';
 import { rfqCreatedToSellerTemplate } from './rfq-created-to-seller.template';
 import { rfqMessageCreatedTemplate } from './rfq-message-created.template';
+import { rfqQualifiedTemplate } from './rfq-qualified.template';
+import { rfqQuotedTemplate } from './rfq-quoted.template';
+import { rfqWonTemplate } from './rfq-won.template';
+import { rfqLostTemplate } from './rfq-lost.template';
 
 const REGISTRY = {
   'rfq-created-to-seller': rfqCreatedToSellerTemplate,
   'rfq-message-created': rfqMessageCreatedTemplate,
+  // MP-NOTIF-2 phase 2 — transitions RFQ status.
+  'rfq-qualified': rfqQualifiedTemplate,
+  'rfq-quoted': rfqQuotedTemplate,
+  'rfq-won': rfqWonTemplate,
+  'rfq-lost': rfqLostTemplate,
 } as const;
 
 export type TemplateId = keyof typeof REGISTRY;
