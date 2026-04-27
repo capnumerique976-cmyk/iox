@@ -74,15 +74,13 @@ export default function SellerMarketplaceOffersPage() {
         subtitle="Lecture seule — édition à venir"
         actions={
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Link
+              href="/seller/marketplace-offers/new"
               data-testid="link-new-offer"
-              disabled
-              title="Création disponible au prochain lot"
-              className="inline-flex cursor-not-allowed items-center gap-1 rounded-md bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-400 shadow-premium-sm"
+              className="inline-flex items-center gap-1 rounded-md bg-premium-accent px-2.5 py-1.5 text-xs font-semibold text-white shadow-premium-sm hover:bg-premium-primary"
             >
               <Plus className="h-3 w-3" /> Nouvelle offre
-            </button>
+            </Link>
             <Link
               href="/seller/dashboard"
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"

@@ -8,7 +8,16 @@
 //   - listMine(token, params)
 //   - getById(id, token)
 //
-// L'édition (PATCH/POST) est introduite par MP-OFFER-EDIT-1 (LOT 2).
+// MP-OFFER-EDIT-1 (LOT 2 mandat 14) — création + édition champs sûrs :
+//   - create(payload, token)
+//   - update(id, payload, token)
+//   - submit(id, token)
+//
+// `UpdateMarketplaceOfferInput` exclut **délibérément** les champs
+// interdits côté seller (workflow, scoping, projection admin) : tenter
+// d'envoyer `marketplaceProductId`, `visibilityScope`,
+// `publicationStatus`, etc. via `update()` sera rejeté par tsc à la
+// compilation — défense en profondeur en plus du whitelist backend.
 
 import { api } from './api';
 
@@ -127,6 +136,56 @@ function qs(params: Record<string, string | number | boolean | undefined>): stri
   return s ? `?${s}` : '';
 }
 
+/**
+ * MP-OFFER-EDIT-1 — Champs autorisés en édition seller.
+ *
+ * Aligné sur `UpdateMarketplaceOfferDto` backend
+ * (`apps/backend/src/marketplace-offers/dto/marketplace-offer.dto.ts`).
+ *
+ * Champs interdits — non typés ici, donc rejetés par tsc :
+ *   - `marketplaceProductId` (immuable post-création, lien produit)
+ *   - `sellerProfileId` (immuable, ownership)
+ *   - `visibilityScope` (workflow seller restreint, futur lot)
+ *   - `exportReadinessStatus` (staff)
+ *   - `publicationStatus` (workflow géré par submit/approve/publish)
+ *   - `featuredRank`, `rejectionReason` (admin / staff)
+ *   - `submittedAt` / `approvedAt` / `publishedAt` / `suspendedAt`
+ *     (server-managed)
+ */
+export interface UpdateMarketplaceOfferInput {
+  title?: string;
+  shortDescription?: string;
+  priceMode?: MarketplacePriceMode;
+  unitPrice?: number;
+  currency?: string;
+  moq?: number;
+  availableQuantity?: number;
+  availabilityStart?: string;
+  availabilityEnd?: string;
+  leadTimeDays?: number;
+  incoterm?: string;
+  departureLocation?: string;
+  destinationMarketsJson?: Record<string, unknown>;
+}
+
+/**
+ * MP-OFFER-EDIT-1 — Champs requis à la création (cf. `CreateMarketplaceOfferDto` backend).
+ *
+ * `marketplaceProductId` et `sellerProfileId` ne sont autorisés qu'à la
+ * **création** — immuables après. Tous les champs `UpdateMarketplaceOfferInput`
+ * sont également permis (édition à la création).
+ *
+ * Note : `visibilityScope` est admis par le DTO backend mais non exposé
+ * côté seller dans ce lot (workflow PRIVATE/BUYERS_ONLY/PUBLIC à câbler
+ * dans un futur lot avec garde-fou métier).
+ */
+export interface CreateMarketplaceOfferInput extends UpdateMarketplaceOfferInput {
+  marketplaceProductId: string;
+  sellerProfileId: string;
+  title: string;
+  priceMode: MarketplacePriceMode;
+}
+
 export const marketplaceOffersApi = {
   /**
    * Liste les offres marketplace visibles par l'acteur courant.
@@ -142,4 +201,30 @@ export const marketplaceOffersApi = {
 
   getById: (id: string, token: string) =>
     api.get<MarketplaceOfferDetail>(`/marketplace/offers/${id}`, token),
+
+  /**
+   * MP-OFFER-EDIT-1 — Création d'un brouillon offer marketplace.
+   * Le backend force `publicationStatus=DRAFT` et `exportReadinessStatus=
+   * PENDING_QUALITY_REVIEW` indépendamment du payload.
+   */
+  create: (dto: CreateMarketplaceOfferInput, token: string) =>
+    api.post<MarketplaceOfferDetail>('/marketplace/offers', dto, token),
+
+  /**
+   * MP-OFFER-EDIT-1 — PATCH ciblé sur les champs sûrs.
+   *
+   * Le payload est typé `UpdateMarketplaceOfferInput` qui exclut
+   * strictement les champs interdits (workflow, scoping, projection
+   * admin). Le backend déclenche en plus une re-revue staff si
+   * `publicationStatus ∈ {APPROVED, PUBLISHED}`.
+   */
+  update: (id: string, dto: UpdateMarketplaceOfferInput, token: string) =>
+    api.patch<MarketplaceOfferDetail>(`/marketplace/offers/${id}`, dto, token),
+
+  /**
+   * MP-OFFER-EDIT-1 — Soumettre à la revue staff.
+   * Allowed transitions backend : DRAFT|REJECTED → IN_REVIEW.
+   */
+  submit: (id: string, token: string) =>
+    api.post<MarketplaceOfferDetail>(`/marketplace/offers/${id}/submit`, {}, token),
 };
