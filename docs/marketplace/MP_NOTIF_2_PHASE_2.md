@@ -99,9 +99,69 @@ Total notif-email : 29 specs.
 
 ---
 
-## LOT 2 — Unsubscribe (à venir dans le mandat)
+## LOT 2 — Unsubscribe
 
-(Doc complète sera ajoutée par le lot suivant)
+### Table `email_unsubscribes`
+
+```prisma
+enum EmailUnsubscribeType { ALL RFQ_NOTIFICATIONS TRANSACTIONAL }
+
+model EmailUnsubscribe {
+  id              String               @id @default(uuid())
+  email           String
+  unsubscribeType EmailUnsubscribeType @map("unsubscribe_type")
+  userId          String?              @map("user_id")
+  reason          String?
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  @@unique([email, unsubscribeType])
+  @@index([email])
+}
+```
+
+Migration : `20260427171203_mp_notif_2_email_unsubscribes`.
+
+### Service `UnsubscribeService`
+
+- `generateToken(email, type, expiresIn='90d')` — JWT HS256 signé avec
+  secret dédié (`UNSUBSCRIBE_JWT_SECRET`, fallback `${JWT_SECRET}-unsub`).
+- `validateToken(token)` — vérifie signature + expiration.
+  Erreurs typées (`UnsubscribeTokenError` avec `code` ∈
+  `INVALID_TOKEN | TOKEN_EXPIRED`).
+- `register(email, type, userId?, reason?)` — upsert idempotent sur
+  unique `[email, unsubscribeType]`. L'email est normalisé
+  (lowercase + trim).
+- `isUnsubscribed(email, type)` — true si entrée matching exact OU
+  entrée `ALL` pour cet email.
+
+### Endpoint public
+
+`GET /api/v1/notif-email/unsubscribe?token=<jwt>`
+- Public (`@Public()`), aucun bearer token requis.
+- Sans token / token vide → `400 INVALID_TOKEN`.
+- Token invalide ou expiré → `400` avec `code` discriminé.
+- Token valide → `200` JSON `{ email, type, unsubscribedAt }`.
+- Aucune page HTML conviviale dans cette phase (futur lot MP-NOTIF-3).
+
+### Intégration `NotifEmailService.send`
+
+1. Avant chaque envoi, le service appelle `unsubscribeService.isUnsubscribed`
+   pour chaque destinataire.
+2. Destinataires opt-out : un `EmailLog` `SKIPPED` est persisté avec
+   `errorCode='UNSUBSCRIBED'`. Aucun appel transport.
+3. Tous opt-out → return `success=true, messageId=''` (no-op silencieux).
+4. Mix opt-in / opt-out → seul opt-in est passé au transport.
+
+### Footer dynamique
+
+Helper `templates/footer.ts` (`renderFooterHtml` / `renderFooterText`)
+injecté dans les 2 templates phase 1 (`rfq-created-to-seller`,
+`rfq-message-created`). Le service alimente automatiquement
+`templateData.unsubscribeUrl` avec un token signé (90j) — les templates
+affichent un lien « Se désabonner de ces notifications ».
+
+Si le secret JWT ou `FRONTEND_URL` est absent (env minimal), l'URL est
+vide et le footer affiche le placeholder sans lien.
 
 ## LOT 3 — Transitions RFQ (à venir dans le mandat)
 

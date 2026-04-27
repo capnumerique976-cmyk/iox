@@ -1449,3 +1449,32 @@ model EmailLog {
   @@index([createdAt])
   @@map("email_logs")
 }
+
+// ─── EMAIL UNSUBSCRIBES (MP-NOTIF-2 phase 2 — LOT 2) ────────────────────────
+//
+// Liste des opt-outs par email + type de notification. Le service
+// `NotifEmailService.send()` consulte cette table avant chaque envoi
+// (incluant le matching `ALL` qui désactive tout).
+//
+// Politique : un destinataire peut se désabonner d'une catégorie sans
+// avoir de compte (token JWT signé suffit). Si un compte existe,
+// `userId` est rempli pour faciliter les exports RGPD.
+
+enum EmailUnsubscribeType {
+  ALL
+  RFQ_NOTIFICATIONS
+  TRANSACTIONAL
+}
+
+model EmailUnsubscribe {
+  id              String               @id @default(uuid())
+  email           String
+  unsubscribeType EmailUnsubscribeType @map("unsubscribe_type")
+  userId          String?              @map("user_id")
+  reason          String?
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  @@unique([email, unsubscribeType], name: "email_unsubscribes_email_type_uq")
+  @@index([email])
+  @@map("email_unsubscribes")
+}
