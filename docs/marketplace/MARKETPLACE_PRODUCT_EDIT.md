@@ -192,3 +192,53 @@ apps/frontend/src/lib/marketplace-products.ts                                   
 apps/frontend/src/app/(dashboard)/seller/marketplace-products/page.tsx            # +lien Détails +CTA "Nouveau produit"
 docs/marketplace/MARKETPLACE_PRODUCT_EDIT.md                                      # Ce fichier
 ```
+
+## MP-EDIT-PRODUCT.3-light (LOT 3 mandat 14) — Image principale
+
+Le seller peut désormais téléverser et changer l'image principale du
+produit (`mainMediaId`) directement depuis la page d'édition.
+
+### Composant
+
+`apps/frontend/src/components/marketplace/InlineMediaUploader.tsx`
+(FP-3.1, déjà utilisé pour logo + bannière `SellerProfile`) est
+réutilisé tel quel avec :
+
+- `relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT`
+- `role: MediaAssetRole.PRIMARY`
+- `relatedId: <productId>`
+- `currentMediaId: product.mainMediaId ?? null`
+
+Au upload réussi, le callback `onUploaded(mediaId, role)` :
+1. PATCH `/marketplace/products/:id` avec `{ mainMediaId: <newId> }`.
+2. Re-hydrate le produit via `getById`.
+
+### Assouplissement du contrat MP-EDIT-PRODUCT.1
+
+`UpdateMarketplaceProductInput` autorise désormais `mainMediaId` (champ
+optionnel). Tous les autres champs interdits (`slug`, `categoryId`,
+`publicationStatus`, `productId`, `sellerProfileId`, saisonnalité,
+`minimumOrderQuantity`, `defaultUnit`, `nutritionInfoJson`) restent
+**rejetés par tsc** à la compilation (excess property check).
+
+### ⚠️ Comportement modération PENDING / APPROVED
+
+Le MediaAsset uploadé arrive en `moderationStatus: PENDING`. La gate
+catalog public `findProductsWithPrimaryMedia` (cf.
+`marketplace-catalog.service.ts`) exige `moderationStatus: APPROVED`.
+
+→ **Conséquence attendue** : le produit "disparaît" du catalog public le
+temps que le staff approuve la nouvelle image. Ce n'est **pas un bug** ;
+c'est la modération stricte voulue. Une fois approuvée, le produit
+ré-apparaît automatiquement.
+
+L'admin / qualité approuve via la review queue habituelle. Aucune
+modification backend dans ce lot.
+
+### Tests vitest
+
+3 nouveaux specs dans `[id]/page.test.tsx` :
+- Section "Image principale" rendue + uploader présent.
+- Upload simulé → PATCH `mainMediaId` déclenché avec le nouvel id.
+- `UpdateMarketplaceProductInput` accepte runtime `mainMediaId`
+  (preuve d'assouplissement contrat).
