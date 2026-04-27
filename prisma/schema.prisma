@@ -1412,3 +1412,40 @@ model RevokedRefreshToken {
   @@index([expiresAt])
   @@map("revoked_refresh_tokens")
 }
+
+// ─── EMAIL LOGS (MP-NOTIF-2 phase 2) ─────────────────────────────────────────
+//
+// Audit trail des envois email transactionnels (1 ligne par tentative).
+// Persisté par `NotifEmailService.send()` après chaque appel transport,
+// que ce soit un succès, un échec, ou un skip (unsubscribe). Permet aux
+// opérateurs de retracer un envoi par destinataire / template / erreur,
+// et d'éventuellement rejouer (retry) en phase ultérieure.
+//
+// `metadataJson` est libre — typiquement on y stocke `{ sourceEntity:
+// "QuoteRequest", sourceId: "<uuid>", actorUserId: "<uuid>" }`.
+
+enum EmailLogStatus {
+  SENT
+  FAILED
+  SKIPPED // unsubscribed, dry-run, etc.
+}
+
+model EmailLog {
+  id                String         @id @default(uuid())
+  transport         String // "mock" | "smtp-stream" | "resend"
+  templateId        String         @map("template_id")
+  recipientEmail    String         @map("recipient_email")
+  recipientUserId   String?        @map("recipient_user_id")
+  subject           String
+  status            EmailLogStatus
+  errorCode         String?        @map("error_code")
+  errorMessage      String?        @map("error_message")
+  providerMessageId String?        @map("provider_message_id")
+  metadataJson      Json?          @map("metadata_json")
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  @@index([recipientEmail, createdAt])
+  @@index([templateId, status])
+  @@index([createdAt])
+  @@map("email_logs")
+}
