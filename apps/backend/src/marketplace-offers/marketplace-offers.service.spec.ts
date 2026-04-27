@@ -511,4 +511,141 @@ describe('MarketplaceOffersService', () => {
       expect(where.visibilityScope).toEqual({ not: MarketplaceVisibilityScope.PRIVATE });
     });
   });
+
+  // ── duplicate (MP-OFFER-DUPLICATE) ─────────────────────────────────────
+
+  describe('duplicate', () => {
+    const SELLER: RequestUser = {
+      id: 'u-seller',
+      email: 's@s',
+      role: UserRole.MARKETPLACE_SELLER,
+      sellerProfileIds: ['sp1'],
+      companyIds: [],
+    };
+
+    const sourceOffer = {
+      id: 'src-1',
+      marketplaceProductId: 'mp1',
+      sellerProfileId: 'sp1',
+      title: 'Vanille Bourbon Grade A — offre principale',
+      shortDescription: 'Gousses 16-18 cm',
+      priceMode: MarketplacePriceMode.FIXED,
+      unitPrice: 420,
+      currency: 'EUR',
+      moq: 5,
+      availableQuantity: 1000,
+      leadTimeDays: 14,
+      incoterm: 'FOB',
+      departureLocation: 'Mamoudzou',
+      destinationMarketsJson: ['FR', 'BE'],
+      visibilityScope: MarketplaceVisibilityScope.BUYERS_ONLY,
+      availabilityStart: new Date('2026-04-01'),
+      availabilityEnd: new Date('2026-09-30'),
+      publicationStatus: MarketplacePublicationStatus.PUBLISHED,
+      exportReadinessStatus: ExportReadinessStatus.EXPORT_READY,
+      featuredRank: 3,
+      rejectionReason: null,
+      submittedAt: new Date('2026-04-15'),
+      approvedAt: new Date('2026-04-20'),
+      publishedAt: new Date('2026-04-21'),
+      suspendedAt: null,
+    };
+
+    it('happy path : PUBLISHED → DRAFT, title "(copie) ..." + dates reset', async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue(sourceOffer);
+      prisma.marketplaceOffer.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: 'copy-1', ...data }),
+      );
+      const out = await service.duplicate('src-1', ADMIN);
+      expect(prisma.marketplaceOffer.create).toHaveBeenCalledTimes(1);
+      const created = prisma.marketplaceOffer.create.mock.calls[0][0].data;
+      expect(created.title).toBe('(copie) Vanille Bourbon Grade A — offre principale');
+      expect(created.publicationStatus).toBe(MarketplacePublicationStatus.DRAFT);
+      expect(created.exportReadinessStatus).toBe(ExportReadinessStatus.PENDING_QUALITY_REVIEW);
+      expect(created.availabilityStart).toBeNull();
+      expect(created.availabilityEnd).toBeNull();
+      expect(created.featuredRank).toBeNull();
+      expect(created.rejectionReason).toBeNull();
+      expect(created.submittedAt).toBeNull();
+      expect(created.approvedAt).toBeNull();
+      expect(created.publishedAt).toBeNull();
+      expect(created.suspendedAt).toBeNull();
+      expect(created.marketplaceProductId).toBe('mp1');
+      expect(created.sellerProfileId).toBe('sp1');
+      expect(created.priceMode).toBe(MarketplacePriceMode.FIXED);
+      expect(created.unitPrice).toBe(420);
+      expect(created.createdById).toBe(ADMIN.id);
+      expect(created.updatedById).toBe(ADMIN.id);
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'MARKETPLACE_OFFER_DUPLICATED' }),
+      );
+      expect(out.id).toBe('copy-1');
+    });
+
+    it('seller propriétaire : ownership check appelé + clone OK', async () => {
+      const sellerOwnership = { ...ownershipMock };
+      const assertSpy = jest.fn(async () => ({}));
+      sellerOwnership.assertMarketplaceOfferOwnership = assertSpy;
+      sellerOwnership.isSeller = () => true;
+
+      const m = await Test.createTestingModule({
+        providers: [
+          MarketplaceOffersService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: AuditService, useValue: audit },
+          { provide: MarketplaceReviewService, useValue: reviewQueue },
+          { provide: SellerOwnershipService, useValue: sellerOwnership },
+        ],
+      }).compile();
+      const sellerService = m.get(MarketplaceOffersService);
+
+      prisma.marketplaceOffer.findUnique.mockResolvedValue(sourceOffer);
+      prisma.marketplaceOffer.create.mockResolvedValue({ id: 'copy-2' });
+      await sellerService.duplicate('src-1', SELLER);
+      expect(assertSpy).toHaveBeenCalledWith(SELLER, 'src-1');
+    });
+
+    it('seller non-propriétaire : ownership rejette → la promesse rejette', async () => {
+      const sellerOwnership = { ...ownershipMock };
+      sellerOwnership.assertMarketplaceOfferOwnership = async () => {
+        throw new Error('FORBIDDEN');
+      };
+      sellerOwnership.isSeller = () => true;
+
+      const m = await Test.createTestingModule({
+        providers: [
+          MarketplaceOffersService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: AuditService, useValue: audit },
+          { provide: MarketplaceReviewService, useValue: reviewQueue },
+          { provide: SellerOwnershipService, useValue: sellerOwnership },
+        ],
+      }).compile();
+      const sellerService = m.get(MarketplaceOffersService);
+      await expect(sellerService.duplicate('src-1', SELLER)).rejects.toThrow(/FORBIDDEN/);
+      expect(prisma.marketplaceOffer.create).not.toHaveBeenCalled();
+    });
+
+    it('source absente → 404', async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue(null);
+      await expect(service.duplicate('nope', ADMIN)).rejects.toThrow(NotFoundException);
+    });
+
+    it('title de 95 chars : tronque pour rester ≤ 100 chars', async () => {
+      const longTitle = 'A'.repeat(95);
+      prisma.marketplaceOffer.findUnique.mockResolvedValue({ ...sourceOffer, title: longTitle });
+      prisma.marketplaceOffer.create.mockResolvedValue({ id: 'copy-3' });
+      await service.duplicate('src-1', ADMIN);
+      const created = prisma.marketplaceOffer.create.mock.calls[0][0].data;
+      expect(created.title.length).toBeLessThanOrEqual(100);
+      expect(created.title.startsWith('(copie) ')).toBe(true);
+    });
+
+    it("ne crée AUCUN MarketplaceOfferBatch (pas de duplication des liens lots)", async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue(sourceOffer);
+      prisma.marketplaceOffer.create.mockResolvedValue({ id: 'copy-4' });
+      await service.duplicate('src-1', ADMIN);
+      expect(prisma.marketplaceOfferBatch.create).not.toHaveBeenCalled();
+    });
+  });
 });

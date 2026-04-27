@@ -227,4 +227,15 @@ export const marketplaceOffersApi = {
    */
   submit: (id: string, token: string) =>
     api.post<MarketplaceOfferDetail>(`/marketplace/offers/${id}/submit`, {}, token),
+
+  /**
+   * MP-OFFER-DUPLICATE — Cloner une offre du seller en nouveau brouillon DRAFT.
+   *
+   * Backend reset les dates workflow (submitted/approved/published/suspended),
+   * le statut à DRAFT, l'export readiness à PENDING_QUALITY_REVIEW,
+   * featuredRank et rejectionReason à null. Title préfixé "(copie) " et
+   * tronqué à 100 chars max. Aucun lien `MarketplaceOfferBatch` cloné.
+   */
+  duplicate: (id: string, token: string) =>
+    api.post<MarketplaceOfferDetail>(`/marketplace/offers/${id}/duplicate`, {}, token),
 };

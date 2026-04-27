@@ -10,11 +10,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  Copy,
   Info,
   Loader2,
   Package,
@@ -33,6 +34,7 @@ import {
   type UpdateMarketplaceOfferInput,
 } from '@/lib/marketplace-offers';
 import { PageHeader } from '@/components/ui/page-header';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 type LoadState =
   | { kind: 'loading' }
@@ -231,6 +233,8 @@ function Field({
 export default function SellerMarketplaceOfferDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? '';
+  const router = useRouter();
+  const confirm = useConfirm();
 
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [editing, setEditing] = useState(false);
@@ -238,6 +242,8 @@ export default function SellerMarketplaceOfferDetailPage() {
   const [initial, setInitial] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // MP-OFFER-DUPLICATE — état dédié au flux de duplication.
+  const [duplicating, setDuplicating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -320,6 +326,38 @@ export default function SellerMarketplaceOfferDetailPage() {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  /**
+   * MP-OFFER-DUPLICATE — Demande confirmation puis appelle le backend
+   * pour cloner l'offre, puis redirige vers la nouvelle fiche.
+   */
+  async function onDuplicate() {
+    if (!offer) return;
+    const ok = await confirm({
+      title: 'Dupliquer cette offre',
+      description:
+        'Une nouvelle offre brouillon sera créée à partir de celle-ci. Les dates de cycle de vie sont remises à zéro et le statut redevient DRAFT. Continuer ?',
+      confirmLabel: 'Dupliquer',
+      cancelLabel: 'Annuler',
+    });
+    if (!ok) return;
+    setDuplicating(true);
+    setSubmitError(null);
+    try {
+      const token = authStorage.getAccessToken() ?? '';
+      const created = await marketplaceOffersApi.duplicate(offer.id, token);
+      router.push(`/seller/marketplace-offers/${created.id}`);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setSubmitError(err.message);
+      } else if (err instanceof Error) {
+        setSubmitError(err.message);
+      } else {
+        setSubmitError('Duplication impossible');
+      }
+      setDuplicating(false);
     }
   }
 
@@ -411,18 +449,34 @@ export default function SellerMarketplaceOfferDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             {!editing ? (
-              <button
-                type="button"
-                data-testid="btn-edit-offer"
-                onClick={() => {
-                  setEditing(true);
-                  setSubmitError(null);
-                  setValidationError(null);
-                }}
-                className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-              >
-                <Pencil className="h-3 w-3" /> Éditer
-              </button>
+              <>
+                <button
+                  type="button"
+                  data-testid="btn-edit-offer"
+                  onClick={() => {
+                    setEditing(true);
+                    setSubmitError(null);
+                    setValidationError(null);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                >
+                  <Pencil className="h-3 w-3" /> Éditer
+                </button>
+                <button
+                  type="button"
+                  data-testid="btn-duplicate-offer"
+                  onClick={onDuplicate}
+                  disabled={duplicating}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {duplicating ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}{' '}
+                  Dupliquer
+                </button>
+              </>
             ) : (
               <button
                 type="button"

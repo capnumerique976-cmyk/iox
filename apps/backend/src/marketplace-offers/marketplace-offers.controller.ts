@@ -140,6 +140,15 @@ export class MarketplaceOffersController {
     return this.service.submitForReview(id, actor);
   }
 
+  // MP-OFFER-DUPLICATE — Clone une offre seller en nouveau brouillon.
+  @Post(':id/duplicate')
+  @Roles(...SELLER_EDIT)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: "Dupliquer l'offre en nouveau brouillon DRAFT" })
+  duplicate(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() actor: RequestUser) {
+    return this.service.duplicate(id, actor);
+  }
+
   @Post(':id/approve')
   @Roles(...MODERATION)
   @HttpCode(HttpStatus.OK)
