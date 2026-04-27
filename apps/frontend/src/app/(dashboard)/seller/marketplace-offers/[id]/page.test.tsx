@@ -1,6 +1,6 @@
-// MP-OFFER-VIEW (LOT 1 mandat 14) — Détail seller marketplace-offer (lecture).
+// MP-OFFER-VIEW (LOT 1) + MP-OFFER-EDIT-1 (LOT 2 mandat 14) — Détail seller.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 vi.mock('next/link', () => ({
   default: ({
@@ -22,6 +22,8 @@ vi.mock('next/navigation', () => ({
 }));
 
 const getByIdMock = vi.fn();
+const updateMock = vi.fn();
+const submitMock = vi.fn();
 vi.mock('@/lib/marketplace-offers', async () => {
   const actual = await vi.importActual<typeof import('@/lib/marketplace-offers')>(
     '@/lib/marketplace-offers',
@@ -31,6 +33,8 @@ vi.mock('@/lib/marketplace-offers', async () => {
     marketplaceOffersApi: {
       ...actual.marketplaceOffersApi,
       getById: (...args: unknown[]) => getByIdMock(...args),
+      update: (...args: unknown[]) => updateMock(...args),
+      submit: (...args: unknown[]) => submitMock(...args),
     },
   };
 });
@@ -88,7 +92,11 @@ const FULL_OFFER = {
 };
 
 describe('SellerMarketplaceOfferDetailPage (MP-OFFER-VIEW)', () => {
-  beforeEach(() => getByIdMock.mockReset());
+  beforeEach(() => {
+    getByIdMock.mockReset();
+    updateMock.mockReset();
+    submitMock.mockReset();
+  });
   afterEach(() => vi.clearAllMocks());
 
   it('hydrate les sections depuis getById', async () => {
@@ -140,5 +148,80 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-VIEW)', () => {
     );
     render(<SellerMarketplaceOfferDetailPage />);
     expect(await screen.findByTestId('offer-error-banner')).toBeInTheDocument();
+  });
+
+  // ─── MP-OFFER-EDIT-1 (LOT 2) ──────────────────────────────────────────
+
+  it('édit — bouton Éditer affiche les inputs des champs sûrs', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('offer-section-identity')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    expect(screen.getByTestId('field-title')).toBeInTheDocument();
+    expect(screen.getByTestId('field-priceMode')).toBeInTheDocument();
+    expect(screen.getByTestId('field-incoterm')).toBeInTheDocument();
+  });
+
+  it('édit — Save désactivé tant que non dirty puis activé après modif', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('offer-section-identity')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    const saveBtn = screen.getByTestId('btn-save-offer') as HTMLButtonElement;
+    expect(saveBtn.disabled).toBe(true);
+    fireEvent.change(screen.getByTestId('field-title'), {
+      target: { value: 'Nouveau titre' },
+    });
+    expect((screen.getByTestId('btn-save-offer') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('édit — Save envoie un PATCH avec uniquement le diff', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    updateMock.mockResolvedValue({ ...FULL_OFFER, title: 'Nouveau titre' });
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('offer-section-identity')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    fireEvent.change(screen.getByTestId('field-title'), {
+      target: { value: 'Nouveau titre' },
+    });
+    fireEvent.click(screen.getByTestId('btn-save-offer'));
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
+    const [id, payload] = updateMock.mock.calls[0];
+    expect(id).toBe('o1');
+    expect(payload).toEqual({ title: 'Nouveau titre' });
+  });
+
+  it('submit — bouton "Soumettre à validation" présent si DRAFT et appelle submit()', async () => {
+    const draftOffer = { ...FULL_OFFER, publicationStatus: 'DRAFT' as const };
+    getByIdMock.mockResolvedValue(draftOffer);
+    submitMock.mockResolvedValue({ ...draftOffer, publicationStatus: 'IN_REVIEW' as const });
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('btn-submit-review')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('btn-submit-review'));
+    await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1));
+    expect(submitMock.mock.calls[0][0]).toBe('o1');
+  });
+
+  it('édit — banner re-revue affiché si APPROVED + dirty', async () => {
+    const approved = { ...FULL_OFFER, publicationStatus: 'APPROVED' as const };
+    getByIdMock.mockResolvedValue(approved);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('offer-section-identity')).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    expect(screen.queryByTestId('review-warning')).toBeNull();
+    fireEvent.change(screen.getByTestId('field-title'), {
+      target: { value: 'Patché' },
+    });
+    expect(screen.getByTestId('review-warning')).toBeInTheDocument();
   });
 });

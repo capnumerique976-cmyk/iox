@@ -45,7 +45,7 @@ describe('SellerMarketplaceOffersPage (MP-OFFER-VIEW)', () => {
   beforeEach(() => listMineMock.mockReset());
   afterEach(() => vi.clearAllMocks());
 
-  it('rend la liste avec un lien Détails par ligne et bouton Nouvelle offre désactivé', async () => {
+  it('rend la liste avec un lien Détails par ligne et bouton Nouvelle offre actif (LOT 2)', async () => {
     listMineMock.mockResolvedValue({
       data: [
         {
@@ -77,9 +77,9 @@ describe('SellerMarketplaceOffersPage (MP-OFFER-VIEW)', () => {
     expect(screen.getByText('Vanille Bourbon — offre principale')).toBeInTheDocument();
     const link = screen.getByTestId('seller-offer-detail-o1') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/seller/marketplace-offers/o1');
-    // bouton Nouvelle offre désactivé dans LOT 1
-    const newBtn = screen.getByTestId('link-new-offer') as HTMLButtonElement;
-    expect(newBtn.disabled).toBe(true);
+    // bouton Nouvelle offre actif dans LOT 2 (était désactivé en LOT 1)
+    const newLink = screen.getByTestId('link-new-offer') as HTMLAnchorElement;
+    expect(newLink.getAttribute('href')).toBe('/seller/marketplace-offers/new');
   });
 
   it('affiche un état vide quand aucune offre', async () => {
