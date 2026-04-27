@@ -204,3 +204,39 @@ Oui. L'idempotence est strictement basée sur les clés naturelles. Modifier
 une description / un prix : la 2ᵉ exécution mettra à jour. Renommer un
 slug : crée une nouvelle entité (l'ancienne reste, à nettoyer
 manuellement).
+
+## SEED-DEMO-FIX-2 — Hydratation FP-5 / FP-7 / FP-8 (2026-04-27)
+
+Lot **strictement additif** sur `dataset.ts` + `runner.ts` : les 8 produits
+demo sont désormais hydratés avec les champs introduits par FP-5 (volumes &
+capacités), FP-7 (qualité structurée) et FP-8 (logistique structurée).
+Aucun changement de schéma, de DTO, de UI.
+
+### Tableau d'hydratation
+
+| Slug | qualityAttributes (FP-7) | temperatureRequirements (FP-8) | packagingFormats (FP-8) | annualProductionCapacity / unit (FP-5) | restockFrequency (FP-5) |
+|------|--------------------------|--------------------------------|-------------------------|----------------------------------------|-------------------------|
+| `demo-vanille-bourbon-grade-a` | ORGANIC, FAIR_TRADE, HAND_HARVESTED, TRADITIONAL | Cool 4-15°C, dry | 250g vacuum, 500g vacuum, carton 1kg | 800 / kg/an | seasonal |
+| `demo-vanille-poudre` | ORGANIC, FAIR_TRADE, SMALL_BATCH | Cool 4-15°C, dry | 100g aluminium pouch, carton x12 | 200 / kg/an | seasonal |
+| `demo-thon-jaune-iqf` | WILD_HARVESTED, RAW | Frozen ≤ -18°C | filet 1kg vacuum, carton 5kg vacuum | 45000 / kg/an | weekly |
+| `demo-thon-conserve-huile` | WILD_HARVESTED, TRADITIONAL | Ambient | boîte 200g, carton 24 unités | 60000 / unités/an | monthly |
+| `demo-ylang-extra` | HANDMADE, ARTISANAL, COLD_PRESSED, SMALL_BATCH | Cool 4-20°C, dark | 100mL flacon ambré étain, 1L bidon inox | 45 / kg/an | monthly |
+| `demo-ylang-complete` | HANDMADE, ARTISANAL, TRADITIONAL | Cool 4-20°C, dark | 5kg bidon inox, 25kg bidon inox | 320 / kg/an | monthly |
+| `demo-mangue-maya` | ORGANIC, HAND_HARVESTED, SMALL_BATCH | Cool 8-12°C | plateau 4kg, carton 10kg | 25000 / kg/an | seasonal |
+| `demo-fruit-passion` | ORGANIC, HAND_HARVESTED | Cool 8-12°C | cagette 4kg réutilisable, carton 8kg | 6000 / kg/an | seasonal |
+
+### Couverture filtres MP-FILTERS-1 attendue après réactivation seed
+
+- `?qualityAttribute=ORGANIC` → 4 produits
+- `?qualityAttribute=FAIR_TRADE` → 2 produits
+- `?qualityAttribute=HAND_HARVESTED` → 4 produits
+- `?qualityAttribute=ARTISANAL` → 2 produits
+- `?temperatureRequirements=Frozen` → 1 produit (`demo-thon-jaune-iqf`)
+- `?temperatureRequirements=Cool` → 6 produits
+
+### Idempotence
+
+Le runner est inchangé sur sa structure d'upsert ; les nouveaux champs
+sont passés à la fois dans `update` et `create` via un bloc commun
+`mpFields`. Une 2ᵉ exécution écrase les valeurs au même contenu (no-op
+fonctionnel), aucune duplication possible (clé naturelle = `slug`).
