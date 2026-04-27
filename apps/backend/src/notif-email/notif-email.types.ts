@@ -1,10 +1,12 @@
 // MP-NOTIF-1 phase 1 — Types partagés du module emails transactionnels.
 //
 // `EmailTransport` est l'interface implémentée par chaque transport
-// concret (mock pour tests, smtp-stream pour diagnostic local). Aucun
-// transport ne doit jamais ouvrir de socket réseau dans cette phase.
+// concret (mock pour tests, smtp-stream pour diagnostic local, resend
+// pour production). Le transport `mock` reste le défaut et ne fait
+// aucun I/O réseau ; `smtp-stream` sérialise en MIME sans socket ;
+// `resend` (MP-NOTIF-2) est le seul à appeler un service tiers.
 
-export type NotifEmailTransportName = 'mock' | 'smtp-stream';
+export type NotifEmailTransportName = 'mock' | 'smtp-stream' | 'resend';
 
 /**
  * Données minimales pour envoyer un email.
@@ -24,6 +26,18 @@ export interface SendEmailInput {
   from?: string;
   /** Override `replyTo` (sinon `NOTIF_EMAIL_REPLY_TO` si défini). */
   replyTo?: string;
+  /**
+   * MP-NOTIF-2 — Identifiant utilisateur destinataire (traçabilité audit
+   * trail). Optionnel : un email peut être envoyé à un destinataire qui
+   * n'a pas encore de compte (futur prospect).
+   */
+  recipientUserId?: string;
+  /**
+   * MP-NOTIF-2 — Métadonnées libres archivées dans
+   * `email_logs.metadata_json`. Convention :
+   * `{ sourceEntity: 'QuoteRequest', sourceId: '<uuid>' }`.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 export interface SendEmailResult {
@@ -54,11 +68,6 @@ export interface EmailTransport {
 
 /**
  * Contrat d'un template d'email transactionnel.
- *
- * Chaque template implémente `subject(data)`, `html(data)`, `text(data)`
- * pour produire les 3 versions à partir d'un objet de données typé. Le
- * service appelle ces fonctions, puis transmet le `RenderedEmail` au
- * transport actif.
  */
 export interface EmailTemplate<D extends Record<string, unknown> = Record<string, unknown>> {
   readonly id: string;

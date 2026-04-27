@@ -14,12 +14,15 @@ import { NotifEmailService } from './notif-email.service';
 import { NotifEmailTransportFactory } from './transport.factory';
 import { MockEmailTransport } from './transports/mock.transport';
 import { SmtpStreamEmailTransport } from './transports/smtp-stream.transport';
+import { ResendEmailTransport } from './transports/resend.transport';
+import { PrismaService } from '../database/prisma.service';
 
 describe('NotifEmailService', () => {
   let service: NotifEmailService;
   let mockTransport: MockEmailTransport;
   let smtpStreamTransport: SmtpStreamEmailTransport;
   let config: { get: jest.Mock };
+  let prisma: { emailLog: { create: jest.Mock } };
 
   beforeEach(async () => {
     config = {
@@ -29,6 +32,11 @@ describe('NotifEmailService', () => {
         return undefined;
       }),
     };
+    prisma = {
+      emailLog: {
+        create: jest.fn().mockResolvedValue({ id: 'log-1' }),
+      },
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -36,7 +44,9 @@ describe('NotifEmailService', () => {
         NotifEmailTransportFactory,
         MockEmailTransport,
         SmtpStreamEmailTransport,
+        ResendEmailTransport,
         { provide: ConfigService, useValue: config },
+        { provide: PrismaService, useValue: prisma },
       ],
     }).compile();
 
@@ -156,5 +166,75 @@ describe('NotifEmailService', () => {
     });
     expect(res.success).toBe(true);
     expect(res.transport).toBe('mock');
+  });
+
+  // ── MP-NOTIF-2 — EmailLog persistence ─────────────────────────────────
+
+  it('MP-NOTIF-2 — send happy path → persiste 1 EmailLog SENT par destinataire', async () => {
+    const res = await service.send({
+      to: ['a@x.test', 'b@x.test'],
+      subject: 'Hello',
+      text: 'World',
+      recipientUserId: 'user-1',
+      metadata: { sourceEntity: 'QuoteRequest', sourceId: 'rfq-9' },
+    });
+    expect(res.success).toBe(true);
+    expect(prisma.emailLog.create).toHaveBeenCalledTimes(2);
+    const args = prisma.emailLog.create.mock.calls.map((c) => c[0].data);
+    expect(args[0]).toMatchObject({
+      transport: 'mock',
+      templateId: 'raw',
+      recipientEmail: 'a@x.test',
+      recipientUserId: 'user-1',
+      subject: 'Hello',
+      status: 'SENT',
+    });
+    expect(args[0].metadataJson).toMatchObject({
+      sourceEntity: 'QuoteRequest',
+      sourceId: 'rfq-9',
+    });
+    expect(args[1].recipientEmail).toBe('b@x.test');
+  });
+
+  it('MP-NOTIF-2 — send échec template inconnu → EmailLog FAILED avec errorCode', async () => {
+    const res = await service.send({
+      to: 'x@y.test',
+      templateId: 'unknown-template',
+      templateData: {},
+    });
+    expect(res.success).toBe(false);
+    expect(prisma.emailLog.create).toHaveBeenCalledTimes(1);
+    const data = prisma.emailLog.create.mock.calls[0][0].data;
+    expect(data.status).toBe('FAILED');
+    expect(data.errorCode).toBe('TEMPLATE_NOT_FOUND');
+    expect(data.errorMessage).toContain('unknown-template');
+  });
+
+  it('MP-NOTIF-2 — send transport throw runtime → EmailLog FAILED TRANSPORT_FAILURE', async () => {
+    // Force le mock à throw au prochain send.
+    jest.spyOn(mockTransport, 'send').mockRejectedValueOnce(new Error('boom'));
+    const res = await service.send({
+      to: 'x@y.test',
+      subject: 'Hi',
+      text: 'World',
+    });
+    expect(res.success).toBe(false);
+    expect(res.error).toBe('TRANSPORT_FAILURE');
+    expect(prisma.emailLog.create).toHaveBeenCalledTimes(1);
+    const data = prisma.emailLog.create.mock.calls[0][0].data;
+    expect(data.status).toBe('FAILED');
+    expect(data.errorCode).toBe('TRANSPORT_FAILURE');
+    expect(data.errorMessage).toContain('boom');
+  });
+
+  it('MP-NOTIF-2 — persistance EmailLog échoue → log warn, send() retourne quand même success', async () => {
+    prisma.emailLog.create.mockRejectedValueOnce(new Error('DB unreachable'));
+    const res = await service.send({
+      to: 'x@y.test',
+      subject: 'Hi',
+      text: 'World',
+    });
+    expect(res.success).toBe(true);
+    expect(prisma.emailLog.create).toHaveBeenCalledTimes(1);
   });
 });

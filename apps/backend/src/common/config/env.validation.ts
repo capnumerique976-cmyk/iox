@@ -124,8 +124,8 @@ class EnvSchema {
   @IsOptional()
   MAIL_FROM?: string;
 
-  // ── NOTIF EMAIL (MP-NOTIF-1 phase 1) ───────────────
-  @IsIn(['mock', 'smtp-stream'])
+  // ── NOTIF EMAIL (MP-NOTIF-1 + MP-NOTIF-2) ──────────
+  @IsIn(['mock', 'smtp-stream', 'resend'])
   @IsOptional()
   NOTIF_EMAIL_TRANSPORT: string = 'mock';
 
@@ -136,6 +136,18 @@ class EnvSchema {
   @IsString()
   @IsOptional()
   NOTIF_EMAIL_REPLY_TO?: string;
+
+  // MP-NOTIF-2 — clé API Resend (obligatoire si NOTIF_EMAIL_TRANSPORT=resend ;
+  // la factory throw au boot si manquante).
+  @IsString()
+  @IsOptional()
+  RESEND_API_KEY?: string;
+
+  // MP-NOTIF-2 — secret JWT pour signer les tokens unsubscribe (LOT 2).
+  // Default fallback : `${JWT_SECRET}-unsub` si non fourni (cf. service).
+  @IsString()
+  @IsOptional()
+  UNSUBSCRIBE_JWT_SECRET?: string;
 
   // ── OBSERVABILITÉ (optionnel) ──────────────────────
   // Si défini, /api/v1/metrics exige `Authorization: Bearer <METRICS_TOKEN>`.
