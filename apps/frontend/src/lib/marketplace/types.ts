@@ -150,6 +150,19 @@ export interface ProductDetail {
   allergenInfo: string | null;
   defaultUnit: string | null;
   minimumOrderQuantity: number | null;
+  // FP-8 — logistique structurée projetée publiquement.
+  // grossWeight/netWeight Decimal sérialisé → Number côté backend, donc number|null.
+  packagingFormats: string[];
+  temperatureRequirements: string | null;
+  grossWeight: number | null;
+  netWeight: number | null;
+  palletization: string | null;
+  // FP-5 — volumes & capacités projetés publiquement.
+  annualProductionCapacity: number | null;
+  capacityUnit: string | null;
+  availableQuantity: number | null;
+  availableQuantityUnit: string | null;
+  restockFrequency: string | null;
   // FP-1 — saisonnalité projetée par le backend public.
   harvestMonths: SeasonalityMonth[];
   availabilityMonths: SeasonalityMonth[];

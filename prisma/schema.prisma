@@ -1000,6 +1000,16 @@ model MarketplaceProduct {
   netWeight                Decimal?                     @map("net_weight") @db.Decimal(10, 3)
   palletization            String?                      @map("palletization")
 
+  // FP-5 — Volumes et capacités (vitrine).
+  // `availableQuantity` (Product) ≠ `MarketplaceOffer.availableQuantity` :
+  // ici stock total dispo agrégé, pas le quota par offre commerciale.
+  // Toutes optionnelles, additives, sans index.
+  annualProductionCapacity Decimal?                     @map("annual_production_capacity") @db.Decimal(14, 3)
+  capacityUnit             String?                      @map("capacity_unit")
+  availableQuantity        Decimal?                     @map("available_quantity") @db.Decimal(14, 3)
+  availableQuantityUnit    String?                      @map("available_quantity_unit")
+  restockFrequency         String?                      @map("restock_frequency")
+
   defaultUnit              String?                      @map("default_unit")
   minimumOrderQuantity     Decimal?                     @map("minimum_order_quantity") @db.Decimal(12, 3)
 

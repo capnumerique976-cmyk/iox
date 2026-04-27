@@ -405,6 +405,106 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </div>
           )}
 
+          {/* FP-8 — Logistique structurée (no-op si tout est null/vide) */}
+          {((product.packagingFormats?.length ?? 0) > 0 ||
+            product.temperatureRequirements ||
+            product.grossWeight != null ||
+            product.netWeight != null ||
+            product.palletization) && (
+            <div
+              className="iox-glass relative mt-4 overflow-hidden rounded-2xl p-5"
+              data-testid="product-logistics"
+            >
+              <span
+                aria-hidden
+                className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
+              />
+              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">Logistique</h2>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 pl-3 text-xs">
+                {(product.packagingFormats?.length ?? 0) > 0 && (
+                  <>
+                    <dt className="text-white/50">Conditionnements</dt>
+                    <dd className="font-medium text-white/90">
+                      {product.packagingFormats.join(', ')}
+                    </dd>
+                  </>
+                )}
+                {product.temperatureRequirements && (
+                  <>
+                    <dt className="text-white/50">Température</dt>
+                    <dd className="font-medium text-white/90">
+                      {product.temperatureRequirements}
+                    </dd>
+                  </>
+                )}
+                {product.grossWeight != null && (
+                  <>
+                    <dt className="text-white/50">Poids brut</dt>
+                    <dd className="font-medium text-white/90">{product.grossWeight} kg</dd>
+                  </>
+                )}
+                {product.netWeight != null && (
+                  <>
+                    <dt className="text-white/50">Poids net</dt>
+                    <dd className="font-medium text-white/90">{product.netWeight} kg</dd>
+                  </>
+                )}
+                {product.palletization && (
+                  <>
+                    <dt className="text-white/50">Palettisation</dt>
+                    <dd className="font-medium text-white/90">{product.palletization}</dd>
+                  </>
+                )}
+              </dl>
+            </div>
+          )}
+
+          {/* FP-5 — Volumes et capacités (no-op si tout est null/vide) */}
+          {(product.annualProductionCapacity != null ||
+            product.availableQuantity != null ||
+            product.restockFrequency) && (
+            <div
+              className="iox-glass relative mt-4 overflow-hidden rounded-2xl p-5"
+              data-testid="product-volumes"
+            >
+              <span
+                aria-hidden
+                className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
+              />
+              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">
+                Volumes et capacités
+              </h2>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 pl-3 text-xs">
+                {product.annualProductionCapacity != null && (
+                  <>
+                    <dt className="text-white/50">Production annuelle</dt>
+                    <dd className="font-medium text-white/90">
+                      {product.annualProductionCapacity}
+                      {product.capacityUnit ? ` ${product.capacityUnit}` : ''}
+                    </dd>
+                  </>
+                )}
+                {product.availableQuantity != null && (
+                  <>
+                    <dt className="text-white/50">Stock disponible</dt>
+                    <dd className="font-medium text-white/90">
+                      {product.availableQuantity}
+                      {product.availableQuantityUnit
+                        ? ` ${product.availableQuantityUnit}`
+                        : ''}
+                    </dd>
+                  </>
+                )}
+                {product.restockFrequency && (
+                  <>
+                    <dt className="text-white/50">Réapprovisionnement</dt>
+                    <dd className="font-medium text-white/90">{product.restockFrequency}</dd>
+                  </>
+                )}
+              </dl>
+            </div>
+          )}
+
           {/* FP-1 — Saisonnalité (no-op si rien à afficher) */}
           <div className="mt-4">
             <SeasonalityCalendar
