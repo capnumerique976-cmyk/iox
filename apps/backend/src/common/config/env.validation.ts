@@ -124,6 +124,19 @@ class EnvSchema {
   @IsOptional()
   MAIL_FROM?: string;
 
+  // ── NOTIF EMAIL (MP-NOTIF-1 phase 1) ───────────────
+  @IsIn(['mock', 'smtp-stream'])
+  @IsOptional()
+  NOTIF_EMAIL_TRANSPORT: string = 'mock';
+
+  @IsString()
+  @IsOptional()
+  NOTIF_EMAIL_FROM: string = 'noreply@iox.mch';
+
+  @IsString()
+  @IsOptional()
+  NOTIF_EMAIL_REPLY_TO?: string;
+
   // ── OBSERVABILITÉ (optionnel) ──────────────────────
   // Si défini, /api/v1/metrics exige `Authorization: Bearer <METRICS_TOKEN>`.
   // Sinon l'endpoint est public (scrape Prometheus stateless en réseau privé).
