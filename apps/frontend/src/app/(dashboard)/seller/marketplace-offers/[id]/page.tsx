@@ -30,7 +30,9 @@ import { authStorage } from '@/lib/auth';
 import {
   marketplaceOffersApi,
   type MarketplaceOfferDetail,
+  type MarketplaceOfferBatchLink,
   type MarketplacePriceMode,
+  type MarketplaceVisibilityScope,
   type UpdateMarketplaceOfferInput,
 } from '@/lib/marketplace-offers';
 import { PageHeader } from '@/components/ui/page-header';
@@ -74,6 +76,7 @@ interface FormState {
   leadTimeDays: string;
   incoterm: string;
   departureLocation: string;
+  visibilityScope: MarketplaceVisibilityScope;
 }
 
 const EMPTY_FORM: FormState = {
@@ -89,6 +92,7 @@ const EMPTY_FORM: FormState = {
   leadTimeDays: '',
   incoterm: '',
   departureLocation: '',
+  visibilityScope: 'BUYERS_ONLY',
 };
 
 function fmtNum(v: string | number | null | undefined): string {
@@ -136,6 +140,7 @@ function fromOffer(o: MarketplaceOfferDetail): FormState {
     leadTimeDays: o.leadTimeDays != null ? String(o.leadTimeDays) : '',
     incoterm: o.incoterm ?? '',
     departureLocation: o.departureLocation ?? '',
+    visibilityScope: o.visibilityScope,
   };
 }
 
@@ -159,6 +164,7 @@ function buildPayload(initial: FormState, current: FormState): UpdateMarketplace
     out.leadTimeDays = Number(current.leadTimeDays);
   if (sChanged('incoterm')) out.incoterm = current.incoterm;
   if (sChanged('departureLocation')) out.departureLocation = current.departureLocation;
+  if (sChanged('visibilityScope')) out.visibilityScope = current.visibilityScope;
   return out;
 }
 
@@ -744,10 +750,40 @@ export default function SellerMarketplaceOfferDetailPage() {
       </Section>
 
       <Section title="Visibilité" testid="offer-section-visibility">
-        <dl>
-          <Row label="Scope" value={o.visibilityScope} />
-        </dl>
+        {editing ? (
+          <Field
+            label="Scope de visibilité"
+            hint="PUBLIC = catalogue ouvert · BUYERS_ONLY = acheteurs connectés · PRIVATE = invisible (interdit après publication, utilisez Suspendre)."
+          >
+            <select
+              value={form.visibilityScope}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, visibilityScope: e.target.value as MarketplaceVisibilityScope }))
+              }
+              className={selectCls}
+              data-testid="field-visibilityScope"
+            >
+              <option value="PUBLIC">PUBLIC — catalogue ouvert</option>
+              <option value="BUYERS_ONLY">BUYERS_ONLY — acheteurs connectés</option>
+              <option
+                value="PRIVATE"
+                disabled={o.publicationStatus === 'PUBLISHED'}
+              >
+                PRIVATE — invisible
+                {o.publicationStatus === 'PUBLISHED' ? ' (interdit, suspendre l\'offre)' : ''}
+              </option>
+            </select>
+          </Field>
+        ) : (
+          <dl>
+            <Row label="Scope" value={o.visibilityScope} />
+          </dl>
+        )}
       </Section>
+
+      {/* MP-OFFER-EDIT-2 — Section batches rattachés. */}
+      <BatchesSection offerId={o.id} canEdit={editing} />
+
 
       <Section title="Workflow" testid="offer-section-workflow">
         <dl>
@@ -826,5 +862,265 @@ export default function SellerMarketplaceOfferDetailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── MP-OFFER-EDIT-2 — Section batches rattachés ─────────────────────────────
+
+interface BatchesSectionProps {
+  offerId: string;
+  canEdit: boolean;
+}
+
+function BatchesSection({ offerId, canEdit }: BatchesSectionProps) {
+  const [items, setItems] = useState<MarketplaceOfferBatchLink[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
+  const [attachForm, setAttachForm] = useState({
+    productBatchId: '',
+    quantityAvailable: '',
+    exportEligible: true,
+    notes: '',
+  });
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const token = authStorage.getAccessToken() ?? '';
+      const list = await marketplaceOffersApi.listBatches(offerId, token);
+      setItems(list);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Échec chargement batches');
+    } finally {
+      setLoading(false);
+    }
+  }, [offerId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const onAttach = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const qty = Number(attachForm.quantityAvailable);
+    if (!attachForm.productBatchId.trim() || Number.isNaN(qty) || qty < 0) return;
+    setBusy(true);
+    try {
+      const token = authStorage.getAccessToken() ?? '';
+      await marketplaceOffersApi.attachBatch(
+        offerId,
+        {
+          productBatchId: attachForm.productBatchId.trim(),
+          quantityAvailable: qty,
+          exportEligible: attachForm.exportEligible,
+          notes: attachForm.notes.trim() || undefined,
+        },
+        token,
+      );
+      setAttachForm({ productBatchId: '', quantityAvailable: '', exportEligible: true, notes: '' });
+      setShowAttach(false);
+      await reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Échec rattachement');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDetach = async (linkId: string) => {
+    if (!window.confirm("Détacher ce lot de l'offre ?")) return;
+    setBusy(true);
+    try {
+      const token = authStorage.getAccessToken() ?? '';
+      await marketplaceOffersApi.detachBatch(linkId, token);
+      await reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Échec détachement');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onToggleExportEligible = async (link: MarketplaceOfferBatchLink) => {
+    setBusy(true);
+    try {
+      const token = authStorage.getAccessToken() ?? '';
+      await marketplaceOffersApi.updateBatch(
+        link.id,
+        { exportEligible: !link.exportEligible },
+        token,
+      );
+      await reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Échec mise à jour');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section
+      title="Lots rattachés"
+      testid="offer-section-batches"
+      icon={<Package className="h-4 w-4 text-gray-400" />}
+    >
+      {loading ? (
+        <div className="text-xs text-gray-500">Chargement…</div>
+      ) : items.length === 0 ? (
+        <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-xs text-gray-500">
+          Aucun lot rattaché à cette offre.
+        </div>
+      ) : (
+        <div className="iox-table-wrap" data-testid="batches-list">
+          <table>
+            <thead>
+              <tr>
+                <th>Lot</th>
+                <th>Qté dispo</th>
+                <th>Export ?</th>
+                <th>Notes</th>
+                {canEdit && <th></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it) => (
+                <tr key={it.id} data-testid={`batch-row-${it.id}`}>
+                  <td className="px-3 py-2">
+                    <div className="font-mono text-xs text-gray-900">
+                      {it.productBatch?.code ?? it.productBatchId}
+                    </div>
+                    {it.productBatch?.unit && (
+                      <div className="text-[11px] text-gray-500">unité : {it.productBatch.unit}</div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums text-sm text-gray-800">
+                    {fmtNum(it.quantityAvailable)}
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => onToggleExportEligible(it)}
+                      disabled={!canEdit || busy}
+                      data-testid={`btn-toggle-export-${it.id}`}
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        it.exportEligible
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-gray-100 text-gray-700'
+                      } ${!canEdit ? 'cursor-default opacity-80' : 'hover:opacity-80'}`}
+                    >
+                      {it.exportEligible ? 'Oui' : 'Non'}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-gray-600">{it.notes ?? '—'}</td>
+                  {canEdit && (
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => onDetach(it.id)}
+                        disabled={busy}
+                        data-testid={`btn-detach-${it.id}`}
+                        className="text-xs text-red-700 hover:text-red-800 disabled:opacity-50"
+                      >
+                        Détacher
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {err && (
+        <div role="alert" className="mt-3 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+          {err}
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="mt-3">
+          {showAttach ? (
+            <form
+              onSubmit={onAttach}
+              className="grid grid-cols-1 gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 sm:grid-cols-2"
+            >
+              <Field label="ID lot produit (UUID)">
+                <input
+                  type="text"
+                  value={attachForm.productBatchId}
+                  onChange={(e) => setAttachForm((f) => ({ ...f, productBatchId: e.target.value }))}
+                  className={inputCls}
+                  placeholder="uuid"
+                  data-testid="field-attach-productBatchId"
+                />
+              </Field>
+              <Field label="Quantité disponible">
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  value={attachForm.quantityAvailable}
+                  onChange={(e) => setAttachForm((f) => ({ ...f, quantityAvailable: e.target.value }))}
+                  className={inputCls}
+                  data-testid="field-attach-qty"
+                />
+              </Field>
+              <Field label="Exportable">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={attachForm.exportEligible}
+                    onChange={(e) =>
+                      setAttachForm((f) => ({ ...f, exportEligible: e.target.checked }))
+                    }
+                    data-testid="field-attach-exportEligible"
+                  />
+                  Lot autorisé à l&apos;export
+                </label>
+              </Field>
+              <Field label="Notes (optionnel)">
+                <input
+                  type="text"
+                  value={attachForm.notes}
+                  onChange={(e) => setAttachForm((f) => ({ ...f, notes: e.target.value }))}
+                  className={inputCls}
+                  data-testid="field-attach-notes"
+                />
+              </Field>
+              <div className="flex justify-end gap-2 sm:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAttach(false)}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  data-testid="btn-attach-submit"
+                  className="rounded-md bg-premium-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  Rattacher
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAttach(true)}
+              data-testid="btn-show-attach"
+              className="text-xs font-medium text-premium-accent hover:text-premium-primary"
+            >
+              + Rattacher un lot
+            </button>
+          )}
+        </div>
+      )}
+    </Section>
   );
 }

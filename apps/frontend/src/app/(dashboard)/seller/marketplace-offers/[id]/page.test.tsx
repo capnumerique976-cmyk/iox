@@ -33,6 +33,10 @@ const getByIdMock = vi.fn();
 const updateMock = vi.fn();
 const submitMock = vi.fn();
 const duplicateMock = vi.fn();
+const listBatchesMock = vi.fn();
+const attachBatchMock = vi.fn();
+const updateBatchMock = vi.fn();
+const detachBatchMock = vi.fn();
 vi.mock('@/lib/marketplace-offers', async () => {
   const actual = await vi.importActual<typeof import('@/lib/marketplace-offers')>(
     '@/lib/marketplace-offers',
@@ -45,6 +49,10 @@ vi.mock('@/lib/marketplace-offers', async () => {
       update: (...args: unknown[]) => updateMock(...args),
       submit: (...args: unknown[]) => submitMock(...args),
       duplicate: (...args: unknown[]) => duplicateMock(...args),
+      listBatches: (...args: unknown[]) => listBatchesMock(...args),
+      attachBatch: (...args: unknown[]) => attachBatchMock(...args),
+      updateBatch: (...args: unknown[]) => updateBatchMock(...args),
+      detachBatch: (...args: unknown[]) => detachBatchMock(...args),
     },
   };
 });
@@ -109,6 +117,11 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-VIEW)', () => {
     duplicateMock.mockReset();
     pushMock.mockReset();
     confirmMock.mockReset();
+    listBatchesMock.mockReset();
+    listBatchesMock.mockResolvedValue([]);
+    attachBatchMock.mockReset();
+    updateBatchMock.mockReset();
+    detachBatchMock.mockReset();
   });
   afterEach(() => vi.clearAllMocks());
 
@@ -286,5 +299,136 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-VIEW)', () => {
     fireEvent.click(btn);
     expect(await screen.findByTestId('submit-error')).toHaveTextContent(/Offre verrouillée/i);
     expect(pushMock).not.toHaveBeenCalled();
+  });
+});
+
+// MP-OFFER-EDIT-2 — visibilité + batches.
+describe('SellerMarketplaceOfferDetailPage (MP-OFFER-EDIT-2)', () => {
+  beforeEach(() => {
+    getByIdMock.mockReset();
+    updateMock.mockReset();
+    listBatchesMock.mockReset();
+    listBatchesMock.mockResolvedValue([]);
+    attachBatchMock.mockReset();
+    updateBatchMock.mockReset();
+    detachBatchMock.mockReset();
+  });
+  afterEach(() => vi.clearAllMocks());
+
+  it('édite visibilityScope et envoie via update()', async () => {
+    getByIdMock.mockResolvedValue({ ...FULL_OFFER, publicationStatus: 'DRAFT' });
+    updateMock.mockResolvedValue({ ...FULL_OFFER, publicationStatus: 'DRAFT', visibilityScope: 'PRIVATE' });
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    const select = await screen.findByTestId('field-visibilityScope');
+    fireEvent.change(select, { target: { value: 'PRIVATE' } });
+    fireEvent.click(screen.getByTestId('btn-save-offer'));
+    await waitFor(() => expect(updateMock).toHaveBeenCalled());
+    expect(updateMock.mock.calls[0][1]).toEqual({ visibilityScope: 'PRIVATE' });
+  });
+
+  it("désactive l'option PRIVATE quand publicationStatus = PUBLISHED", async () => {
+    getByIdMock.mockResolvedValue({ ...FULL_OFFER, publicationStatus: 'PUBLISHED' });
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    const select = await screen.findByTestId('field-visibilityScope') as HTMLSelectElement;
+    const opts = Array.from(select.options);
+    const priv = opts.find((o) => o.value === 'PRIVATE');
+    expect(priv?.disabled).toBe(true);
+  });
+
+  it('section batches : empty state quand aucun lot', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    listBatchesMock.mockResolvedValue([]);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getByTestId('offer-section-batches')).toBeInTheDocument());
+    expect(await screen.findByText(/Aucun lot rattaché/)).toBeInTheDocument();
+  });
+
+  it('section batches : affiche un lot avec qté + export badge', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    listBatchesMock.mockResolvedValue([
+      {
+        id: 'l1',
+        marketplaceOfferId: 'o1',
+        productBatchId: 'b1',
+        quantityAvailable: '50',
+        quantityReserved: '0',
+        exportEligible: true,
+        notes: 'Lot premium',
+        createdAt: '2026-04-20T00:00:00Z',
+        updatedAt: '2026-04-20T00:00:00Z',
+        productBatch: {
+          id: 'b1',
+          code: 'PB-2026-0001',
+          quantity: '100',
+          unit: 'kg',
+          productionDate: '2026-03-01T00:00:00Z',
+          expiryDate: null,
+          status: 'CREATED',
+        },
+      },
+    ]);
+    render(<SellerMarketplaceOfferDetailPage />);
+    expect(await screen.findByText('PB-2026-0001')).toBeInTheDocument();
+    expect(screen.getByText('Lot premium')).toBeInTheDocument();
+    expect(screen.getByTestId('batch-row-l1')).toBeInTheDocument();
+  });
+
+  it('section batches : rattacher un nouveau lot via le formulaire', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    listBatchesMock.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    attachBatchMock.mockResolvedValue({ id: 'l-new' });
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    fireEvent.click(await screen.findByTestId('btn-show-attach'));
+    fireEvent.change(screen.getByTestId('field-attach-productBatchId'), {
+      target: { value: 'b2-uuid' },
+    });
+    fireEvent.change(screen.getByTestId('field-attach-qty'), { target: { value: '25' } });
+    fireEvent.click(screen.getByTestId('btn-attach-submit'));
+    await waitFor(() => expect(attachBatchMock).toHaveBeenCalled());
+    expect(attachBatchMock.mock.calls[0][1]).toMatchObject({
+      productBatchId: 'b2-uuid',
+      quantityAvailable: 25,
+      exportEligible: true,
+    });
+  });
+
+  it('section batches : détache après confirm', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    listBatchesMock.mockResolvedValueOnce([
+      {
+        id: 'l1',
+        marketplaceOfferId: 'o1',
+        productBatchId: 'b1',
+        quantityAvailable: '50',
+        quantityReserved: '0',
+        exportEligible: true,
+        notes: null,
+        createdAt: '2026-04-20T00:00:00Z',
+        updatedAt: '2026-04-20T00:00:00Z',
+        productBatch: {
+          id: 'b1',
+          code: 'PB-2026-0001',
+          quantity: '100',
+          unit: 'kg',
+          productionDate: '2026-03-01T00:00:00Z',
+          expiryDate: null,
+          status: 'CREATED',
+        },
+      },
+    ]).mockResolvedValueOnce([]);
+    detachBatchMock.mockResolvedValue({ ok: true });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    fireEvent.click(await screen.findByTestId('btn-detach-l1'));
+    await waitFor(() => expect(detachBatchMock).toHaveBeenCalledWith('l1', 'tok'));
+    confirmSpy.mockRestore();
   });
 });
