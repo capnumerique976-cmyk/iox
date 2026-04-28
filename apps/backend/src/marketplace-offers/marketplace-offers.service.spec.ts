@@ -50,6 +50,7 @@ describe('MarketplaceOffersService', () => {
     productBatch: { findFirst: jest.Mock };
     marketplaceOfferBatch: {
       findUnique: jest.Mock;
+      findMany: jest.Mock;
       create: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
@@ -74,6 +75,7 @@ describe('MarketplaceOffersService', () => {
       productBatch: { findFirst: jest.fn() },
       marketplaceOfferBatch: {
         findUnique: jest.fn(),
+        findMany: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -213,6 +215,68 @@ describe('MarketplaceOffersService', () => {
     it('404 si offre inexistante', async () => {
       prisma.marketplaceOffer.findUnique.mockResolvedValue(null);
       await expect(service.update('o1', { title: 'x' })).rejects.toThrow(NotFoundException);
+    });
+
+    // MP-OFFER-EDIT-2 — visibilité.
+    it('PUBLISHED → PRIVATE rejeté (BadRequest, redirige vers Suspendre)', async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue({
+        id: 'o1',
+        publicationStatus: MarketplacePublicationStatus.PUBLISHED,
+        priceMode: MarketplacePriceMode.QUOTE_ONLY,
+        unitPrice: null,
+        currency: null,
+      });
+      await expect(
+        service.update('o1', { visibilityScope: MarketplaceVisibilityScope.PRIVATE }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.marketplaceOffer.update).not.toHaveBeenCalled();
+    });
+
+    it('PUBLISHED → BUYERS_ONLY autorisé (recheck IN_REVIEW)', async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue({
+        id: 'o1',
+        publicationStatus: MarketplacePublicationStatus.PUBLISHED,
+        priceMode: MarketplacePriceMode.QUOTE_ONLY,
+        unitPrice: null,
+        currency: null,
+      });
+      prisma.marketplaceOffer.update.mockResolvedValue({
+        id: 'o1',
+        publicationStatus: MarketplacePublicationStatus.IN_REVIEW,
+      });
+      await service.update('o1', { visibilityScope: MarketplaceVisibilityScope.BUYERS_ONLY });
+      const data = prisma.marketplaceOffer.update.mock.calls[0][0].data;
+      expect(data.publicationStatus).toBe(MarketplacePublicationStatus.IN_REVIEW);
+    });
+
+    it('DRAFT → PRIVATE autorisé (pas encore publié)', async () => {
+      prisma.marketplaceOffer.findUnique.mockResolvedValue({
+        id: 'o1',
+        publicationStatus: MarketplacePublicationStatus.DRAFT,
+        priceMode: MarketplacePriceMode.QUOTE_ONLY,
+        unitPrice: null,
+        currency: null,
+      });
+      prisma.marketplaceOffer.update.mockResolvedValue({ id: 'o1' });
+      await service.update('o1', { visibilityScope: MarketplaceVisibilityScope.PRIVATE });
+      expect(prisma.marketplaceOffer.update).toHaveBeenCalled();
+    });
+  });
+
+  // ── listOfferBatches (MP-OFFER-EDIT-2) ────────────────────────────────────
+
+  describe('listOfferBatches', () => {
+    it('retourne les liens orderBy createdAt desc avec productBatch joint', async () => {
+      const rows = [
+        { id: 'l1', marketplaceOfferId: 'o1', productBatchId: 'b1', productBatch: { id: 'b1', code: 'PB-1' } },
+      ];
+      prisma.marketplaceOfferBatch.findMany.mockResolvedValue(rows);
+      const res = await service.listOfferBatches('o1');
+      expect(res).toEqual(rows);
+      const args = prisma.marketplaceOfferBatch.findMany.mock.calls[0][0];
+      expect(args.where).toEqual({ marketplaceOfferId: 'o1' });
+      expect(args.orderBy).toEqual({ createdAt: 'desc' });
+      expect(args.include.productBatch.select.code).toBe(true);
     });
   });
 

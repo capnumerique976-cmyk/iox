@@ -100,6 +100,16 @@ export class MarketplaceOffersController {
 
   // ─── Lots ──────────────────────────────────────────────────────────────
 
+  @Get(':id/batches')
+  @Roles(...SELLER_EDIT)
+  @ApiOperation({ summary: "Liste des lots rattachés à l'offre" })
+  listBatches(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.listOfferBatches(id, actor);
+  }
+
   @Post(':id/batches')
   @Roles(...SELLER_EDIT)
   @ApiOperation({ summary: "Rattacher un lot produit à l'offre" })
