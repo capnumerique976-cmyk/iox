@@ -318,3 +318,112 @@ describe('NotifEmailService', () => {
     expect(sent[0].text).toContain('signed.jwt');
   });
 });
+
+// MP-NOTIF-3 — Couverture `listLogs` (vue admin).
+describe('NotifEmailService.listLogs', () => {
+  let service: NotifEmailService;
+  let prisma: {
+    emailLog: { count: jest.Mock; findMany: jest.Mock; create: jest.Mock };
+  };
+
+  const makeRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
+    id: 'log-1',
+    transport: 'mock',
+    templateId: 'rfq-message-created',
+    recipientEmail: 'buyer@ex.com',
+    recipientUserId: 'u-1',
+    subject: 'Sujet',
+    status: 'SENT',
+    errorCode: null,
+    errorMessage: null,
+    providerMessageId: 'mid-1',
+    metadataJson: { sourceEntity: 'QuoteRequest', sourceId: 'q-1' },
+    createdAt: new Date('2026-04-25T12:00:00Z'),
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    const config = { get: jest.fn(() => 'mock') };
+    prisma = {
+      emailLog: {
+        count: jest.fn(),
+        findMany: jest.fn(),
+        create: jest.fn(),
+      },
+    };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        NotifEmailService,
+        NotifEmailTransportFactory,
+        MockEmailTransport,
+        SmtpStreamEmailTransport,
+        ResendEmailTransport,
+        { provide: ConfigService, useValue: config },
+        { provide: PrismaService, useValue: prisma },
+        // MP-NOTIF-3 phase 2b — listLogs n'utilise pas UnsubscribeService,
+        // mais le constructeur de NotifEmailService l'exige depuis MP-NOTIF-2 LOT 2.
+        {
+          provide: UnsubscribeService,
+          useValue: { isUnsubscribed: jest.fn().mockResolvedValue(false) },
+        },
+      ],
+    }).compile();
+    service = module.get(NotifEmailService);
+  });
+
+  it('paginé par défaut (page=1, limit=20) — orderBy createdAt desc', async () => {
+    prisma.emailLog.count.mockResolvedValue(0);
+    prisma.emailLog.findMany.mockResolvedValue([]);
+    const res = await service.listLogs({});
+    expect(res.meta).toEqual({ total: 0, page: 1, limit: 20, totalPages: 0 });
+    const args = prisma.emailLog.findMany.mock.calls[0][0];
+    expect(args.skip).toBe(0);
+    expect(args.take).toBe(20);
+    expect(args.orderBy).toEqual({ createdAt: 'desc' });
+  });
+
+  it('limit cappé à 100 et page minimum à 1', async () => {
+    prisma.emailLog.count.mockResolvedValue(0);
+    prisma.emailLog.findMany.mockResolvedValue([]);
+    await service.listLogs({ page: 0, limit: 9999 });
+    const args = prisma.emailLog.findMany.mock.calls[0][0];
+    expect(args.take).toBe(100);
+    expect(args.skip).toBe(0); // page=1 → (1-1)*100
+  });
+
+  it('filtre status + templateId + recipientEmail + createdAtAfter', async () => {
+    prisma.emailLog.count.mockResolvedValue(1);
+    prisma.emailLog.findMany.mockResolvedValue([makeRow()]);
+    await service.listLogs({
+      status: 'FAILED',
+      templateId: 'rfq-message-created',
+      recipientEmail: 'BUYER',
+      createdAtAfter: '2026-04-01T00:00:00Z',
+    });
+    const args = prisma.emailLog.findMany.mock.calls[0][0];
+    expect(args.where.status).toBe('FAILED');
+    expect(args.where.templateId).toBe('rfq-message-created');
+    expect(args.where.recipientEmail).toEqual({ contains: 'BUYER', mode: 'insensitive' });
+    expect(args.where.createdAt.gte).toBeInstanceOf(Date);
+  });
+
+  it('mappe les rows en items normalisés (createdAt ISO string)', async () => {
+    prisma.emailLog.count.mockResolvedValue(1);
+    prisma.emailLog.findMany.mockResolvedValue([makeRow()]);
+    const res = await service.listLogs({});
+    expect(res.data).toHaveLength(1);
+    expect(res.data[0].createdAt).toBe('2026-04-25T12:00:00.000Z');
+    expect(res.data[0].status).toBe('SENT');
+    expect(res.data[0].metadataJson).toEqual({
+      sourceEntity: 'QuoteRequest',
+      sourceId: 'q-1',
+    });
+  });
+
+  it('totalPages = ceil(total / limit)', async () => {
+    prisma.emailLog.count.mockResolvedValue(45);
+    prisma.emailLog.findMany.mockResolvedValue([]);
+    const res = await service.listLogs({ limit: 20 });
+    expect(res.meta.totalPages).toBe(3);
+  });
+});
