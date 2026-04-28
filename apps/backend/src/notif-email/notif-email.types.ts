@@ -82,6 +82,39 @@ export interface EmailTemplate<D extends Record<string, unknown> = Record<string
   text(data: D): string;
 }
 
+/**
+ * MP-NOTIF-3 — Filtres pour `GET /notif-email/logs` (admin).
+ * Tous les champs sont optionnels.
+ */
+export interface ListLogsQuery {
+  page?: number;
+  limit?: number; // [1, 100], défaut 20
+  status?: 'SENT' | 'FAILED' | 'SKIPPED';
+  templateId?: string;
+  recipientEmail?: string; // contains (insensitive)
+  createdAtAfter?: string; // ISO date
+}
+
+export interface EmailLogItem {
+  id: string;
+  transport: string;
+  templateId: string;
+  recipientEmail: string;
+  recipientUserId: string | null;
+  subject: string;
+  status: 'SENT' | 'FAILED' | 'SKIPPED';
+  errorCode: string | null;
+  errorMessage: string | null;
+  providerMessageId: string | null;
+  metadataJson: unknown;
+  createdAt: string;
+}
+
+export interface ListLogsResult {
+  data: EmailLogItem[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
 /** Erreurs typées du module — utilisées dans les tests pour discriminer. */
 export class NotifEmailError extends Error {
   constructor(
