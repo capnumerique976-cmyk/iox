@@ -30,7 +30,9 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Public, Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserRole, RequestUser } from '@iox/shared';
-import { GenerateOnboardingLinkDto } from './dto/payments.dto';
+import { CreateCheckoutSessionDto, GenerateOnboardingLinkDto } from './dto/payments.dto';
+import { PaymentsService } from './payments.service';
+import { PaymentsWebhookService } from './payments-webhook.service';
 import { StripeOnboardingService } from './stripe-onboarding.service';
 import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
 
@@ -41,6 +43,8 @@ export class PaymentsController {
 
   constructor(
     private readonly onboarding: StripeOnboardingService,
+    private readonly payments: PaymentsService,
+    private readonly webhookHandler: PaymentsWebhookService,
     private readonly config: ConfigService,
     @Inject(STRIPE_CLIENT) private readonly stripeWrapper: StripeClientWrapper,
   ) {}
@@ -81,6 +85,31 @@ export class PaymentsController {
       throw new BadRequestException('Aucun profil vendeur rattaché à votre compte');
     }
     return this.onboarding.syncAccountStatus(sellerProfileId, actor);
+  }
+
+  // ─── Buyer checkout (LOT 3) ──────────────────────────────────────────────
+
+  @Post('checkout-session')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @Roles(UserRole.MARKETPLACE_BUYER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Crée une Stripe Checkout Session pour payer une RFQ WON' })
+  async createCheckoutSession(
+    @Body() dto: CreateCheckoutSessionDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.payments.createCheckoutSession(
+      {
+        quoteRequestId: dto.quoteRequestId,
+        marketplaceOfferId: dto.marketplaceOfferId,
+        amountCents: dto.amountCents,
+        currency: dto.currency,
+        returnUrl: dto.returnUrl,
+        cancelUrl: dto.cancelUrl,
+      },
+      actor,
+    );
   }
 
   @Get('connect/account-status')
@@ -142,7 +171,11 @@ export class PaymentsController {
     }
 
     this.logger.log(`Webhook received type=${event.type} id=${event.id}`);
-    // V1 stub : log + return 200. LOT 3 traitera payment_intent.succeeded etc.
-    return { received: true, type: event.type };
+    // Cast au shape minimal du PaymentsWebhookService (cf. service pour
+     // l'historique Stripe SDK 22.x typing quirks).
+    const result = await this.webhookHandler.handleEvent(
+      event as unknown as Parameters<typeof this.webhookHandler.handleEvent>[0],
+    );
+    return { received: true, type: event.type, ...result };
   }
 }
