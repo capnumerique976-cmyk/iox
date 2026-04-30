@@ -60,6 +60,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       role: user.role as unknown as UserRole,
       companyIds,
       sellerProfileIds,
+      // I18N-3 — exposé sur RequestUser pour synchro cookie côté frontend
+      // au login + utilisable par services backend (emails localisés).
+      preferredLocale: (user as unknown as { preferredLocale?: string }).preferredLocale ?? 'fr',
     };
   }
 }

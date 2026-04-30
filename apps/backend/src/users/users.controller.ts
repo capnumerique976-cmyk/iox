@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -50,6 +51,20 @@ export class UsersController {
   @ApiOperation({ summary: 'Mettre à jour son propre profil (nom, mot de passe)' })
   async updateMyProfile(@Body() dto: UpdateMyProfileDto, @CurrentUser() user: RequestUser) {
     return this.usersService.updateMyProfile(user.id, dto);
+  }
+
+  // I18N-3 — Locale préférée du user.
+  @Patch('me/locale')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Modifier sa locale préférée (fr | en)' })
+  async updateMyLocale(
+    @Body() dto: { locale: string },
+    @CurrentUser() user: RequestUser,
+  ) {
+    if (dto.locale !== 'fr' && dto.locale !== 'en') {
+      throw new BadRequestException('Locale non supportée (fr | en)');
+    }
+    return this.usersService.updateMyLocale(user.id, dto.locale);
   }
 
   @Get(':id')

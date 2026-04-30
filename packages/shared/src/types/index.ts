@@ -69,6 +69,12 @@ export interface RequestUser {
   sellerProfileIds?: string[];
   /** IDs des Companies dont l'utilisateur est membre. */
   companyIds?: string[];
+  /**
+   * I18N-3 — Locale préférée pour l'UI et les emails.
+   * "fr" (défaut) ou "en". Synchronisée avec le cookie NEXT_LOCALE
+   * côté frontend au login.
+   */
+  preferredLocale?: string;
 }
 
 // ─── CODES FONCTIONNELS ────────────────────────────────────────────────────
