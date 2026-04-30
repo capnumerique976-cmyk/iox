@@ -292,6 +292,22 @@ export const marketplaceOffersApi = {
   listBatches: (offerId: string, token: string) =>
     api.get<MarketplaceOfferBatchLink[]>(`/marketplace/offers/${offerId}/batches`, token),
 
+  // MP-OFFER-EDIT-4 — picker ProductBatches éligibles à attacher.
+  listAvailableBatches: (offerId: string, token: string, search?: string) => {
+    const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+    return api.get<
+      Array<{
+        id: string;
+        code: string;
+        quantity: string | number;
+        unit: string;
+        productionDate: string;
+        expiryDate: string | null;
+        status: string;
+      }>
+    >(`/marketplace/offers/${offerId}/available-batches${qs}`, token);
+  },
+
   attachBatch: (offerId: string, dto: AttachOfferBatchInput, token: string) =>
     api.post<MarketplaceOfferBatchLink>(`/marketplace/offers/${offerId}/batches`, dto, token),
 

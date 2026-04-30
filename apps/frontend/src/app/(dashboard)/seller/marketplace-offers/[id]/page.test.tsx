@@ -34,6 +34,7 @@ const updateMock = vi.fn();
 const submitMock = vi.fn();
 const duplicateMock = vi.fn();
 const listBatchesMock = vi.fn();
+const listAvailableBatchesMock = vi.fn();
 const attachBatchMock = vi.fn();
 const updateBatchMock = vi.fn();
 const detachBatchMock = vi.fn();
@@ -50,6 +51,7 @@ vi.mock('@/lib/marketplace-offers', async () => {
       submit: (...args: unknown[]) => submitMock(...args),
       duplicate: (...args: unknown[]) => duplicateMock(...args),
       listBatches: (...args: unknown[]) => listBatchesMock(...args),
+      listAvailableBatches: (...args: unknown[]) => listAvailableBatchesMock(...args),
       attachBatch: (...args: unknown[]) => attachBatchMock(...args),
       updateBatch: (...args: unknown[]) => updateBatchMock(...args),
       detachBatch: (...args: unknown[]) => detachBatchMock(...args),
@@ -119,6 +121,8 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-VIEW)', () => {
     confirmMock.mockReset();
     listBatchesMock.mockReset();
     listBatchesMock.mockResolvedValue([]);
+    listAvailableBatchesMock.mockReset();
+    listAvailableBatchesMock.mockResolvedValue([]);
     attachBatchMock.mockReset();
     updateBatchMock.mockReset();
     detachBatchMock.mockReset();
@@ -309,6 +313,8 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-EDIT-2)', () => {
     updateMock.mockReset();
     listBatchesMock.mockReset();
     listBatchesMock.mockResolvedValue([]);
+    listAvailableBatchesMock.mockReset();
+    listAvailableBatchesMock.mockResolvedValue([]);
     attachBatchMock.mockReset();
     updateBatchMock.mockReset();
     detachBatchMock.mockReset();
@@ -377,14 +383,20 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-EDIT-2)', () => {
     expect(screen.getByTestId('batch-row-l1')).toBeInTheDocument();
   });
 
-  it('section batches : rattacher un nouveau lot via le formulaire', async () => {
+  it('section batches : rattacher un nouveau lot via le picker (combobox)', async () => {
     getByIdMock.mockResolvedValue(FULL_OFFER);
     listBatchesMock.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    // MP-OFFER-EDIT-4 — picker récupère les batches disponibles.
+    listAvailableBatchesMock.mockResolvedValue([
+      { id: 'b2-uuid', code: 'PB-2026-0099', quantity: '120', unit: 'kg' },
+    ]);
     attachBatchMock.mockResolvedValue({ id: 'l-new' });
     render(<SellerMarketplaceOfferDetailPage />);
     await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('btn-edit-offer'));
     fireEvent.click(await screen.findByTestId('btn-show-attach'));
+    // Attendre que le picker ait chargé (option visible)
+    await waitFor(() => expect(listAvailableBatchesMock).toHaveBeenCalled());
     fireEvent.change(screen.getByTestId('field-attach-productBatchId'), {
       target: { value: 'b2-uuid' },
     });
@@ -396,6 +408,22 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-EDIT-2)', () => {
       quantityAvailable: 25,
       exportEligible: true,
     });
+  });
+
+  // MP-OFFER-EDIT-4 — picker spécifique
+  it('picker : appelle listAvailableBatches au showAttach + affiche les options', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    listAvailableBatchesMock.mockResolvedValue([
+      { id: 'b1-uuid', code: 'PB-2026-0001', quantity: '50', unit: 'kg' },
+      { id: 'b2-uuid', code: 'PB-2026-0002', quantity: '75', unit: 'kg' },
+    ]);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    fireEvent.click(await screen.findByTestId('btn-show-attach'));
+    await waitFor(() => expect(listAvailableBatchesMock).toHaveBeenCalled());
+    expect(screen.getByText(/PB-2026-0001/)).toBeInTheDocument();
+    expect(screen.getByText(/PB-2026-0002/)).toBeInTheDocument();
   });
 
   it('section batches : détache après confirm', async () => {

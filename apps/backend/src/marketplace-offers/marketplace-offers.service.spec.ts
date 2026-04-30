@@ -47,7 +47,7 @@ describe('MarketplaceOffersService', () => {
     };
     marketplaceProduct: { findUnique: jest.Mock };
     sellerProfile: { findUnique: jest.Mock };
-    productBatch: { findFirst: jest.Mock };
+    productBatch: { findFirst: jest.Mock; findMany: jest.Mock };
     marketplaceOfferBatch: {
       findUnique: jest.Mock;
       findMany: jest.Mock;
@@ -72,7 +72,7 @@ describe('MarketplaceOffersService', () => {
       },
       marketplaceProduct: { findUnique: jest.fn() },
       sellerProfile: { findUnique: jest.fn() },
-      productBatch: { findFirst: jest.fn() },
+      productBatch: { findFirst: jest.fn(), findMany: jest.fn() },
       marketplaceOfferBatch: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -710,6 +710,42 @@ describe('MarketplaceOffersService', () => {
       prisma.marketplaceOffer.create.mockResolvedValue({ id: 'copy-4' });
       await service.duplicate('src-1', ADMIN);
       expect(prisma.marketplaceOfferBatch.create).not.toHaveBeenCalled();
+    });
+  });
+
+  // MP-OFFER-EDIT-4 — listAvailableBatches (picker)
+  describe('listAvailableBatches', () => {
+    it('retourne ProductBatches non encore attachés à cette offre', async () => {
+      prisma.marketplaceOfferBatch.findMany.mockResolvedValue([
+        { productBatchId: 'b1' },
+        { productBatchId: 'b2' },
+      ]);
+      prisma.productBatch.findMany.mockResolvedValue([
+        { id: 'b3', code: 'PB-2026-0003' },
+      ]);
+      const res = await service.listAvailableBatches('o1', undefined);
+      expect(res).toEqual([{ id: 'b3', code: 'PB-2026-0003' }]);
+      const args = prisma.productBatch.findMany.mock.calls[0][0];
+      expect(args.where.id).toEqual({ notIn: ['b1', 'b2'] });
+      expect(args.where.status).toBe('CREATED');
+      expect(args.where.deletedAt).toBe(null);
+      expect(args.take).toBe(50);
+    });
+
+    it('search filtre code contains insensitive', async () => {
+      prisma.marketplaceOfferBatch.findMany.mockResolvedValue([]);
+      prisma.productBatch.findMany.mockResolvedValue([]);
+      await service.listAvailableBatches('o1', 'PB-2026');
+      const args = prisma.productBatch.findMany.mock.calls[0][0];
+      expect(args.where.code).toEqual({ contains: 'PB-2026', mode: 'insensitive' });
+    });
+
+    it('aucun batch attaché → pas de notIn dans where', async () => {
+      prisma.marketplaceOfferBatch.findMany.mockResolvedValue([]);
+      prisma.productBatch.findMany.mockResolvedValue([]);
+      await service.listAvailableBatches('o1', undefined);
+      const args = prisma.productBatch.findMany.mock.calls[0][0];
+      expect(args.where.id).toBeUndefined();
     });
   });
 });
