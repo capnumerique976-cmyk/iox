@@ -955,6 +955,8 @@ model SellerProfile {
 
   marketplaceProducts MarketplaceProduct[]
   marketplaceOffers   MarketplaceOffer[]
+  // PAY-1 phase 1 LOT 1 — Stripe Connect Express onboarding (1:1 optionnel V1).
+  stripeAccount       SellerStripeAccount?
 
   @@index([status])
   @@index([country])
@@ -1480,4 +1482,83 @@ model EmailUnsubscribe {
   @@unique([email, unsubscribeType], name: "email_unsubscribes_email_type_uq")
   @@index([email])
   @@map("email_unsubscribes")
+}
+
+// ─── PAY-1 phase 1 — STRIPE CONNECT EXPRESS + PAYMENTS ───────────────────────
+//
+// POC test mode V1. Stripe Connect Express + split à la source + commission
+// 5% gross + EUR uniquement. Direct (pas d'escrow).
+//
+// Voir docs/marketplace/PAY_1_PHASE_0_CADRAGE.md pour le contexte juridique
+// et docs/marketplace/PAY_1_PHASE_1_LOT_1_SCHEMA_ONBOARDING.md pour le détail
+// d'implémentation.
+
+enum SellerStripeAccountStatus {
+  PENDING_ONBOARDING
+  ONBOARDING_INCOMPLETE
+  CHARGES_ENABLED
+  PAYOUTS_ENABLED
+  RESTRICTED
+}
+
+model SellerStripeAccount {
+  id               String                    @id @default(uuid())
+  sellerProfileId  String                    @unique @map("seller_profile_id")
+  stripeAccountId  String                    @unique @map("stripe_account_id")
+  status           SellerStripeAccountStatus @default(PENDING_ONBOARDING)
+  chargesEnabled   Boolean                   @default(false) @map("charges_enabled")
+  payoutsEnabled   Boolean                   @default(false) @map("payouts_enabled")
+  detailsSubmitted Boolean                   @default(false) @map("details_submitted")
+  capabilitiesJson Json?                     @map("capabilities_json")
+  requirementsJson Json?                     @map("requirements_json")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+
+  sellerProfile SellerProfile @relation(fields: [sellerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("seller_stripe_accounts")
+}
+
+enum PaymentStatus {
+  PENDING
+  REQUIRES_ACTION
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
+model Payment {
+  id                      String        @id @default(uuid())
+  quoteRequestId          String?       @map("quote_request_id")
+  marketplaceOfferId      String?       @map("marketplace_offer_id")
+  sellerProfileId         String        @map("seller_profile_id")
+  buyerCompanyId          String        @map("buyer_company_id")
+  buyerUserId             String        @map("buyer_user_id")
+
+  amountCents             Int           @map("amount_cents")
+  currency                String        @default("EUR")
+  applicationFeeCents     Int           @map("application_fee_cents")
+
+  status                  PaymentStatus @default(PENDING)
+
+  stripePaymentIntentId   String?       @unique @map("stripe_payment_intent_id")
+  stripeCheckoutSessionId String?       @unique @map("stripe_checkout_session_id")
+  stripeChargeId          String?       @map("stripe_charge_id")
+  stripeTransferId        String?       @map("stripe_transfer_id")
+
+  errorCode               String?       @map("error_code")
+  errorMessage            String?       @map("error_message")
+  metadataJson            Json?         @map("metadata_json")
+
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([sellerProfileId, createdAt])
+  @@index([buyerCompanyId, createdAt])
+  @@index([quoteRequestId])
+  @@map("payments")
 }

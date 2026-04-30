@@ -155,6 +155,21 @@ class EnvSchema {
   @IsString()
   @IsOptional()
   METRICS_TOKEN?: string;
+
+  // ── PAY-1 phase 1 — STRIPE CONNECT EXPRESS (test mode V1) ───────────────
+  // Toutes optionnelles V1 : si absentes, le module payments throw clair
+  // au moment d'un endpoint qui requiert Stripe (pas au boot).
+  @IsString()
+  @IsOptional()
+  STRIPE_SECRET_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  STRIPE_WEBHOOK_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  STRIPE_PUBLISHABLE_KEY?: string;
 }
 
 function assertNoPlaceholder(env: EnvSchema) {
