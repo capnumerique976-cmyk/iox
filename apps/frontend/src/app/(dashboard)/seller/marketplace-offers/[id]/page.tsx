@@ -884,6 +884,10 @@ function BatchesSection({ offerId, canEdit }: BatchesSectionProps) {
     exportEligible: true,
     notes: '',
   });
+  // MP-OFFER-EDIT-4 — picker batch (combobox).
+  const [availableBatches, setAvailableBatches] = useState<
+    Array<{ id: string; code: string; quantity: string | number; unit: string }>
+  >([]);
   // MP-OFFER-EDIT-3 — édition inline d'un lien batch existant.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ quantityAvailable: '', notes: '' });
@@ -905,6 +909,16 @@ function BatchesSection({ offerId, canEdit }: BatchesSectionProps) {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  // MP-OFFER-EDIT-4 — load available batches when attach form ouvre.
+  useEffect(() => {
+    if (!showAttach) return;
+    const token = authStorage.getAccessToken() ?? '';
+    marketplaceOffersApi
+      .listAvailableBatches(offerId, token)
+      .then(setAvailableBatches)
+      .catch((e: Error) => setErr(e.message));
+  }, [showAttach, offerId]);
 
   const onAttach = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1156,15 +1170,20 @@ function BatchesSection({ offerId, canEdit }: BatchesSectionProps) {
               onSubmit={onAttach}
               className="grid grid-cols-1 gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 sm:grid-cols-2"
             >
-              <Field label="ID lot produit (UUID)">
-                <input
-                  type="text"
+              <Field label="Lot produit">
+                <select
                   value={attachForm.productBatchId}
                   onChange={(e) => setAttachForm((f) => ({ ...f, productBatchId: e.target.value }))}
                   className={inputCls}
-                  placeholder="uuid"
                   data-testid="field-attach-productBatchId"
-                />
+                >
+                  <option value="">— Sélectionner un lot —</option>
+                  {availableBatches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.code} ({String(b.quantity)} {b.unit})
+                    </option>
+                  ))}
+                </select>
               </Field>
               <Field label="Quantité disponible">
                 <input
