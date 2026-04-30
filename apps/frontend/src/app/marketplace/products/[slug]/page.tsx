@@ -110,6 +110,20 @@ export default async function ProductDetailPage({ params }: PageProps) {
             images={product.gallery}
             productName={product.commercialName}
           />
+          {/* MP-MEDIA-1 LOT 2 — vidéo de présentation (APPROVED filtré côté backend) */}
+          {product.video?.publicUrl && (
+            <div data-testid="product-video" className="iox-glass mt-4 overflow-hidden rounded-2xl">
+              <video
+                src={product.video.publicUrl}
+                controls
+                preload="metadata"
+                className="aspect-video w-full bg-black"
+                aria-label={product.video.altTextFr ?? `Vidéo ${product.commercialName}`}
+              >
+                <track kind="captions" />
+              </video>
+            </div>
+          )}
         </section>
 
         {/* Details */}

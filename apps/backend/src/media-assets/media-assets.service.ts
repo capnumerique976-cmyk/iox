@@ -29,8 +29,24 @@ import type { Prisma } from '@prisma/client';
 import { MarketplaceReviewService } from '../marketplace-review/marketplace-review.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
 
-export const MEDIA_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+export const MEDIA_MAX_BYTES = 5 * 1024 * 1024; // 5 MB (image)
 export const MEDIA_ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// MP-MEDIA-1 LOT 2 — Bornes vidéo produit V1.
+export const MEDIA_VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
+export const MEDIA_ALLOWED_VIDEO_MIMES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+] as const;
+
+function isVideoMime(mime: string): boolean {
+  return (MEDIA_ALLOWED_VIDEO_MIMES as readonly string[]).includes(mime);
+}
+
+function isImageMime(mime: string): boolean {
+  return MEDIA_ALLOWED_IMAGE_MIMES.includes(mime);
+}
 
 const RELATED_MODEL: Record<
   MarketplaceRelatedEntityType,
@@ -126,20 +142,33 @@ export class MediaAssetsService {
   ) {
     if (!file) throw new BadRequestException('Fichier manquant');
 
-    const mediaType = dto.mediaType ?? MediaAssetType.IMAGE;
-
-    // Validation MIME/taille — pour l'instant on n'accepte que des images
-    if (mediaType !== MediaAssetType.IMAGE && mediaType !== MediaAssetType.ILLUSTRATION) {
-      throw new BadRequestException(`mediaType ${mediaType} non supporté pour l'instant`);
-    }
-    if (!MEDIA_ALLOWED_IMAGE_MIMES.includes(file.mimetype)) {
+    // MP-MEDIA-1 LOT 2 — mediaType résolu côté serveur depuis MIME réel.
+    // Le client ne peut pas forcer mediaType=VIDEO sur fichier image (ou inverse).
+    let mediaType: MediaAssetType;
+    if (isImageMime(file.mimetype)) {
+      // ILLUSTRATION reste pilotable côté DTO (sous-type d'image), sinon IMAGE.
+      mediaType =
+        dto.mediaType === MediaAssetType.ILLUSTRATION
+          ? MediaAssetType.ILLUSTRATION
+          : MediaAssetType.IMAGE;
+      if (file.size > MEDIA_MAX_BYTES) {
+        throw new BadRequestException(
+          `Fichier trop volumineux (${file.size} octets, max ${MEDIA_MAX_BYTES})`,
+        );
+      }
+    } else if (isVideoMime(file.mimetype)) {
+      mediaType = MediaAssetType.VIDEO;
+      if (file.size > MEDIA_VIDEO_MAX_BYTES) {
+        throw new BadRequestException(
+          `Vidéo trop volumineuse (${file.size} octets, max ${MEDIA_VIDEO_MAX_BYTES})`,
+        );
+      }
+    } else {
       throw new BadRequestException(
-        `Type MIME non autorisé : ${file.mimetype}. Autorisés : ${MEDIA_ALLOWED_IMAGE_MIMES.join(', ')}`,
-      );
-    }
-    if (file.size > MEDIA_MAX_BYTES) {
-      throw new BadRequestException(
-        `Fichier trop volumineux (${file.size} octets, max ${MEDIA_MAX_BYTES})`,
+        `Type MIME non autorisé : ${file.mimetype}. Autorisés : ${[
+          ...MEDIA_ALLOWED_IMAGE_MIMES,
+          ...MEDIA_ALLOWED_VIDEO_MIMES,
+        ].join(', ')}`,
       );
     }
 
