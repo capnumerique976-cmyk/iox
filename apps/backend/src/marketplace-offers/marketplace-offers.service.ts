@@ -104,6 +104,53 @@ export class MarketplaceOffersService {
   }
 
   /**
+   * MP-OFFER-EDIT-4 — Liste des `ProductBatch` éligibles à être attachés
+   * à l'offre : status CREATED, soft-delete exclus, et NON encore
+   * attachés à cette offre spécifique. Optionnellement filtré par
+   * recherche sur `code`.
+   *
+   * Limitation actuelle : pas de scope strict par seller (le modèle
+   * Prisma `Product` n'a pas de relation directe `sellerProfileId`).
+   * V2 (MP-OFFER-EDIT-5+) : refactor relation ProductBatch ↔
+   * SellerProfile pour scope ownership strict.
+   */
+  async listAvailableBatches(
+    offerId: string,
+    search: string | undefined,
+    actor?: RequestUser,
+  ) {
+    if (actor) await this.ownership.assertMarketplaceOfferOwnership(actor, offerId);
+
+    const alreadyAttached = await this.prisma.marketplaceOfferBatch.findMany({
+      where: { marketplaceOfferId: offerId },
+      select: { productBatchId: true },
+    });
+    const excludeIds = alreadyAttached.map((r) => r.productBatchId);
+
+    const where: Prisma.ProductBatchWhereInput = {
+      deletedAt: null,
+      status: 'CREATED',
+      ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
+      ...(search ? { code: { contains: search, mode: 'insensitive' } } : {}),
+    };
+
+    return this.prisma.productBatch.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 50, // cap UX picker
+      select: {
+        id: true,
+        code: true,
+        quantity: true,
+        unit: true,
+        productionDate: true,
+        expiryDate: true,
+        status: true,
+      },
+    });
+  }
+
+  /**
    * MP-OFFER-EDIT-2 — Liste des `MarketplaceOfferBatch` rattachés à une
    * offre, avec données du `ProductBatch` joint (référence lot, quantité
    * d'origine). Utilisé par la page seller pour afficher la section

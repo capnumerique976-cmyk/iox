@@ -110,6 +110,20 @@ export class MarketplaceOffersController {
     return this.service.listOfferBatches(id, actor);
   }
 
+  // MP-OFFER-EDIT-4 — Picker batch : ProductBatches éligibles à attacher.
+  @Get(':id/available-batches')
+  @Roles(...SELLER_EDIT)
+  @ApiOperation({
+    summary: "Liste des ProductBatch éligibles à rattacher à l'offre (status CREATED, non déjà attachés, max 50)",
+  })
+  listAvailableBatches(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('search') search: string | undefined,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.listAvailableBatches(id, search, actor);
+  }
+
   @Post(':id/batches')
   @Roles(...SELLER_EDIT)
   @ApiOperation({ summary: "Rattacher un lot produit à l'offre" })
