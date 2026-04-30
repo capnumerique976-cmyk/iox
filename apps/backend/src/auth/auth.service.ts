@@ -96,6 +96,8 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        // I18N-3 — exposé pour sync cookie NEXT_LOCALE côté frontend.
+        preferredLocale: (user as unknown as { preferredLocale?: string }).preferredLocale ?? 'fr',
       },
     };
   }
