@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import {
   ChevronRight,
   ArrowRight,
@@ -56,6 +57,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await fetchProductBySlug(params.slug).catch(() => null);
   if (!product) notFound();
 
+  // I18N-5 LOT 2.x — strings publics fiche produit.
+  const t = await getTranslations('marketplace.product');
+  const tCommon = await getTranslations('common');
+
   const primary = product.offers.find((o) => o.isPrimaryOffer) ?? product.offers[0];
 
   // Autres produits du vendeur (best-effort)
@@ -66,7 +71,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
     <div className="space-y-8">
       {/* Breadcrumb */}
       <nav
-        aria-label="Fil d'Ariane"
+        aria-label={tCommon('breadcrumb.label')}
         className="flex flex-wrap items-center gap-1.5 text-xs text-white/50"
       >
         <Link href="/marketplace" className="transition-colors hover:text-[#00D4FF]">
@@ -99,9 +104,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 className="aspect-[4/3] w-full object-cover"
               />
             ) : (
-              <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#12161F] to-[#0A0E1A] text-white/30">
+              <div
+                data-testid="image-placeholder"
+                className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#12161F] to-[#0A0E1A] text-white/30"
+              >
                 <ImageIcon className="h-10 w-10" aria-hidden />
-                <span className="text-sm">Pas d&apos;image</span>
+                <span className="text-sm">{tCommon('states.noImage')}</span>
               </div>
             )}
           </div>
@@ -166,7 +174,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-[#00D4FF]/80">
-                Producteur
+                {t('sellerLabel')}
               </div>
               <div className="truncate text-sm font-semibold text-white group-hover:text-[#00D4FF]">
                 {product.seller.publicDisplayName}
@@ -216,7 +224,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                     <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
                       <Package className="h-3.5 w-3.5 flex-shrink-0 text-[#00D4FF]" aria-hidden />
                       <div className="min-w-0">
-                        <dt className="text-[10px] uppercase tracking-wide text-white/50">MOQ</dt>
+                        <dt className="text-[10px] uppercase tracking-wide text-white/50">{t('fields.moq')}</dt>
                         <dd className="truncate font-semibold text-white">
                           {primary.moq}
                           {product.defaultUnit ? ` ${product.defaultUnit}` : ''}
@@ -228,7 +236,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                     <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
                       <Clock className="h-3.5 w-3.5 flex-shrink-0 text-[#00D4FF]" aria-hidden />
                       <div className="min-w-0">
-                        <dt className="text-[10px] uppercase tracking-wide text-white/50">Délai</dt>
+                        <dt className="text-[10px] uppercase tracking-wide text-white/50">{t('fields.leadTime')}</dt>
                         <dd className="truncate font-semibold text-white">
                           {primary.leadTimeDays} j
                         </dd>
@@ -302,9 +310,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
           {/* Documents publics */}
           {product.documents.length > 0 && (
-            <div className="iox-glass rounded-xl p-4">
+            <div data-testid="public-documents-section" className="iox-glass rounded-xl p-4">
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-[#00D4FF]/80">
-                Documents publics
+                {t('sections.documents')}
               </div>
               <ul className="space-y-1.5 text-sm">
                 {product.documents.map((d) => (
@@ -328,7 +336,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   aria-hidden
                   className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
                 />
-                <h2 className="mb-3 pl-3 text-sm font-semibold text-white">Description</h2>
+                <h2 className="mb-3 pl-3 text-sm font-semibold text-white">{t('sections.description')}</h2>
                 <p className="whitespace-pre-line pl-3 text-sm leading-relaxed text-white/75">
                   {product.descriptionLong}
                 </p>
@@ -339,47 +347,47 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 aria-hidden
                 className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
               />
-              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">Caractéristiques</h2>
+              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">{t('sections.characteristics')}</h2>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 pl-3 text-xs">
                 {product.varietySpecies && (
                   <>
-                    <dt className="text-white/50">Variété</dt>
+                    <dt className="text-white/50">{t('fields.variety')}</dt>
                     <dd className="font-medium text-white/90">{product.varietySpecies}</dd>
                   </>
                 )}
                 {product.productionMethod && (
                   <>
-                    <dt className="text-white/50">Production</dt>
+                    <dt className="text-white/50">{t('fields.production')}</dt>
                     <dd className="font-medium text-white/90">{product.productionMethod}</dd>
                   </>
                 )}
                 {product.packagingDescription && (
                   <>
-                    <dt className="text-white/50">Packaging</dt>
+                    <dt className="text-white/50">{t('fields.packaging')}</dt>
                     <dd className="font-medium text-white/90">{product.packagingDescription}</dd>
                   </>
                 )}
                 {product.storageConditions && (
                   <>
-                    <dt className="text-white/50">Stockage</dt>
+                    <dt className="text-white/50">{t('fields.storage')}</dt>
                     <dd className="font-medium text-white/90">{product.storageConditions}</dd>
                   </>
                 )}
                 {product.shelfLifeInfo && (
                   <>
-                    <dt className="text-white/50">DLUO</dt>
+                    <dt className="text-white/50">{t('fields.shelfLife')}</dt>
                     <dd className="font-medium text-white/90">{product.shelfLifeInfo}</dd>
                   </>
                 )}
                 {product.allergenInfo && (
                   <>
-                    <dt className="text-white/50">Allergènes</dt>
+                    <dt className="text-white/50">{t('fields.allergens')}</dt>
                     <dd className="font-medium text-white/90">{product.allergenInfo}</dd>
                   </>
                 )}
                 {product.usageTips && (
                   <>
-                    <dt className="text-white/50">Usage</dt>
+                    <dt className="text-white/50">{t('fields.usage')}</dt>
                     <dd className="font-medium text-white/90">{product.usageTips}</dd>
                   </>
                 )}
@@ -400,24 +408,24 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
               />
               <h2 className="mb-3 pl-3 text-sm font-semibold text-white">
-                Origine détaillée
+                {t('sections.origin')}
               </h2>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 pl-3 text-xs">
                 {product.originLocality && (
                   <>
-                    <dt className="text-white/50">Localité</dt>
+                    <dt className="text-white/50">{t('fields.locality')}</dt>
                     <dd className="font-medium text-white/90">{product.originLocality}</dd>
                   </>
                 )}
                 {product.altitudeMeters != null && (
                   <>
-                    <dt className="text-white/50">Altitude</dt>
+                    <dt className="text-white/50">{t('fields.altitude')}</dt>
                     <dd className="font-medium text-white/90">{product.altitudeMeters} m</dd>
                   </>
                 )}
                 {product.gpsLat != null && product.gpsLng != null && (
                   <>
-                    <dt className="text-white/50">GPS</dt>
+                    <dt className="text-white/50">{t('fields.gps')}</dt>
                     <dd className="font-medium text-white/90">
                       <a
                         href={`https://www.google.com/maps?q=${product.gpsLat},${product.gpsLng}`}
@@ -449,11 +457,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 aria-hidden
                 className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
               />
-              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">Logistique</h2>
+              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">{t('sections.logistics')}</h2>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 pl-3 text-xs">
                 {(product.packagingFormats?.length ?? 0) > 0 && (
                   <>
-                    <dt className="text-white/50">Conditionnements</dt>
+                    <dt className="text-white/50">{t('fields.containers')}</dt>
                     <dd className="font-medium text-white/90">
                       {product.packagingFormats.join(', ')}
                     </dd>
@@ -461,7 +469,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 )}
                 {product.temperatureRequirements && (
                   <>
-                    <dt className="text-white/50">Température</dt>
+                    <dt className="text-white/50">{t('fields.temperature')}</dt>
                     <dd className="font-medium text-white/90">
                       {product.temperatureRequirements}
                     </dd>
@@ -469,19 +477,19 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 )}
                 {product.grossWeight != null && (
                   <>
-                    <dt className="text-white/50">Poids brut</dt>
+                    <dt className="text-white/50">{t('fields.grossWeight')}</dt>
                     <dd className="font-medium text-white/90">{product.grossWeight} kg</dd>
                   </>
                 )}
                 {product.netWeight != null && (
                   <>
-                    <dt className="text-white/50">Poids net</dt>
+                    <dt className="text-white/50">{t('fields.netWeight')}</dt>
                     <dd className="font-medium text-white/90">{product.netWeight} kg</dd>
                   </>
                 )}
                 {product.palletization && (
                   <>
-                    <dt className="text-white/50">Palettisation</dt>
+                    <dt className="text-white/50">{t('fields.palletization')}</dt>
                     <dd className="font-medium text-white/90">{product.palletization}</dd>
                   </>
                 )}
@@ -507,7 +515,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 pl-3 text-xs">
                 {product.annualProductionCapacity != null && (
                   <>
-                    <dt className="text-white/50">Production annuelle</dt>
+                    <dt className="text-white/50">{t('fields.annualProduction')}</dt>
                     <dd className="font-medium text-white/90">
                       {product.annualProductionCapacity}
                       {product.capacityUnit ? ` ${product.capacityUnit}` : ''}
@@ -516,7 +524,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 )}
                 {product.availableQuantity != null && (
                   <>
-                    <dt className="text-white/50">Stock disponible</dt>
+                    <dt className="text-white/50">{t('fields.availableStock')}</dt>
                     <dd className="font-medium text-white/90">
                       {product.availableQuantity}
                       {product.availableQuantityUnit
@@ -527,7 +535,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 )}
                 {product.restockFrequency && (
                   <>
-                    <dt className="text-white/50">Réapprovisionnement</dt>
+                    <dt className="text-white/50">{t('fields.restock')}</dt>
                     <dd className="font-medium text-white/90">{product.restockFrequency}</dd>
                   </>
                 )}
@@ -545,7 +553,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 aria-hidden
                 className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
               />
-              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">Qualité</h2>
+              <h2 className="mb-3 pl-3 text-sm font-semibold text-white">{t('sections.quality')}</h2>
               <div className="flex flex-wrap gap-2 pl-3">
                 {product.qualityAttributes.map((attr) => (
                   <span
@@ -584,14 +592,15 @@ export default async function ProductDetailPage({ params }: PageProps) {
           <section className="lg:col-span-2">
             <div className="mb-4 flex items-baseline justify-between">
               <h2 className="text-lg font-semibold text-white">
-                Autres produits de{' '}
+                {t('sections.otherProducts')}
+                {' — '}
                 <span className="iox-text-gradient-neon">{product.seller.publicDisplayName}</span>
               </h2>
               <Link
                 href={`/marketplace/sellers/${product.seller.slug}`}
                 className="group flex items-center gap-1 text-xs font-semibold text-[#00D4FF] transition-all duration-base hover:text-white"
               >
-                Voir tout
+                {tCommon('actions.viewAll')}
                 <ArrowRight
                   className="h-3.5 w-3.5 transition-transform duration-base group-hover:translate-x-0.5"
                   aria-hidden

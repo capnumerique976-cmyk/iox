@@ -335,7 +335,8 @@ test.describe('P13-C — Public SSR rendering respects approval gates', () => {
     await expect(page.getByAltText('Flacon Ylang-Ylang (approuvé)')).toBeVisible();
 
     // Documents : uniquement le certificat approuvé
-    await expect(page.getByText('Documents publics')).toBeVisible();
+    // I18N-5 LOT 2.x — selector data-testid stable (indépendant de la locale).
+    await expect(page.getByTestId('public-documents-section')).toBeVisible();
     await expect(page.getByText('Certificat Ecocert 2026')).toBeVisible();
     await expect(page.getByText('Fiche interne confidentielle')).toHaveCount(0);
     await expect(page.getByText('Analyse microbio (sur demande)')).toHaveCount(0);
@@ -589,7 +590,8 @@ test.describe('P13-E — No public leakage of non-validated content', () => {
     await expect(page.getByText('Certificat rejeté')).toHaveCount(0);
     await expect(page.getByText('Attestation 2022')).toHaveCount(0);
     // Pas de bloc "Documents publics" quand aucun doc éligible
-    await expect(page.getByText('Documents publics')).toHaveCount(0);
+    // I18N-5 LOT 2.x — selector data-testid stable.
+    await expect(page.getByTestId('public-documents-section')).toHaveCount(0);
   });
 
   test('média rejeté jamais rendu public', async ({ page }) => {
@@ -614,7 +616,8 @@ test.describe('P13-E — No public leakage of non-validated content', () => {
     await page.goto(`/marketplace/products/${product.slug}`, { timeout: 60_000 });
     await expect(page.getByAltText('Contenu interdit')).toHaveCount(0);
     // Placeholder "Pas d'image" affiché à la place
-    await expect(page.getByText(/Pas d'image/)).toBeVisible();
+    // I18N-5 LOT 2.x — selector data-testid stable.
+    await expect(page.getByTestId('image-placeholder')).toBeVisible();
   });
 });
 
