@@ -47,6 +47,19 @@ export class CompaniesService {
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
+  /**
+   * BUYER-DASHBOARD-2 — Companies dont l'utilisateur courant est membre.
+   * Retourne tableau (un user peut être membre de plusieurs companies).
+   */
+  async findMine(companyIds: string[]) {
+    if (companyIds.length === 0) return [];
+    return this.prisma.company.findMany({
+      where: { id: { in: companyIds }, deletedAt: null },
+      include: COMPANY_INCLUDE,
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async findById(id: string) {
     const company = await this.prisma.company.findFirst({
       where: { id, deletedAt: null },
