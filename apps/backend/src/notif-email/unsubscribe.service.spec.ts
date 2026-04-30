@@ -13,7 +13,11 @@ import { PrismaService } from '../database/prisma.service';
 describe('UnsubscribeService', () => {
   let service: UnsubscribeService;
   let prisma: {
-    emailUnsubscribe: { upsert: jest.Mock; count: jest.Mock };
+    emailUnsubscribe: {
+      upsert: jest.Mock;
+      count: jest.Mock;
+      findMany: jest.Mock;
+    };
   };
   let config: { get: jest.Mock };
 
@@ -29,6 +33,7 @@ describe('UnsubscribeService', () => {
       emailUnsubscribe: {
         upsert: jest.fn().mockResolvedValue({ id: 'unsub-1' }),
         count: jest.fn().mockResolvedValue(0),
+        findMany: jest.fn().mockResolvedValue([]),
       },
     };
 
@@ -115,5 +120,59 @@ describe('UnsubscribeService', () => {
     expect(
       await service.isUnsubscribed('a@x.test', EmailUnsubscribeType.RFQ_NOTIFICATIONS),
     ).toBe(false);
+  });
+
+  // MP-NOTIF-3 phase 4 — listUnsubscribes
+  describe('listUnsubscribes', () => {
+    const sampleRow = {
+      id: 'unsub-1',
+      email: 'a@x.test',
+      unsubscribeType: EmailUnsubscribeType.RFQ_NOTIFICATIONS,
+      userId: 'u-1',
+      reason: 'opt-out',
+      createdAt: new Date('2026-04-25T10:00:00Z'),
+    };
+
+    it('paginé par défaut (page=1, limit=20) — orderBy createdAt desc', async () => {
+      prisma.emailUnsubscribe.count.mockResolvedValue(0);
+      prisma.emailUnsubscribe.findMany.mockResolvedValue([]);
+      const res = await service.listUnsubscribes({});
+      expect(res.meta).toEqual({ total: 0, page: 1, limit: 20, totalPages: 0 });
+      const args = prisma.emailUnsubscribe.findMany.mock.calls[0][0];
+      expect(args.skip).toBe(0);
+      expect(args.take).toBe(20);
+      expect(args.orderBy).toEqual({ createdAt: 'desc' });
+    });
+
+    it('filtre type + email contains insensitive', async () => {
+      prisma.emailUnsubscribe.count.mockResolvedValue(1);
+      prisma.emailUnsubscribe.findMany.mockResolvedValue([sampleRow]);
+      await service.listUnsubscribes({
+        type: EmailUnsubscribeType.RFQ_NOTIFICATIONS,
+        email: 'A@X',
+      });
+      const args = prisma.emailUnsubscribe.findMany.mock.calls[0][0];
+      expect(args.where.unsubscribeType).toBe(EmailUnsubscribeType.RFQ_NOTIFICATIONS);
+      expect(args.where.email).toEqual({ contains: 'A@X', mode: 'insensitive' });
+    });
+
+    it('mappe les rows en items normalisés (createdAt ISO)', async () => {
+      prisma.emailUnsubscribe.count.mockResolvedValue(1);
+      prisma.emailUnsubscribe.findMany.mockResolvedValue([sampleRow]);
+      const res = await service.listUnsubscribes({});
+      expect(res.data).toHaveLength(1);
+      expect(res.data[0].createdAt).toBe('2026-04-25T10:00:00.000Z');
+      expect(res.data[0].userId).toBe('u-1');
+      expect(res.data[0].unsubscribeType).toBe(EmailUnsubscribeType.RFQ_NOTIFICATIONS);
+    });
+
+    it('limit cappé à 100, page minimum à 1', async () => {
+      prisma.emailUnsubscribe.count.mockResolvedValue(0);
+      prisma.emailUnsubscribe.findMany.mockResolvedValue([]);
+      await service.listUnsubscribes({ page: 0, limit: 9999 });
+      const args = prisma.emailUnsubscribe.findMany.mock.calls[0][0];
+      expect(args.take).toBe(100);
+      expect(args.skip).toBe(0);
+    });
   });
 });

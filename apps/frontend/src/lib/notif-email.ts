@@ -43,4 +43,38 @@ export const notifEmailApi = {
   // MP-NOTIF-3 phase 3 — détail unitaire (avec metadataJson complet).
   getLogById: (id: string, token: string) =>
     api.get<EmailLogItem>(`/notif-email/logs/${id}`, token),
+
+  // MP-NOTIF-3 phase 4 — liste désinscriptions (admin).
+  listUnsubscribes: (params: ListUnsubscribesParams, token: string) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return api.get<UnsubscribeListResponse>(`/notif-email/unsubscribes${suffix}`, token);
+  },
 };
+
+// MP-NOTIF-3 phase 4 — types unsubscribe.
+export type EmailUnsubscribeType = 'ALL' | 'RFQ_NOTIFICATIONS' | 'TRANSACTIONAL';
+
+export interface EmailUnsubscribeItem {
+  id: string;
+  email: string;
+  unsubscribeType: EmailUnsubscribeType;
+  userId: string | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface UnsubscribeListResponse {
+  data: EmailUnsubscribeItem[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface ListUnsubscribesParams {
+  page?: number;
+  limit?: number;
+  type?: EmailUnsubscribeType;
+  email?: string;
+}
