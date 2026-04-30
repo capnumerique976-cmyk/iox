@@ -884,6 +884,9 @@ function BatchesSection({ offerId, canEdit }: BatchesSectionProps) {
     exportEligible: true,
     notes: '',
   });
+  // MP-OFFER-EDIT-3 — édition inline d'un lien batch existant.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ quantityAvailable: '', notes: '' });
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -944,6 +947,47 @@ function BatchesSection({ offerId, canEdit }: BatchesSectionProps) {
     }
   };
 
+  // MP-OFFER-EDIT-3 — édition inline qty + notes.
+  const onStartEdit = (link: MarketplaceOfferBatchLink) => {
+    setEditingId(link.id);
+    setEditForm({
+      quantityAvailable: String(link.quantityAvailable ?? ''),
+      notes: link.notes ?? '',
+    });
+  };
+
+  const onCancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ quantityAvailable: '', notes: '' });
+  };
+
+  const onSaveEdit = async (linkId: string) => {
+    const qty = Number(editForm.quantityAvailable);
+    if (Number.isNaN(qty) || qty < 0) {
+      setErr('Quantité invalide');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const token = authStorage.getAccessToken() ?? '';
+      await marketplaceOffersApi.updateBatch(
+        linkId,
+        {
+          quantityAvailable: qty,
+          notes: editForm.notes.trim() || undefined,
+        },
+        token,
+      );
+      setEditingId(null);
+      await reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Échec mise à jour');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onToggleExportEligible = async (link: MarketplaceOfferBatchLink) => {
     setBusy(true);
     try {
@@ -986,50 +1030,114 @@ function BatchesSection({ offerId, canEdit }: BatchesSectionProps) {
               </tr>
             </thead>
             <tbody>
-              {items.map((it) => (
-                <tr key={it.id} data-testid={`batch-row-${it.id}`}>
-                  <td className="px-3 py-2">
-                    <div className="font-mono text-xs text-gray-900">
-                      {it.productBatch?.code ?? it.productBatchId}
-                    </div>
-                    {it.productBatch?.unit && (
-                      <div className="text-[11px] text-gray-500">unité : {it.productBatch.unit}</div>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 tabular-nums text-sm text-gray-800">
-                    {fmtNum(it.quantityAvailable)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => onToggleExportEligible(it)}
-                      disabled={!canEdit || busy}
-                      data-testid={`btn-toggle-export-${it.id}`}
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        it.exportEligible
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-gray-100 text-gray-700'
-                      } ${!canEdit ? 'cursor-default opacity-80' : 'hover:opacity-80'}`}
-                    >
-                      {it.exportEligible ? 'Oui' : 'Non'}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-gray-600">{it.notes ?? '—'}</td>
-                  {canEdit && (
-                    <td className="px-3 py-2 text-right">
+              {items.map((it) => {
+                const isEditing = editingId === it.id;
+                return (
+                  <tr key={it.id} data-testid={`batch-row-${it.id}`}>
+                    <td className="px-3 py-2">
+                      <div className="font-mono text-xs text-gray-900">
+                        {it.productBatch?.code ?? it.productBatchId}
+                      </div>
+                      {it.productBatch?.unit && (
+                        <div className="text-[11px] text-gray-500">unité : {it.productBatch.unit}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 tabular-nums text-sm text-gray-800">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          value={editForm.quantityAvailable}
+                          onChange={(e) =>
+                            setEditForm((f) => ({ ...f, quantityAvailable: e.target.value }))
+                          }
+                          className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
+                          data-testid={`field-edit-qty-${it.id}`}
+                        />
+                      ) : (
+                        fmtNum(it.quantityAvailable)
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
                       <button
                         type="button"
-                        onClick={() => onDetach(it.id)}
-                        disabled={busy}
-                        data-testid={`btn-detach-${it.id}`}
-                        className="text-xs text-red-700 hover:text-red-800 disabled:opacity-50"
+                        onClick={() => onToggleExportEligible(it)}
+                        disabled={!canEdit || busy || isEditing}
+                        data-testid={`btn-toggle-export-${it.id}`}
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          it.exportEligible
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-gray-100 text-gray-700'
+                        } ${!canEdit || isEditing ? 'cursor-default opacity-80' : 'hover:opacity-80'}`}
                       >
-                        Détacher
+                        {it.exportEligible ? 'Oui' : 'Non'}
                       </button>
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="px-3 py-2 text-xs text-gray-600">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editForm.notes}
+                          onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                          className="w-40 rounded border border-gray-300 px-2 py-1 text-xs"
+                          placeholder="optionnel"
+                          data-testid={`field-edit-notes-${it.id}`}
+                        />
+                      ) : (
+                        it.notes ?? '—'
+                      )}
+                    </td>
+                    {canEdit && (
+                      <td className="px-3 py-2 text-right">
+                        {isEditing ? (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onSaveEdit(it.id)}
+                              disabled={busy}
+                              data-testid={`btn-save-edit-${it.id}`}
+                              className="text-xs font-medium text-emerald-700 hover:text-emerald-800 disabled:opacity-50"
+                            >
+                              Enregistrer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={onCancelEdit}
+                              disabled={busy}
+                              data-testid={`btn-cancel-edit-${it.id}`}
+                              className="text-xs text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onStartEdit(it)}
+                              disabled={busy}
+                              data-testid={`btn-edit-${it.id}`}
+                              className="text-xs text-blue-700 hover:text-blue-800 disabled:opacity-50"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDetach(it.id)}
+                              disabled={busy}
+                              data-testid={`btn-detach-${it.id}`}
+                              className="text-xs text-red-700 hover:text-red-800 disabled:opacity-50"
+                            >
+                              Détacher
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
