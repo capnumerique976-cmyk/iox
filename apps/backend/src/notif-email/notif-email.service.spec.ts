@@ -323,7 +323,12 @@ describe('NotifEmailService', () => {
 describe('NotifEmailService.listLogs', () => {
   let service: NotifEmailService;
   let prisma: {
-    emailLog: { count: jest.Mock; findMany: jest.Mock; create: jest.Mock };
+    emailLog: {
+      count: jest.Mock;
+      findMany: jest.Mock;
+      findUnique: jest.Mock;
+      create: jest.Mock;
+    };
   };
 
   const makeRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -348,6 +353,7 @@ describe('NotifEmailService.listLogs', () => {
       emailLog: {
         count: jest.fn(),
         findMany: jest.fn(),
+        findUnique: jest.fn(),
         create: jest.fn(),
       },
     };
@@ -425,5 +431,20 @@ describe('NotifEmailService.listLogs', () => {
     prisma.emailLog.findMany.mockResolvedValue([]);
     const res = await service.listLogs({ limit: 20 });
     expect(res.meta.totalPages).toBe(3);
+  });
+
+  // MP-NOTIF-3 phase 3 — getLogById
+  it('getLogById retourne EmailLogItem normalisé (createdAt ISO)', async () => {
+    prisma.emailLog.findUnique.mockResolvedValue(makeRow({ id: 'log-42' }));
+    const res = await service.getLogById('log-42');
+    expect(res.id).toBe('log-42');
+    expect(res.createdAt).toBe('2026-04-25T12:00:00.000Z');
+    expect(res.transport).toBe('mock');
+    expect(prisma.emailLog.findUnique).toHaveBeenCalledWith({ where: { id: 'log-42' } });
+  });
+
+  it('getLogById throws NotFoundException si introuvable', async () => {
+    prisma.emailLog.findUnique.mockResolvedValue(null);
+    await expect(service.getLogById('absent')).rejects.toThrow(/introuvable/i);
   });
 });

@@ -13,7 +13,7 @@
 // Toutes les erreurs métier sont retournées en `SendEmailResult` — le
 // service NE THROW PAS pour ne pas casser les services métier.
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailLogStatus, EmailUnsubscribeType, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
@@ -24,6 +24,7 @@ import type {
   NotifEmailTransportName,
   ListLogsQuery,
   ListLogsResult,
+  EmailLogItem,
 } from './notif-email.types';
 import { NotifEmailError } from './notif-email.types';
 import { NotifEmailTransportFactory } from './transport.factory';
@@ -182,6 +183,31 @@ export class NotifEmailService {
    * Cas typique : DB indisponible ; on préfère perdre l'audit trail
    * plutôt que faire échouer un workflow métier critique.
    */
+  /**
+   * MP-NOTIF-3 phase 3 — Récupère un EmailLog par id (vue admin détail).
+   * Lecture seule. Throw NotFoundException si introuvable.
+   */
+  async getLogById(id: string): Promise<EmailLogItem> {
+    const r = await this.prisma.emailLog.findUnique({ where: { id } });
+    if (!r) {
+      throw new NotFoundException('EmailLog introuvable');
+    }
+    return {
+      id: r.id,
+      transport: r.transport,
+      templateId: r.templateId,
+      recipientEmail: r.recipientEmail,
+      recipientUserId: r.recipientUserId ?? null,
+      subject: r.subject,
+      status: r.status as 'SENT' | 'FAILED' | 'SKIPPED',
+      errorCode: r.errorCode ?? null,
+      errorMessage: r.errorMessage ?? null,
+      providerMessageId: r.providerMessageId ?? null,
+      metadataJson: r.metadataJson ?? null,
+      createdAt: r.createdAt.toISOString(),
+    };
+  }
+
   /**
    * MP-NOTIF-3 — Liste paginée + filtrée des `email_logs` (vue admin).
    * Lecture seule, pas de side effect. Aucune masking PII car la table
