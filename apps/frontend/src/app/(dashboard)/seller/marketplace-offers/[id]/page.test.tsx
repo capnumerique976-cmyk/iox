@@ -432,3 +432,89 @@ describe('SellerMarketplaceOfferDetailPage (MP-OFFER-EDIT-2)', () => {
     confirmSpy.mockRestore();
   });
 });
+
+// MP-OFFER-EDIT-3 — édition inline batch (qty + notes).
+describe('SellerMarketplaceOfferDetailPage — inline batch edit (MP-OFFER-EDIT-3)', () => {
+  const sampleLink = {
+    id: 'l1',
+    marketplaceOfferId: 'o1',
+    productBatchId: 'b1',
+    quantityAvailable: '50',
+    quantityReserved: '0',
+    exportEligible: true,
+    notes: 'Lot premium',
+    createdAt: '2026-04-20T00:00:00Z',
+    updatedAt: '2026-04-20T00:00:00Z',
+    productBatch: {
+      id: 'b1',
+      code: 'PB-2026-0001',
+      quantity: '100',
+      unit: 'kg',
+      productionDate: '2026-03-01T00:00:00Z',
+      expiryDate: null,
+      status: 'CREATED',
+    },
+  };
+
+  beforeEach(() => {
+    getByIdMock.mockReset();
+    listBatchesMock.mockReset();
+    updateBatchMock.mockReset();
+    listBatchesMock.mockResolvedValueOnce([sampleLink]).mockResolvedValueOnce([
+      { ...sampleLink, quantityAvailable: '75', notes: 'Mise à jour' },
+    ]);
+  });
+  afterEach(() => vi.clearAllMocks());
+
+  it('clic sur Modifier affiche les inputs qty + notes', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    fireEvent.click(await screen.findByTestId('btn-edit-l1'));
+    expect(screen.getByTestId('field-edit-qty-l1')).toBeInTheDocument();
+    expect(screen.getByTestId('field-edit-notes-l1')).toBeInTheDocument();
+  });
+
+  it('Enregistrer envoie quantityAvailable + notes via updateBatch', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    updateBatchMock.mockResolvedValue({ ...sampleLink, quantityAvailable: '75' });
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    fireEvent.click(await screen.findByTestId('btn-edit-l1'));
+    fireEvent.change(screen.getByTestId('field-edit-qty-l1'), { target: { value: '75' } });
+    fireEvent.change(screen.getByTestId('field-edit-notes-l1'), {
+      target: { value: 'Mise à jour' },
+    });
+    fireEvent.click(screen.getByTestId('btn-save-edit-l1'));
+    await waitFor(() => expect(updateBatchMock).toHaveBeenCalled());
+    expect(updateBatchMock.mock.calls[0][1]).toMatchObject({
+      quantityAvailable: 75,
+      notes: 'Mise à jour',
+    });
+  });
+
+  it('Annuler restaure le mode lecture sans appeler updateBatch', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    fireEvent.click(await screen.findByTestId('btn-edit-l1'));
+    fireEvent.change(screen.getByTestId('field-edit-qty-l1'), { target: { value: '999' } });
+    fireEvent.click(screen.getByTestId('btn-cancel-edit-l1'));
+    expect(updateBatchMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('field-edit-qty-l1')).not.toBeInTheDocument();
+  });
+
+  it('quantité négative empêche le save', async () => {
+    getByIdMock.mockResolvedValue(FULL_OFFER);
+    render(<SellerMarketplaceOfferDetailPage />);
+    await waitFor(() => expect(screen.getAllByText(/offre principale/)[0]).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('btn-edit-offer'));
+    fireEvent.click(await screen.findByTestId('btn-edit-l1'));
+    fireEvent.change(screen.getByTestId('field-edit-qty-l1'), { target: { value: '-5' } });
+    fireEvent.click(screen.getByTestId('btn-save-edit-l1'));
+    expect(updateBatchMock).not.toHaveBeenCalled();
+  });
+});
