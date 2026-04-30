@@ -89,3 +89,17 @@ export interface EmailLogsStats {
 export const notifEmailStatsApi = {
   getStats: (token: string) => api.get<EmailLogsStats>('/notif-email/logs-stats', token),
 };
+
+// BUYER-DASHBOARD-4 — préférences notifs (user connecté).
+export interface MyPreferenceItem {
+  unsubscribeType: EmailUnsubscribeType;
+  createdAt: string;
+}
+
+export const myNotifPreferencesApi = {
+  list: (token: string) => api.get<MyPreferenceItem[]>('/notif-email/me/preferences', token),
+  add: (type: EmailUnsubscribeType, token: string) =>
+    api.post<{ id: string }>('/notif-email/me/preferences', { type }, token),
+  remove: (type: EmailUnsubscribeType, token: string) =>
+    api.delete<void>(`/notif-email/me/preferences/${type}`, token),
+};

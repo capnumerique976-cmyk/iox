@@ -18,6 +18,7 @@ import { SmtpStreamEmailTransport } from './transports/smtp-stream.transport';
 import { ResendEmailTransport } from './transports/resend.transport';
 import { UnsubscribeService } from './unsubscribe.service';
 import { UnsubscribeController } from './unsubscribe.controller';
+import { NotifEmailMePreferencesController } from './me-preferences.controller';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { UnsubscribeController } from './unsubscribe.controller';
       useFactory: () => ({}),
     }),
   ],
-  controllers: [UnsubscribeController, NotifEmailController],
+  controllers: [UnsubscribeController, NotifEmailController, NotifEmailMePreferencesController],
   providers: [
     MockEmailTransport,
     SmtpStreamEmailTransport,

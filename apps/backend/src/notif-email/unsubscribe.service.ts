@@ -135,6 +135,41 @@ export class UnsubscribeService {
    * (vue admin). Lecture seule, restreinte côté controller aux rôles
    * ADMIN/COORDINATOR.
    */
+  /**
+   * BUYER-DASHBOARD-4 — Liste les unsubscribes actifs pour un email
+   * (user connecté, vue "mes préférences"). Pas de token requis : l'auth
+   * vient du JWT côté controller.
+   */
+  async listForEmail(email: string): Promise<
+    Array<{ unsubscribeType: EmailUnsubscribeType; createdAt: string }>
+  > {
+    const normalized = email.toLowerCase().trim();
+    const rows = await this.prisma.emailUnsubscribe.findMany({
+      where: { email: normalized },
+      orderBy: { createdAt: 'desc' },
+      select: { unsubscribeType: true, createdAt: true },
+    });
+    return rows.map((r) => ({
+      unsubscribeType: r.unsubscribeType,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+
+  /**
+   * BUYER-DASHBOARD-4 — Re-souscrit (DELETE) une entrée
+   * (email + type) pour un user connecté. Idempotent : si pas trouvé,
+   * silent.
+   */
+  async deleteForEmail(email: string, type: EmailUnsubscribeType, actorId?: string): Promise<void> {
+    const normalized = email.toLowerCase().trim();
+    await this.prisma.emailUnsubscribe.deleteMany({
+      where: { email: normalized, unsubscribeType: type },
+    });
+    this.logger.log(
+      `unsubscribe deleted (resubscribe) email=${normalized} type=${type} actorId=${actorId ?? 'unknown'}`,
+    );
+  }
+
   async listUnsubscribes(query: {
     page?: number;
     limit?: number;
