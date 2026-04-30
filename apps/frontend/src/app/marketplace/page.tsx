@@ -41,14 +41,13 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         <div className="relative z-10 max-w-2xl">
           <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
             <Sparkles className="h-3 w-3 text-[#00D4FF]" aria-hidden />
-            Produits de Mayotte sélectionnés
+            {t('heroBadge')}
           </div>
           <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
             {t('title')}
           </h1>
           <p className="mt-3 max-w-xl text-sm text-white/60 sm:text-base">
-            Découvrez les offres d&apos;export des entreprises engagées dans le programme MCH —
-            traçabilité garantie, conformité validée.
+            {t('heroDescription')}
           </p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/85 backdrop-blur-sm">
             <Package className="h-4 w-4 text-[#00F5A0]" aria-hidden />
@@ -71,7 +70,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
         <section>
           {!res ? (
             <div className="iox-glass rounded-xl border border-[#ff4757]/40 bg-[#ff4757]/10 p-4 text-sm text-[#ffb4bb]">
-              Le catalogue n’a pas pu être chargé. Rafraîchissez la page dans un instant ; si le problème persiste, nos équipes sont déjà alertées.
+              {t('unavailable')}
             </div>
           ) : res.data.length === 0 ? (
             <div className="iox-glass rounded-2xl p-12 text-center">
