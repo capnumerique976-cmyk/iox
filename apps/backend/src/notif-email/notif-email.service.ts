@@ -430,7 +430,8 @@ export class NotifEmailService {
     const replyTo = input.replyTo ?? this.config.get<string>('NOTIF_EMAIL_REPLY_TO') ?? undefined;
 
     if (input.templateId) {
-      const template = getTemplate(input.templateId);
+      // I18N-4 — résolution template par locale (fallback FR si variante absente).
+      const template = getTemplate(input.templateId, input.locale);
       if (!template) {
         throw new NotifEmailError(
           'TEMPLATE_NOT_FOUND',
