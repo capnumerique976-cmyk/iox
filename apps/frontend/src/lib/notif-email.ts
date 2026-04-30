@@ -78,3 +78,14 @@ export interface ListUnsubscribesParams {
   type?: EmailUnsubscribeType;
   email?: string;
 }
+
+// MP-NOTIF-3 phase 5 — types stats EmailLog.
+export interface EmailLogsStats {
+  byStatus: Array<{ status: 'SENT' | 'FAILED' | 'SKIPPED'; count: number }>;
+  byTemplate: Array<{ templateId: string; count: number }>;
+  byDay: Array<{ day: string; sent: number; failed: number; skipped: number }>;
+}
+
+export const notifEmailStatsApi = {
+  getStats: (token: string) => api.get<EmailLogsStats>('/notif-email/logs-stats', token),
+};

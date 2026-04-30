@@ -33,6 +33,17 @@ export class NotifEmailController {
     return this.service.listLogs(query);
   }
 
+  // MP-NOTIF-3 phase 5 — Stats agrégées EmailLog (admin).
+  // Déclaré AVANT `logs/:id` pour éviter shadow par ParseUUIDPipe sur 'logs-stats'.
+  @Get('logs-stats')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
+  @ApiOperation({
+    summary: 'Stats agrégées EmailLog (count par status / top templates / 30 jours)',
+  })
+  getLogsStats() {
+    return this.service.getLogsStats();
+  }
+
   @Get('logs/:id')
   @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
   @ApiOperation({ summary: "Détail d'un EmailLog par id (vue admin)" })

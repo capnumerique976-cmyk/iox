@@ -327,8 +327,10 @@ describe('NotifEmailService.listLogs', () => {
       count: jest.Mock;
       findMany: jest.Mock;
       findUnique: jest.Mock;
+      groupBy: jest.Mock;
       create: jest.Mock;
     };
+    $queryRaw: jest.Mock;
   };
 
   const makeRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -354,8 +356,10 @@ describe('NotifEmailService.listLogs', () => {
         count: jest.fn(),
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        groupBy: jest.fn(),
         create: jest.fn(),
       },
+      $queryRaw: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -446,5 +450,57 @@ describe('NotifEmailService.listLogs', () => {
   it('getLogById throws NotFoundException si introuvable', async () => {
     prisma.emailLog.findUnique.mockResolvedValue(null);
     await expect(service.getLogById('absent')).rejects.toThrow(/introuvable/i);
+  });
+
+  // MP-NOTIF-3 phase 5 — getLogsStats
+  describe('getLogsStats', () => {
+    it('compose byStatus + byTemplate + byDay', async () => {
+      prisma.emailLog.groupBy
+        .mockResolvedValueOnce([
+          { status: 'SENT', _count: { _all: 10 } },
+          { status: 'FAILED', _count: { _all: 2 } },
+        ])
+        .mockResolvedValueOnce([
+          { templateId: 'rfq-message-created', _count: { _all: 7 } },
+          { templateId: 'rfq-qualified', _count: { _all: 3 } },
+        ]);
+      prisma.$queryRaw.mockResolvedValue([
+        { day: new Date('2026-04-25T00:00:00Z'), status: 'SENT', count: BigInt(5) },
+        { day: new Date('2026-04-25T00:00:00Z'), status: 'FAILED', count: BigInt(1) },
+        { day: new Date('2026-04-26T00:00:00Z'), status: 'SENT', count: BigInt(5) },
+      ]);
+
+      const res = await service.getLogsStats();
+      expect(res.byStatus).toEqual([
+        { status: 'SENT', count: 10 },
+        { status: 'FAILED', count: 2 },
+      ]);
+      expect(res.byTemplate).toEqual([
+        { templateId: 'rfq-message-created', count: 7 },
+        { templateId: 'rfq-qualified', count: 3 },
+      ]);
+      expect(res.byDay).toEqual([
+        { day: '2026-04-25', sent: 5, failed: 1, skipped: 0 },
+        { day: '2026-04-26', sent: 5, failed: 0, skipped: 0 },
+      ]);
+    });
+
+    it('byTemplate top 10 (orderBy desc + take 10)', async () => {
+      prisma.emailLog.groupBy.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      prisma.$queryRaw.mockResolvedValue([]);
+      await service.getLogsStats();
+      const args = prisma.emailLog.groupBy.mock.calls[1][0];
+      expect(args.take).toBe(10);
+      expect(args.orderBy).toEqual({ _count: { templateId: 'desc' } });
+    });
+
+    it('vide → byStatus=[], byTemplate=[], byDay=[]', async () => {
+      prisma.emailLog.groupBy.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      prisma.$queryRaw.mockResolvedValue([]);
+      const res = await service.getLogsStats();
+      expect(res.byStatus).toEqual([]);
+      expect(res.byTemplate).toEqual([]);
+      expect(res.byDay).toEqual([]);
+    });
   });
 });

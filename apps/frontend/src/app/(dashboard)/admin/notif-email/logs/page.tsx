@@ -86,6 +86,14 @@ export default function AdminNotifEmailLogsPage() {
         icon={<Mail className="h-5 w-5" aria-hidden />}
         title="Journal des emails transactionnels"
         subtitle={`${meta.total} entrée${meta.total > 1 ? 's' : ''}`}
+        actions={
+          <Link
+            href="/admin/notif-email/stats"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            📊 Statistiques
+          </Link>
+        }
       />
 
       {/* Filtres */}
