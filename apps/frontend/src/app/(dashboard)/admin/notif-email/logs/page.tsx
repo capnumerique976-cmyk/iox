@@ -8,6 +8,7 @@
 // contrôle d'accès au backend (un user non-autorisé verra une 403).
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Mail, AlertTriangle, CheckCircle2, MinusCircle } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 import { notifEmailApi, EmailLogItem, EmailLogListResponse } from '@/lib/notif-email';
@@ -180,6 +181,7 @@ export default function AdminNotifEmailLogsPage() {
                 <th>Transport</th>
                 <th>Créé</th>
                 <th>Erreur</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -208,6 +210,15 @@ export default function AdminNotifEmailLogsPage() {
                     ) : (
                       '—'
                     )}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <Link
+                      href={`/admin/notif-email/logs/${it.id}`}
+                      data-testid={`detail-${it.id}`}
+                      className="text-xs text-blue-700 hover:text-blue-800"
+                    >
+                      Détail →
+                    </Link>
                   </td>
                 </tr>
               ))}
