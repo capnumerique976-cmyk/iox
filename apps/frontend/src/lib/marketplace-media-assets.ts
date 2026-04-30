@@ -254,6 +254,108 @@ export const marketplaceMediaAssetsApi = {
     return body.data;
   },
 
+  // MP-MEDIA-1 LOT 3 — List moderation : filtres status array + relatedType + mediaType.
+  async listForModeration(
+    params: {
+      moderationStatus?: MediaModerationStatus | MediaModerationStatus[];
+      relatedType?: MarketplaceRelatedEntityType;
+      mediaType?: MediaAssetType;
+      page?: number;
+      limit?: number;
+    },
+    token: string,
+  ): Promise<{
+    data: MediaAsset[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
+    const qs = new URLSearchParams();
+    if (params.moderationStatus) {
+      const v = Array.isArray(params.moderationStatus)
+        ? params.moderationStatus.join(',')
+        : params.moderationStatus;
+      qs.set('moderationStatus', v);
+    }
+    if (params.relatedType) qs.set('relatedType', params.relatedType);
+    if (params.mediaType) qs.set('mediaType', params.mediaType);
+    qs.set('page', String(params.page ?? 1));
+    qs.set('limit', String(params.limit ?? 20));
+
+    const response = await fetch(`${getApiBase()}/marketplace/media-assets?${qs.toString()}`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    const text = await response.text();
+    const parsed = text.length ? JSON.parse(text) : {};
+    if (!response.ok) {
+      const err = parsed as { error?: { code?: string; message?: string } };
+      throw new ApiError(
+        err.error?.code ?? 'UNKNOWN_ERROR',
+        err.error?.message ?? 'Liste modération indisponible',
+        undefined,
+        undefined,
+        response.status,
+      );
+    }
+    const body = parsed as {
+      data?: MediaAsset[];
+      meta?: { total: number; page: number; limit: number; totalPages: number };
+    };
+    if (!body?.data || !body?.meta) {
+      throw new ApiError('INVALID_RESPONSE', 'Réponse modération invalide.');
+    }
+    return { data: body.data, meta: body.meta };
+  },
+
+  // MP-MEDIA-1 LOT 3 — Approve modération.
+  async approve(id: string, token: string): Promise<MediaAsset> {
+    const response = await fetch(`${getApiBase()}/marketplace/media-assets/${id}/approve`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    const text = await response.text();
+    const parsed = text.length ? JSON.parse(text) : {};
+    if (!response.ok) {
+      const err = parsed as { error?: { code?: string; message?: string } };
+      throw new ApiError(
+        err.error?.code ?? 'UNKNOWN_ERROR',
+        err.error?.message ?? 'Approbation échouée',
+        undefined,
+        undefined,
+        response.status,
+      );
+    }
+    const body = parsed as { data?: MediaAsset };
+    if (!body?.data) throw new ApiError('INVALID_RESPONSE', 'Réponse approve invalide.');
+    return body.data;
+  },
+
+  // MP-MEDIA-1 LOT 3 — Reject modération avec motif obligatoire.
+  async reject(id: string, dto: { reason: string }, token: string): Promise<MediaAsset> {
+    const response = await fetch(`${getApiBase()}/marketplace/media-assets/${id}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(dto),
+    });
+    const text = await response.text();
+    const parsed = text.length ? JSON.parse(text) : {};
+    if (!response.ok) {
+      const err = parsed as { error?: { code?: string; message?: string } };
+      throw new ApiError(
+        err.error?.code ?? 'UNKNOWN_ERROR',
+        err.error?.message ?? 'Rejet échoué',
+        undefined,
+        undefined,
+        response.status,
+      );
+    }
+    const body = parsed as { data?: MediaAsset };
+    if (!body?.data) throw new ApiError('INVALID_RESPONSE', 'Réponse reject invalide.');
+    return body.data;
+  },
+
   // MP-MEDIA-1 LOT 1 — Suppression d'un média.
   async delete(id: string, token: string): Promise<void> {
     const response = await fetch(`${getApiBase()}/marketplace/media-assets/${id}`, {
