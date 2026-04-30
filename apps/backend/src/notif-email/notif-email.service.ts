@@ -184,6 +184,72 @@ export class NotifEmailService {
    * plutôt que faire échouer un workflow métier critique.
    */
   /**
+   * MP-NOTIF-3 phase 6 — Export CSV des EmailLogs (vue admin).
+   *
+   * Filtres identiques à `listLogs`. Pas de pagination (cap dur à 10000
+   * pour éviter timeouts/OOM). Retourne string CSV (header + rows).
+   * Cellules échappées : double-quote autour, `"` interne doublé.
+   */
+  async exportLogsCsv(query: ListLogsQuery): Promise<string> {
+    const where: Prisma.EmailLogWhereInput = {};
+    if (query.status) where.status = query.status as EmailLogStatus;
+    if (query.templateId) where.templateId = query.templateId;
+    if (query.recipientEmail) {
+      where.recipientEmail = { contains: query.recipientEmail, mode: 'insensitive' };
+    }
+    if (query.createdAtAfter) {
+      const after = new Date(query.createdAtAfter);
+      if (!Number.isNaN(after.getTime())) where.createdAt = { gte: after };
+    }
+    const rows = await this.prisma.emailLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 10000, // hard cap anti OOM
+    });
+
+    const headers = [
+      'id',
+      'createdAt',
+      'transport',
+      'templateId',
+      'status',
+      'recipientEmail',
+      'subject',
+      'errorCode',
+      'errorMessage',
+      'providerMessageId',
+    ];
+    const escape = (v: unknown): string => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+    const lines = [headers.join(',')];
+    for (const r of rows) {
+      lines.push(
+        [
+          r.id,
+          r.createdAt.toISOString(),
+          r.transport,
+          r.templateId,
+          r.status,
+          r.recipientEmail,
+          r.subject,
+          r.errorCode ?? '',
+          r.errorMessage ?? '',
+          r.providerMessageId ?? '',
+        ]
+          .map(escape)
+          .join(','),
+      );
+    }
+    return lines.join('\n');
+  }
+
+  /**
    * MP-NOTIF-3 phase 5 — Stats agrégées EmailLog (vue admin).
    *
    * Retourne :

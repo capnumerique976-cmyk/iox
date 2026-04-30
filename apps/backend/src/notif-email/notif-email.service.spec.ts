@@ -503,4 +503,62 @@ describe('NotifEmailService.listLogs', () => {
       expect(res.byDay).toEqual([]);
     });
   });
+
+  // MP-NOTIF-3 phase 6 — exportLogsCsv
+  describe('exportLogsCsv', () => {
+    it('retourne header + 0 ligne quand findMany vide', async () => {
+      prisma.emailLog.findMany.mockResolvedValue([]);
+      const csv = await service.exportLogsCsv({});
+      expect(csv).toBe(
+        'id,createdAt,transport,templateId,status,recipientEmail,subject,errorCode,errorMessage,providerMessageId',
+      );
+    });
+
+    it('échappe les cellules avec virgule, double-quote, newline', async () => {
+      prisma.emailLog.findMany.mockResolvedValue([
+        {
+          id: 'log-1',
+          createdAt: new Date('2026-04-25T12:00:00Z'),
+          transport: 'mock',
+          templateId: 'rfq-message-created',
+          status: 'SENT',
+          recipientEmail: 'buyer@ex.com',
+          subject: 'Sujet "spécial", avec virgule',
+          errorCode: null,
+          errorMessage: null,
+          providerMessageId: 'mid-1',
+          recipientUserId: null,
+          metadataJson: null,
+        },
+      ]);
+      const csv = await service.exportLogsCsv({});
+      const lines = csv.split('\n');
+      expect(lines).toHaveLength(2);
+      expect(lines[1]).toContain('"Sujet ""spécial"", avec virgule"');
+      expect(lines[1]).toContain('log-1');
+      expect(lines[1]).toContain('2026-04-25T12:00:00.000Z');
+    });
+
+    it('cap 10000 dans take', async () => {
+      prisma.emailLog.findMany.mockResolvedValue([]);
+      await service.exportLogsCsv({});
+      const args = prisma.emailLog.findMany.mock.calls[0][0];
+      expect(args.take).toBe(10000);
+    });
+
+    it('applique les filtres status + templateId + recipientEmail + createdAtAfter', async () => {
+      prisma.emailLog.findMany.mockResolvedValue([]);
+      await service.exportLogsCsv({
+        status: 'FAILED',
+        templateId: 'rfq-quoted',
+        recipientEmail: 'X@',
+        createdAtAfter: '2026-04-01T00:00:00Z',
+      });
+      const args = prisma.emailLog.findMany.mock.calls[0][0];
+      expect(args.where.status).toBe('FAILED');
+      expect(args.where.templateId).toBe('rfq-quoted');
+      expect(args.where.recipientEmail).toEqual({ contains: 'X@', mode: 'insensitive' });
+      expect(args.where.createdAt.gte).toBeInstanceOf(Date);
+    });
+  });
 });

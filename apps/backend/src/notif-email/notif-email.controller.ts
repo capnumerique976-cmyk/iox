@@ -3,7 +3,17 @@
 // Lecture seule, restreint aux rôles ADMIN/COORDINATOR. Pas d'endpoint
 // pour resend/retry ni pour purger : audit trail immuable.
 
-import { Controller, Get, Param, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserRole } from '@iox/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,6 +41,18 @@ export class NotifEmailController {
   })
   listLogs(@Query() query: ListEmailLogsQueryDto) {
     return this.service.listLogs(query);
+  }
+
+  // MP-NOTIF-3 phase 6 — Export CSV des EmailLogs (admin).
+  // Déclaré AVANT `logs/:id` pour éviter shadow par ParseUUIDPipe.
+  @Get('logs-export.csv')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="email-logs.csv"')
+  @ApiOperation({ summary: 'Export CSV des EmailLogs (filtres identiques à /logs, cap 10000)' })
+  async exportLogsCsv(@Query() query: ListEmailLogsQueryDto, @Res() res: Response) {
+    const csv = await this.service.exportLogsCsv(query);
+    res.send(csv);
   }
 
   // MP-NOTIF-3 phase 5 — Stats agrégées EmailLog (admin).
