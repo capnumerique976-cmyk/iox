@@ -1,4 +1,5 @@
 import { Sparkles, Package } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { fetchCatalog } from '@/lib/marketplace/api';
 import { ProductCard } from '@/components/marketplace/ProductCard';
 import { CatalogFilters } from '@/components/marketplace/CatalogFilters';
@@ -18,8 +19,12 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   }
   if (!params.has('limit')) params.set('limit', '24');
 
+  // I18N-1 phase 1 — traductions UI catalogue (FR/EN).
+  const t = await getTranslations('marketplace.catalog');
+  const tCommon = await getTranslations('common.states');
+
   const res = await fetchCatalog(params).catch(() => null);
-  const totalLabel = res ? `${res.meta.total} offre${res.meta.total > 1 ? 's' : ''}` : 'Chargement…';
+  const totalLabel = res ? t('subtitle', { count: res.meta.total }) : tCommon('loading');
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -39,7 +44,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
             Produits de Mayotte sélectionnés
           </div>
           <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-            Catalogue <span className="iox-text-gradient-neon">marketplace</span>
+            {t('title')}
           </h1>
           <p className="mt-3 max-w-xl text-sm text-white/60 sm:text-base">
             Découvrez les offres d&apos;export des entreprises engagées dans le programme MCH —
@@ -47,7 +52,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
           </p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/85 backdrop-blur-sm">
             <Package className="h-4 w-4 text-[#00F5A0]" aria-hidden />
-            {totalLabel} disponibles
+            {totalLabel}
           </div>
         </div>
       </section>
@@ -73,7 +78,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
                 <Package className="h-6 w-6 text-white/40" aria-hidden />
               </div>
-              <h2 className="text-sm font-semibold text-white">Aucune offre correspondante</h2>
+              <h2 className="text-sm font-semibold text-white">{t('empty')}</h2>
               <p className="mt-1 text-sm text-white/50">
                 Essayez d&apos;élargir vos filtres pour découvrir plus de produits.
               </p>
