@@ -7,7 +7,9 @@
       "edit": "Edit",
       "submit": "Submit",
       "back": "Back",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "close": "Close",
+      "search": "Search"
     },
     "states": {
       "loading": "Loading…",
@@ -20,16 +22,34 @@
       "en": "English"
     }
   },
+  "nav": {
+    "catalog": "Catalog",
+    "sellers": "Producers",
+    "favorites": "Favorites",
+    "proArea": "Pro area",
+    "marketplaceBadge": "B2B Marketplace",
+    "homeAlt": "IOX Marketplace — Home"
+  },
   "marketplace": {
     "catalog": {
       "title": "Marketplace catalog",
       "subtitle": "{count, plural, =0 {No published offers} one {1 published offer} other {# published offers}}",
-      "empty": "No published offers yet.",
+      "empty": "No offers match your filters.",
+      "unavailable": "The catalog could not be loaded. Please refresh in a moment — our team is already alerted if the issue persists.",
+      "heroBadge": "Curated products from Mayotte",
+      "heroTitleHighlight": "marketplace",
+      "heroDescription": "Discover export offers from companies engaged in the MCH program — guaranteed traceability, validated compliance.",
+      "heroAvailable": "{count, plural, =0 {available} other {available}}",
       "filters": {
         "search": "Search",
+        "searchPlaceholder": "Product name…",
         "category": "Category",
         "country": "Country of origin",
-        "reset": "Reset"
+        "reset": "Reset",
+        "all": "All",
+        "readiness": "Export readiness",
+        "priceMode": "Price mode",
+        "sort": "Sort"
       },
       "card": {
         "viewOffer": "View offer",
@@ -37,13 +57,48 @@
         "moq": "MOQ",
         "leadTime": "Lead time",
         "leadTimeDays": "{days, plural, one {1 day} other {# days}}",
-        "soldBy": "Sold by"
+        "soldBy": "Sold by",
+        "ask": "Request quote",
+        "loginRequired": "Login required to submit a quote request"
       },
       "priceMode": {
         "FIXED": "Fixed price",
         "QUOTE_ONLY": "Quote only",
         "FROM_PRICE": "Starting from"
+      },
+      "readinessLabels": {
+        "EXPORT_READY": "Export ready",
+        "EXPORT_READY_WITH_CONDITIONS": "Ready with conditions",
+        "INTERNAL_ONLY": "Local market only"
+      },
+      "sortLabels": {
+        "featured": "Featured",
+        "recent": "Most recent",
+        "nameAsc": "Name A→Z",
+        "priceAsc": "Price ascending",
+        "priceDesc": "Price descending"
+      }
+    },
+    "sellers": {
+      "title": "Our producers",
+      "empty": "No producer matches your filters.",
+      "unavailable": "Producer directory could not be loaded. Please refresh in a moment.",
+      "filters": {
+        "search": "Search",
+        "searchPlaceholder": "Name, city…",
+        "country": "Country",
+        "region": "Region",
+        "featuredOnly": "Featured only",
+        "sort": "Sort"
+      },
+      "sortLabels": {
+        "featured": "Featured first",
+        "recent": "Recent",
+        "nameAsc": "Name A→Z"
       }
     }
+  },
+  "footer": {
+    "tagline": "IOX — B2B Indian Ocean platform · traceability, compliance, market access."
   }
 }
