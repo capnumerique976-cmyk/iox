@@ -106,4 +106,22 @@ describe('CompaniesService', () => {
       await expect(service.deactivate('xxx', 'actor')).rejects.toThrow(NotFoundException);
     });
   });
+
+  // BUYER-DASHBOARD-2 — findMine
+  describe('findMine', () => {
+    it('retourne tableau vide si companyIds vide', async () => {
+      const res = await service.findMine([]);
+      expect(res).toEqual([]);
+      expect(prisma.company.findMany).not.toHaveBeenCalled();
+    });
+
+    it('retourne les companies dont user est membre, exclut deletedAt', async () => {
+      prisma.company.findMany.mockResolvedValue([mockCompany]);
+      const res = await service.findMine(['uuid-c1']);
+      expect(res).toEqual([mockCompany]);
+      const args = prisma.company.findMany.mock.calls[0][0];
+      expect(args.where).toEqual({ id: { in: ['uuid-c1'] }, deletedAt: null });
+      expect(args.orderBy).toEqual({ name: 'asc' });
+    });
+  });
 });

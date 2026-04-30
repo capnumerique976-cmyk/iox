@@ -42,6 +42,17 @@ export class CompaniesController {
     return this.service.findAll(query);
   }
 
+  /**
+   * BUYER-DASHBOARD-2 — Companies dont l'utilisateur courant est membre.
+   * Accessible à tous les rôles authentifiés (chacun voit ses propres
+   * companies). Pour un MARKETPLACE_BUYER, c'est sa company acheteuse.
+   */
+  @Get('mine')
+  @ApiOperation({ summary: "Mes entreprises (companies dont l'utilisateur est membre)" })
+  findMine(@CurrentUser() user: RequestUser) {
+    return this.service.findMine(user.companyIds ?? []);
+  }
+
   @Get(':id')
   @Roles(
     UserRole.ADMIN,
