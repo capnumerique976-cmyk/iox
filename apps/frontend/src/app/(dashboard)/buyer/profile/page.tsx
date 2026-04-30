@@ -1,14 +1,11 @@
 'use client';
 
 // BUYER-DASHBOARD-2 — Page profil buyer.
-//
-// Lecture seule (édition réservée admin pour l'instant). Affiche les
-// companies dont l'utilisateur est membre. Pour un MARKETPLACE_BUYER,
-// c'est typiquement 1 company acheteuse ; multi-companies possible
-// pour les ADMIN/COORDINATOR.
+// BUYER-DASHBOARD-3 — Bouton "Modifier" → /buyer/profile/edit?id=…
 
 import { useCallback, useEffect, useState } from 'react';
-import { Building2, Mail, MapPin, Phone, Globe } from 'lucide-react';
+import Link from 'next/link';
+import { Building2, Mail, MapPin, Phone, Globe, Pencil } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
 import { companiesApi, CompanySummary } from '@/lib/companies';
 import { PageHeader } from '@/components/ui/page-header';
@@ -100,13 +97,23 @@ export default function BuyerProfilePage() {
                     <h3 className="text-base font-semibold text-gray-900">{c.name}</h3>
                     <p className="text-xs font-mono text-gray-500">{c.code}</p>
                   </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs ${
-                      c.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    {c.isActive ? 'Active' : 'Inactive'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs ${
+                        c.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {c.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <Link
+                      href={`/buyer/profile/edit?id=${c.id}`}
+                      data-testid={`edit-company-${c.id}`}
+                      className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Modifier
+                    </Link>
+                  </div>
                 </div>
                 <dl className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                   {c.email && (
@@ -150,7 +157,8 @@ export default function BuyerProfilePage() {
           </ul>
         )}
         <p className="mt-4 text-xs text-gray-400">
-          Édition non disponible — contactez l&apos;administrateur IOX pour toute modification.
+          Modifiez les coordonnées et l&apos;adresse. Les types et statut active
+          sont gérés par l&apos;administrateur.
         </p>
       </section>
     </div>

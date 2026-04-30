@@ -124,4 +124,42 @@ describe('CompaniesService', () => {
       expect(args.orderBy).toEqual({ name: 'asc' });
     });
   });
+
+  // BUYER-DASHBOARD-3 — updateMine
+  describe('updateMine', () => {
+    it('rejette si id pas dans actorCompanyIds (Forbidden 403)', async () => {
+      await expect(
+        service.updateMine('autre-uuid', ['uuid-c1'], 'actor', { name: 'X' }),
+      ).rejects.toThrow(/rattachements/i);
+      expect(prisma.company.update).not.toHaveBeenCalled();
+    });
+
+    it('rejette si company introuvable (NotFoundException)', async () => {
+      prisma.company.findFirst.mockResolvedValue(null);
+      await expect(
+        service.updateMine('uuid-c1', ['uuid-c1'], 'actor', { name: 'X' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('met à jour les champs autorisés + audit COMPANY_UPDATED_SELF', async () => {
+      prisma.company.findFirst.mockResolvedValue(mockCompany);
+      prisma.company.update.mockResolvedValue({ ...mockCompany, name: 'Acme Updated' });
+      auditService.log.mockResolvedValue(undefined);
+
+      const res = await service.updateMine(
+        'uuid-c1',
+        ['uuid-c1'],
+        'actor',
+        { name: 'Acme Updated', phone: '+33 1 23 45 67 89' },
+      );
+      expect(res.name).toBe('Acme Updated');
+      const updateArgs = prisma.company.update.mock.calls[0][0];
+      expect(updateArgs.data.name).toBe('Acme Updated');
+      expect(updateArgs.data.phone).toBe('+33 1 23 45 67 89');
+      expect(updateArgs.data.updatedById).toBe('actor');
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'COMPANY_UPDATED_SELF' }),
+      );
+    });
+  });
 });

@@ -86,6 +86,54 @@ export class UpdateCompanyDto {
   isActive?: boolean;
 }
 
+/**
+ * BUYER-DASHBOARD-3 — DTO restreint pour édition self-service par
+ * MARKETPLACE_BUYER (et autres rôles non-staff). N'autorise QUE les
+ * champs identité/contact, exclut `types` et `isActive` (admin only).
+ */
+export class UpdateMyCompanyDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  vatNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUrl()
+  website?: string;
+}
+
 export class QueryCompaniesDto {
   @IsOptional() @Type(() => Number) page?: number = 1;
   @IsOptional() @Type(() => Number) limit?: number = 20;
