@@ -76,7 +76,8 @@ export function renderTransitionText(data: RfqTransitionTemplateData, copy: Tran
   }
   lines.push(`${copy.ctaLabel} : ${data.ctaUrl}`);
   lines.push('');
-  lines.push(renderFooterText(data));
+  // I18N-4 phase 3 — propage locale au footer pour version EN.
+  lines.push(renderFooterText({ ...data, locale }));
   return lines.join('\n');
 }
 
@@ -118,7 +119,7 @@ export function renderTransitionHtml(data: RfqTransitionTemplateData, copy: Tran
   <div style="text-align:center;margin:24px 0;">
     <a href="${safe.ctaUrl}" style="display:inline-block;padding:12px 24px;background:${safe.accent};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;border-radius:6px;">${safe.ctaLabel}</a>
   </div>
-  ${renderFooterHtml(data)}
+  ${renderFooterHtml({ ...data, locale })}
 </div>
 </body>
 </html>`;
