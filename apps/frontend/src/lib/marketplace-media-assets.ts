@@ -22,6 +22,9 @@ export { MediaAssetRole, MediaAssetType };
 export const MEDIA_MAX_BYTES = 5 * 1024 * 1024;
 export const MEDIA_ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
+// MP-MEDIA-1 LOT 1 — Cap UI client (backend illimité V1).
+export const MEDIA_GALLERY_MAX_PER_PRODUCT_UI = 20;
+
 export type MediaAllowedMime = (typeof MEDIA_ALLOWED_IMAGE_MIMES)[number];
 
 export interface MediaAsset {
@@ -153,5 +156,97 @@ export const marketplaceMediaAssetsApi = {
     const body = parsed as { data?: { id: string; url: string; expiresIn: number } };
     if (!body?.data) throw new ApiError('INVALID_RESPONSE', 'URL absente.');
     return body.data;
+  },
+
+  // MP-MEDIA-1 LOT 1 — Liste des médias d'une entité (filtrée par role/status).
+  async list(
+    params: {
+      relatedType: MarketplaceRelatedEntityType;
+      relatedId: string;
+      role?: MediaAssetRole;
+      moderationStatus?: MediaModerationStatus;
+      limit?: number;
+    },
+    token: string,
+  ): Promise<{ data: MediaAsset[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+    const qs = new URLSearchParams();
+    qs.set('relatedType', params.relatedType);
+    qs.set('relatedId', params.relatedId);
+    if (params.role) qs.set('role', params.role);
+    if (params.moderationStatus) qs.set('moderationStatus', params.moderationStatus);
+    qs.set('limit', String(params.limit ?? 100));
+    const response = await fetch(`${getApiBase()}/marketplace/media-assets?${qs.toString()}`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    const text = await response.text();
+    const parsed = text.length ? JSON.parse(text) : {};
+    if (!response.ok) {
+      const err = parsed as { error?: { code?: string; message?: string } };
+      throw new ApiError(
+        err.error?.code ?? 'UNKNOWN_ERROR',
+        err.error?.message ?? 'Liste indisponible',
+        undefined,
+        undefined,
+        response.status,
+      );
+    }
+    const body = parsed as { data?: MediaAsset[]; meta?: { total: number; page: number; limit: number; totalPages: number } };
+    if (!body?.data || !body?.meta) throw new ApiError('INVALID_RESPONSE', 'Réponse liste invalide.');
+    return { data: body.data, meta: body.meta };
+  },
+
+  // MP-MEDIA-1 LOT 1 — Reorder bulk médias.
+  async reorder(
+    items: Array<{ id: string; sortOrder: number }>,
+    token: string,
+  ): Promise<{ count: number }> {
+    const response = await fetch(`${getApiBase()}/marketplace/media-assets/reorder`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ items }),
+    });
+    const text = await response.text();
+    const parsed = text.length ? JSON.parse(text) : {};
+    if (!response.ok) {
+      const err = parsed as { error?: { code?: string; message?: string } };
+      throw new ApiError(
+        err.error?.code ?? 'UNKNOWN_ERROR',
+        err.error?.message ?? 'Reorder échoué',
+        undefined,
+        undefined,
+        response.status,
+      );
+    }
+    const body = parsed as { data?: { count: number } };
+    if (!body?.data) throw new ApiError('INVALID_RESPONSE', 'Réponse reorder invalide.');
+    return body.data;
+  },
+
+  // MP-MEDIA-1 LOT 1 — Suppression d'un média.
+  async delete(id: string, token: string): Promise<void> {
+    const response = await fetch(`${getApiBase()}/marketplace/media-assets/${id}`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      let err: { error?: { code?: string; message?: string } } = {};
+      try {
+        err = text.length ? JSON.parse(text) : {};
+      } catch {
+        /* parsing échoué — fallback générique */
+      }
+      throw new ApiError(
+        err.error?.code ?? 'UNKNOWN_ERROR',
+        err.error?.message ?? 'Suppression échouée',
+        undefined,
+        undefined,
+        response.status,
+      );
+    }
   },
 };

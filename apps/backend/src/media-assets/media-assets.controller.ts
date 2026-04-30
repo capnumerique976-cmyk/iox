@@ -23,6 +23,7 @@ import {
   UpdateMediaAssetDto,
   QueryMediaAssetsDto,
   RejectMediaAssetDto,
+  ReorderMediaAssetsDto,
 } from './dto/media-asset.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -38,6 +39,10 @@ const SELLER_ROLES = [
 ] as const;
 
 const MODERATION_ROLES = [UserRole.ADMIN, UserRole.QUALITY_MANAGER] as const;
+
+// MP-MEDIA-1 LOT 1 — rôles pour reorder. Identique à SELLER_ROLES + COORDINATOR
+// déjà inclus, donc reuse.
+const MEDIA_REORDER = SELLER_ROLES;
 
 @ApiTags('marketplace - media assets')
 @ApiBearerAuth('access-token')
@@ -74,6 +79,16 @@ export class MediaAssetsController {
     @Query('relatedId', ParseUUIDPipe) relatedId: string,
   ) {
     return this.service.findPublic(relatedType, relatedId);
+  }
+
+  // MP-MEDIA-1 LOT 1 — reorder bulk. Déclaré AVANT `:id` pour éviter
+  // shadow par le ParseUUIDPipe sur 'reorder'.
+  @Patch('reorder')
+  @HttpCode(HttpStatus.OK)
+  @Roles(...MEDIA_REORDER)
+  @ApiOperation({ summary: 'Réordonner plusieurs médias en bulk (sortOrder)' })
+  reorder(@Body() dto: ReorderMediaAssetsDto, @CurrentUser() actor: RequestUser) {
+    return this.service.reorder(dto, actor.id, actor);
   }
 
   @Get(':id')

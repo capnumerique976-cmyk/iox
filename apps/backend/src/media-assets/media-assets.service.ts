@@ -12,6 +12,7 @@ import {
   UpdateMediaAssetDto,
   QueryMediaAssetsDto,
   RejectMediaAssetDto,
+  ReorderMediaAssetsDto,
 } from './dto/media-asset.dto';
 import {
   EntityType,
@@ -400,6 +401,74 @@ export class MediaAssetsService {
     );
 
     return updated;
+  }
+
+  // ─── MP-MEDIA-1 LOT 1 — Reorder bulk ─────────────────────────────────────
+
+  /**
+   * Met à jour le `sortOrder` de plusieurs MediaAsset en une transaction.
+   *
+   * Contraintes :
+   *  - Tous les médias doivent exister.
+   *  - Tous doivent appartenir à la **même** entité parente
+   *    (relatedType, relatedId) — éviter les reorders cross-entity.
+   *  - Le seller doit posséder l'entité parente (ownership check unique).
+   *  - DTO cap [1, 50] côté validation.
+   */
+  async reorder(dto: ReorderMediaAssetsDto, actorId: string, actor?: RequestUser) {
+    const ids = dto.items.map((i) => i.id);
+    const medias = await this.prisma.mediaAsset.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, relatedType: true, relatedId: true },
+    });
+    if (medias.length !== ids.length) {
+      throw new NotFoundException(
+        `Certains médias sont introuvables (${medias.length}/${ids.length})`,
+      );
+    }
+
+    // Vérifier que tous les médias partagent la même entité parente.
+    const first = medias[0];
+    const allSameParent = medias.every(
+      (m) => m.relatedType === first.relatedType && m.relatedId === first.relatedId,
+    );
+    if (!allSameParent) {
+      throw new ForbiddenException(
+        "Reorder cross-entité interdit : tous les médias doivent partager le même parent (relatedType, relatedId)",
+      );
+    }
+
+    // Ownership check sur l'entité parente unique.
+    if (actor) {
+      await this.ownership.assertRelatedEntityOwnership(
+        actor,
+        first.relatedType as MarketplaceRelatedEntityType,
+        first.relatedId,
+      );
+    }
+
+    await this.prisma.$transaction(
+      dto.items.map((i) =>
+        this.prisma.mediaAsset.update({
+          where: { id: i.id },
+          data: { sortOrder: i.sortOrder },
+        }),
+      ),
+    );
+
+    await this.auditService.log({
+      action: 'MEDIA_ASSETS_REORDERED',
+      entityType: EntityType.MEDIA_ASSET,
+      entityId: first.relatedId,
+      userId: actorId,
+      newData: {
+        relatedType: first.relatedType,
+        relatedId: first.relatedId,
+        count: dto.items.length,
+      },
+    });
+
+    return { count: dto.items.length };
   }
 
   // ─── Suppression ─────────────────────────────────────────────────────────

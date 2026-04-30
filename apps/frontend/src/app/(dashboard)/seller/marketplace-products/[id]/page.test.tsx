@@ -51,6 +51,10 @@ vi.mock('@/lib/auth', async () => {
 // MP-EDIT-PRODUCT.3-light — InlineMediaUploader utilise ces helpers.
 const mediaUploadMock = vi.fn();
 const mediaGetUrlMock = vi.fn();
+// MP-MEDIA-1 LOT 1 — galerie utilise list/reorder/delete.
+const mediaListMock = vi.fn();
+const mediaReorderMock = vi.fn();
+const mediaDeleteMock = vi.fn();
 vi.mock('@/lib/marketplace-media-assets', async () => {
   const actual = await vi.importActual<typeof import('@/lib/marketplace-media-assets')>(
     '@/lib/marketplace-media-assets',
@@ -61,6 +65,9 @@ vi.mock('@/lib/marketplace-media-assets', async () => {
       ...actual.marketplaceMediaAssetsApi,
       upload: (...args: unknown[]) => mediaUploadMock(...args),
       getUrl: (...args: unknown[]) => mediaGetUrlMock(...args),
+      list: (...args: unknown[]) => mediaListMock(...args),
+      reorder: (...args: unknown[]) => mediaReorderMock(...args),
+      delete: (...args: unknown[]) => mediaDeleteMock(...args),
     },
   };
 });
@@ -617,5 +624,32 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
     expect(await screen.findByTestId('submit-error')).toHaveTextContent(
       /gpsLat et gpsLng/i,
     );
+  });
+
+  // MP-MEDIA-1 LOT 1 — Section galerie.
+  describe('section galerie produit (MP-MEDIA-1 LOT 1)', () => {
+    it("affiche la section galerie quand le produit charge", async () => {
+      getByIdMock.mockResolvedValue(baseProduct);
+      mediaListMock.mockResolvedValue({
+        data: [],
+        meta: { total: 0, page: 1, limit: 100, totalPages: 0 },
+      });
+      render(<SellerMarketplaceProductDetailPage />);
+      expect(await screen.findByTestId('section-gallery')).toBeInTheDocument();
+      expect(screen.getByTestId('product-gallery-uploader')).toBeInTheDocument();
+    });
+
+    it('appelle marketplaceMediaAssetsApi.list au mount avec relatedId + role=GALLERY', async () => {
+      getByIdMock.mockResolvedValue(baseProduct);
+      mediaListMock.mockResolvedValue({
+        data: [],
+        meta: { total: 0, page: 1, limit: 100, totalPages: 0 },
+      });
+      render(<SellerMarketplaceProductDetailPage />);
+      await waitFor(() => expect(mediaListMock).toHaveBeenCalled());
+      const args = mediaListMock.mock.calls[0][0];
+      expect(args.relatedId).toBe('mp1');
+      expect(args.role).toBe('GALLERY');
+    });
   });
 });
