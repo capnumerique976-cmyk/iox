@@ -17,6 +17,7 @@ describe('UnsubscribeService', () => {
       upsert: jest.Mock;
       count: jest.Mock;
       findMany: jest.Mock;
+      deleteMany: jest.Mock;
     };
   };
   let config: { get: jest.Mock };
@@ -34,6 +35,7 @@ describe('UnsubscribeService', () => {
         upsert: jest.fn().mockResolvedValue({ id: 'unsub-1' }),
         count: jest.fn().mockResolvedValue(0),
         findMany: jest.fn().mockResolvedValue([]),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
     };
 
@@ -173,6 +175,50 @@ describe('UnsubscribeService', () => {
       const args = prisma.emailUnsubscribe.findMany.mock.calls[0][0];
       expect(args.take).toBe(100);
       expect(args.skip).toBe(0);
+    });
+  });
+
+  // BUYER-DASHBOARD-4 — listForEmail + deleteForEmail
+  describe('listForEmail', () => {
+    it('normalise email + retourne items mappés ISO', async () => {
+      prisma.emailUnsubscribe.findMany.mockResolvedValue([
+        {
+          unsubscribeType: EmailUnsubscribeType.RFQ_NOTIFICATIONS,
+          createdAt: new Date('2026-04-25T10:00:00Z'),
+        },
+      ]);
+      const res = await service.listForEmail('A@X.TEST');
+      expect(res).toEqual([
+        {
+          unsubscribeType: EmailUnsubscribeType.RFQ_NOTIFICATIONS,
+          createdAt: '2026-04-25T10:00:00.000Z',
+        },
+      ]);
+      expect(prisma.emailUnsubscribe.findMany.mock.calls[0][0].where).toEqual({
+        email: 'a@x.test',
+      });
+    });
+
+    it('vide → []', async () => {
+      prisma.emailUnsubscribe.findMany.mockResolvedValue([]);
+      const res = await service.listForEmail('a@x.test');
+      expect(res).toEqual([]);
+    });
+  });
+
+  describe('deleteForEmail', () => {
+    it('appelle deleteMany avec email normalisé + type', async () => {
+      await service.deleteForEmail('A@X.TEST', EmailUnsubscribeType.ALL, 'actor-1');
+      expect(prisma.emailUnsubscribe.deleteMany).toHaveBeenCalledWith({
+        where: { email: 'a@x.test', unsubscribeType: EmailUnsubscribeType.ALL },
+      });
+    });
+
+    it('idempotent : si rien à delete, ne throw pas', async () => {
+      prisma.emailUnsubscribe.deleteMany.mockResolvedValue({ count: 0 });
+      await expect(
+        service.deleteForEmail('a@x.test', EmailUnsubscribeType.RFQ_NOTIFICATIONS),
+      ).resolves.toBeUndefined();
     });
   });
 });
