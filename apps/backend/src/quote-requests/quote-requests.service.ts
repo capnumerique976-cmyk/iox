@@ -51,7 +51,15 @@ const RFQ_INCLUDE = {
     },
   },
   buyerCompany: { select: { id: true, code: true, name: true, country: true } },
-  buyerUser: { select: { id: true, email: true, firstName: true, lastName: true } },
+  buyerUser: {
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      preferredLocale: true,
+    },
+  },
   assignedToUser: { select: { id: true, email: true, firstName: true, lastName: true } },
   _count: { select: { messages: true } },
 } as const;
@@ -130,7 +138,12 @@ export class QuoteRequestsService {
         title: string;
         sellerProfile: { publicDisplayName: string; salesEmail: string | null };
       };
-      buyerUser: { email: string; firstName: string | null; lastName: string | null } | null;
+      buyerUser: {
+        email: string;
+        firstName: string | null;
+        lastName: string | null;
+        preferredLocale?: string;
+      } | null;
     },
     message: {
       message: string;
@@ -158,13 +171,19 @@ export class QuoteRequestsService {
         rfq.buyerUser.lastName,
         rfq.buyerUser.email,
       );
-      await this.safeNotify('rfq-message-created', rfq.buyerUser.email, {
-        recipientDisplayName,
-        senderDisplayName,
-        offerTitle,
-        messageBody: message.message,
-        ctaUrl: this.rfqCtaUrl(rfq.id, 'buyer'),
-      });
+      await this.safeNotify(
+        'rfq-message-created',
+        rfq.buyerUser.email,
+        {
+          recipientDisplayName,
+          senderDisplayName,
+          offerTitle,
+          messageBody: message.message,
+          ctaUrl: this.rfqCtaUrl(rfq.id, 'buyer'),
+        },
+        // I18N-4 — locale buyer pour résolution template (FR/EN).
+        rfq.buyerUser.preferredLocale,
+      );
     } else {
       // Auteur buyer ou staff → notifier seller (via salesEmail SellerProfile)
       const sellerEmail = rfq.marketplaceOffer.sellerProfile.salesEmail;
@@ -197,12 +216,14 @@ export class QuoteRequestsService {
     templateId: string,
     to: string,
     templateData: Record<string, unknown>,
+    locale?: string,
   ): Promise<void> {
     try {
-      const res = await this.notifEmail.send({ to, templateId, templateData });
+      // I18N-4 — locale passée au service pour résolution template.
+      const res = await this.notifEmail.send({ to, templateId, templateData, locale });
       if (!res.success) {
         this.logger.warn(
-          `notif-email skipped templateId=${templateId} to=${to} error=${res.error ?? 'unknown'}`,
+          `notif-email skipped templateId=${templateId} to=${to} locale=${locale ?? 'fr'} error=${res.error ?? 'unknown'}`,
         );
       }
     } catch (err) {
@@ -609,7 +630,15 @@ export class QuoteRequestsService {
             },
           },
         },
-        buyerUser: { select: { id: true, email: true, firstName: true, lastName: true } },
+        buyerUser: {
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      preferredLocale: true,
+    },
+  },
       },
     });
     if (!rfq) throw new NotFoundException('Demande de devis introuvable');
