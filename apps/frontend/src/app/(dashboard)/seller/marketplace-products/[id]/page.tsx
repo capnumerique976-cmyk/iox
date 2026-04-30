@@ -46,11 +46,16 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { InlineMediaUploader } from '@/components/marketplace/InlineMediaUploader';
 // MP-MEDIA-1 LOT 1 — galerie multi-images.
 import { ProductGalleryUploader } from '@/components/marketplace/ProductGalleryUploader';
+import { ProductVideoUploader } from '@/components/marketplace/ProductVideoUploader';
 import {
   marketplaceMediaAssetsApi,
   type MediaAsset as MediaAssetType,
 } from '@/lib/marketplace-media-assets';
-import { MediaAssetRole, MarketplaceRelatedEntityType } from '@iox/shared';
+import {
+  MediaAssetRole,
+  MediaAssetType as MediaAssetTypeEnum,
+  MarketplaceRelatedEntityType,
+} from '@iox/shared';
 
 type LoadState =
   | { kind: 'loading' }
@@ -457,8 +462,10 @@ export default function SellerMarketplaceProductDetailPage() {
   const [workflowBusy, setWorkflowBusy] = useState<null | 'submit' | 'archive'>(null);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
-  // MP-MEDIA-1 LOT 1 — galerie multi-images.
+  // MP-MEDIA-1 LOT 1 — galerie multi-images (filtrée IMAGE).
   const [gallery, setGallery] = useState<MediaAssetType[]>([]);
+  // MP-MEDIA-1 LOT 2 — vidéo unique produit (filtrée VIDEO).
+  const [video, setVideo] = useState<MediaAssetType | null>(null);
 
   const loadGallery = useCallback(async () => {
     const token = authStorage.getAccessToken() ?? '';
@@ -472,10 +479,15 @@ export default function SellerMarketplaceProductDetailPage() {
         },
         token,
       );
-      setGallery(res.data);
+      // Sépare images (galerie) vs vidéos (1 max V1).
+      const images = res.data.filter((m) => m.mediaType !== MediaAssetTypeEnum.VIDEO);
+      const videos = res.data.filter((m) => m.mediaType === MediaAssetTypeEnum.VIDEO);
+      setGallery(images);
+      setVideo(videos[0] ?? null);
     } catch {
       // Silent : la galerie n'est pas critique pour l'édition produit.
       setGallery([]);
+      setVideo(null);
     }
   }, [id]);
 
@@ -887,6 +899,23 @@ export default function SellerMarketplaceProductDetailPage() {
               sellerProfileId=""
               existingMedia={gallery}
               onChange={loadGallery}
+            />
+          </div>
+        </Section>
+
+        {/* MP-MEDIA-1 LOT 2 — Vidéo de présentation. */}
+        <Section title="Vidéo produit (MP-MEDIA-1 LOT 2)">
+          <div data-testid="section-video" className="space-y-3">
+            <p className="text-xs text-gray-500">
+              Une vidéo courte de présentation (50 Mo max). MP4, WebM ou MOV
+              acceptés. La vidéo passe en modération avant d&apos;apparaître
+              publiquement.
+            </p>
+            <ProductVideoUploader
+              productId={state.product.id}
+              currentVideo={video}
+              onUploaded={loadGallery}
+              onDeleted={loadGallery}
             />
           </div>
         </Section>

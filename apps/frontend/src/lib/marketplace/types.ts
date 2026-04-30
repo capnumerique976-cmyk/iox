@@ -207,6 +207,15 @@ export interface ProductDetail {
   };
   primaryImage: { id: string; role: string; publicUrl: string | null; altTextFr: string | null };
   gallery: Array<{ id: string; role: string; publicUrl: string | null; altTextFr: string | null }>;
+  // MP-MEDIA-1 LOT 2 — vidéo produit publique (1 max V1, null si absente).
+  video: {
+    id: string;
+    role: string;
+    mediaType: 'VIDEO';
+    mimeType: string;
+    publicUrl: string | null;
+    altTextFr: string | null;
+  } | null;
   offers: ProductOffer[];
   documents: Array<{
     id: string;
