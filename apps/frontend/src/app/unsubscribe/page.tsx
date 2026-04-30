@@ -51,10 +51,27 @@ function UnsubscribeInner() {
     setState('loading');
     setErrMsg(null);
     try {
-      // TODO MP-NOTIF-3 phase 2b — appel backend réel après merge mandat 19 :
-      //   await notifEmailApi.unsubscribe({ token });
-      // Pour l'instant on simule une réponse 200 immédiate, sans I/O.
-      await new Promise((r) => setTimeout(r, 200));
+      // MP-NOTIF-3 phase 2c — appel backend réel après merge mandat 19.
+      // Endpoint public `GET /api/v1/notif-email/unsubscribe?token=...`
+      // valide le JWT signé puis upsert dans `email_unsubscribes`.
+      // 400 = token invalide / expiré → état "invalid".
+      // 200 = succès → état "success".
+      const res = await fetch(
+        `/api/v1/notif-email/unsubscribe?token=${encodeURIComponent(token)}`,
+        { method: 'GET', headers: { Accept: 'application/json' } },
+      );
+      if (res.status === 400) {
+        setState('invalid');
+        return;
+      }
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        setErrMsg(body?.error?.message ?? `Erreur ${res.status}`);
+        setState('error');
+        return;
+      }
       setState('success');
     } catch (e) {
       setErrMsg((e as Error).message);
