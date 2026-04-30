@@ -12,6 +12,7 @@ import { SellerOnboardingBanner } from '@/components/layout/seller-onboarding-ba
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog';
 import { Logo } from '@/components/brand/logo';
+import { LocaleSwitcher } from '@/components/ui/locale-switcher';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -69,9 +70,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <TopNav />
           </div>
 
-          {/* Droite : alertes + avatar */}
+          {/* Droite : alertes + locale switcher + avatar */}
           <div className="flex items-center gap-2 sm:gap-3">
             <AlertsBell />
+            <div className="hidden h-7 w-px bg-white/10 sm:block" aria-hidden />
+            <LocaleSwitcher />
             <div className="hidden h-7 w-px bg-white/10 sm:block" aria-hidden />
             <Link
               href="/profile"

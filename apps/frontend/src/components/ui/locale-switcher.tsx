@@ -30,12 +30,12 @@ export function LocaleSwitcher() {
 
   return (
     <div
-      className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs"
+      className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-1 text-xs backdrop-blur-sm"
       role="group"
       aria-label={t('label')}
       data-testid="locale-switcher"
     >
-      <Languages className="h-3 w-3 text-gray-400" aria-hidden />
+      <Languages className="h-3 w-3 text-white/50" aria-hidden />
       {LOCALES.map((loc) => {
         const active = loc === currentLocale;
         return (
@@ -46,8 +46,10 @@ export function LocaleSwitcher() {
             aria-pressed={active}
             disabled={pending}
             data-testid={`locale-switch-${loc}`}
-            className={`rounded px-1.5 py-0.5 font-medium uppercase ${
-              active ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'
+            className={`rounded px-1.5 py-0.5 font-medium uppercase transition-colors ${
+              active
+                ? 'bg-[#00D4FF]/20 text-[#00D4FF] ring-1 ring-[#00D4FF]/30'
+                : 'text-white/70 hover:bg-white/5 hover:text-white'
             } disabled:opacity-50`}
           >
             {loc}

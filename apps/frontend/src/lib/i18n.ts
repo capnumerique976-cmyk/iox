@@ -180,10 +180,23 @@ export function useLang() {
     try {
       window.localStorage.setItem(STORAGE_KEY, next);
       window.dispatchEvent(new CustomEvent('iox:lang:changed'));
+      // I18N-1 phase 1 — bridge vers next-intl : poser le cookie
+      // `NEXT_LOCALE` pour que les server components (next-intl/server)
+      // restent en sync avec le LangSwitcher legacy. Cookie 1 an,
+      // samesite=lax.
+      document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
     } catch {
       /* quota — no-op */
     }
     setLangState(next);
+    // Force un reload ciblé pour rafraîchir les server components RSC
+    // (next-intl côté server lit le cookie). Sur le marketplace public,
+    // pas d'état utilisateur sensible → reload acceptable.
+    // Note : `router.refresh()` côté hook est plus propre mais nécessite
+    // d'importer `next/navigation` ; on garde la solution simple ici.
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   }, []);
 
   const t = useCallback(
