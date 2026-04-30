@@ -653,4 +653,185 @@ describe('MediaAssetsService', () => {
       expect(reviewQueue.enqueue).not.toHaveBeenCalled();
     });
   });
+
+  // ── MP-MEDIA-1 LOT 1 — reorder ────────────────────────────────────────────
+
+  describe('reorder', () => {
+    const productId = '22222222-2222-2222-2222-222222222222';
+    const otherProductId = '33333333-3333-3333-3333-333333333333';
+
+    it('happy path : 3 items même produit → transaction OK + audit', async () => {
+      prisma.mediaAsset.findMany.mockResolvedValue([
+        { id: 'm1', relatedType: 'MARKETPLACE_PRODUCT', relatedId: productId },
+        { id: 'm2', relatedType: 'MARKETPLACE_PRODUCT', relatedId: productId },
+        { id: 'm3', relatedType: 'MARKETPLACE_PRODUCT', relatedId: productId },
+      ]);
+      prisma.mediaAsset.update.mockResolvedValue({});
+
+      const res = await service.reorder(
+        {
+          items: [
+            { id: 'm1', sortOrder: 0 },
+            { id: 'm2', sortOrder: 1 },
+            { id: 'm3', sortOrder: 2 },
+          ],
+        },
+        'actor-1',
+      );
+
+      expect(res).toEqual({ count: 3 });
+      // 3 update calls (one per item)
+      expect(prisma.mediaAsset.update).toHaveBeenCalledTimes(3);
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'MEDIA_ASSETS_REORDERED',
+          entityId: productId,
+        }),
+      );
+    });
+
+    it('mix items différents produits → ForbiddenException', async () => {
+      prisma.mediaAsset.findMany.mockResolvedValue([
+        { id: 'm1', relatedType: 'MARKETPLACE_PRODUCT', relatedId: productId },
+        { id: 'm2', relatedType: 'MARKETPLACE_PRODUCT', relatedId: otherProductId },
+      ]);
+
+      await expect(
+        service.reorder(
+          {
+            items: [
+              { id: 'm1', sortOrder: 0 },
+              { id: 'm2', sortOrder: 1 },
+            ],
+          },
+          'actor-1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.mediaAsset.update).not.toHaveBeenCalled();
+    });
+
+    it('certains ids introuvables → NotFoundException', async () => {
+      prisma.mediaAsset.findMany.mockResolvedValue([
+        { id: 'm1', relatedType: 'MARKETPLACE_PRODUCT', relatedId: productId },
+      ]);
+
+      await expect(
+        service.reorder(
+          {
+            items: [
+              { id: 'm1', sortOrder: 0 },
+              { id: 'm2', sortOrder: 1 },
+            ],
+          },
+          'actor-1',
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('non-propriétaire → ForbiddenException via assertRelatedEntityOwnership', async () => {
+      prisma.mediaAsset.findMany.mockResolvedValue([
+        { id: 'm1', relatedType: 'MARKETPLACE_PRODUCT', relatedId: productId },
+      ]);
+      const failingOwnership = {
+        ...ownershipMock,
+        assertRelatedEntityOwnership: jest.fn().mockRejectedValue(new ForbiddenException('nope')),
+      };
+      const module2: TestingModule = await Test.createTestingModule({
+        providers: [
+          MediaAssetsService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: AuditService, useValue: audit },
+          { provide: StorageService, useValue: storage },
+          { provide: MarketplaceReviewService, useValue: reviewQueue },
+          { provide: SellerOwnershipService, useValue: failingOwnership },
+        ],
+      }).compile();
+      const localService = module2.get(MediaAssetsService);
+
+      await expect(
+        localService.reorder(
+          { items: [{ id: 'm1', sortOrder: 0 }] },
+          'actor-1',
+          {
+            id: 'actor-1',
+            email: 'a@a',
+            role: 'MARKETPLACE_SELLER' as never,
+            sellerProfileIds: [],
+            companyIds: [],
+          },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('1 seul item OK (cap min = 1)', async () => {
+      prisma.mediaAsset.findMany.mockResolvedValue([
+        { id: 'm1', relatedType: 'MARKETPLACE_PRODUCT', relatedId: productId },
+      ]);
+      prisma.mediaAsset.update.mockResolvedValue({});
+      const res = await service.reorder(
+        { items: [{ id: 'm1', sortOrder: 5 }] },
+        'actor-1',
+      );
+      expect(res.count).toBe(1);
+    });
+  });
+
+  // ── MP-MEDIA-1 LOT 1 — GALLERY upload ─────────────────────────────────────
+
+  describe('upload — GALLERY role', () => {
+    const productId = '44444444-4444-4444-4444-444444444444';
+
+    it('upload role=GALLERY produit → OK (pas d\'erreur, role conservé)', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: productId });
+      const txCreate = getTxMocks().create;
+      txCreate.mockResolvedValue({
+        id: 'media-gal',
+        relatedType: 'MARKETPLACE_PRODUCT',
+        relatedId: productId,
+        role: 'GALLERY',
+        storageKey: 'k',
+        sizeBytes: 1024,
+      });
+
+      const res = await service.upload(
+        {
+          relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          relatedId: productId,
+          role: MediaAssetRole.GALLERY,
+        },
+        mockFile(),
+        'actor-1',
+      );
+
+      expect(res.role).toBe('GALLERY');
+      expect(txCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ role: MediaAssetRole.GALLERY }),
+        }),
+      );
+    });
+
+    it('upload role=GALLERY ne dégrade PAS un PRIMARY existant', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: productId });
+      const tx = getTxMocks();
+      tx.create.mockResolvedValue({
+        id: 'media-gal-2',
+        role: 'GALLERY',
+        relatedType: 'MARKETPLACE_PRODUCT',
+        relatedId: productId,
+      });
+      await service.upload(
+        {
+          relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          relatedId: productId,
+          role: MediaAssetRole.GALLERY,
+        },
+        mockFile(),
+        'actor-1',
+      );
+      // Branche updateMany (rétrogradage PRIMARY) ne doit PAS être appelée pour GALLERY
+      expect(tx.updateMany).not.toHaveBeenCalled();
+    });
+  });
 });

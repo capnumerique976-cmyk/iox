@@ -19,6 +19,8 @@ import { FavoriteButton } from '@/components/marketplace/FavoriteButton';
 import { ShareButton } from '@/components/marketplace/ShareButton';
 import { SeasonalityCalendar } from '@/components/marketplace/SeasonalityCalendar';
 import { CertificationBadgeList } from '@/components/marketplace/CertificationBadgeList';
+// MP-MEDIA-1 LOT 1 — galerie publique avec lightbox.
+import { PublicGalleryLightbox } from '@/components/marketplace/PublicGalleryLightbox';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,22 +105,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
               </div>
             )}
           </div>
-          {product.gallery.length > 0 && (
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {product.gallery.slice(0, 8).map(
-                (m) =>
-                  m.publicUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={m.id}
-                      src={m.publicUrl}
-                      alt={m.altTextFr ?? ''}
-                      className="aspect-square w-full rounded-lg object-cover ring-1 ring-white/10 transition-all duration-base ease-premium hover:-translate-y-0.5 hover:ring-[#00D4FF]/50"
-                    />
-                  ),
-              )}
-            </div>
-          )}
+          {/* MP-MEDIA-1 LOT 1 — galerie + lightbox interactif */}
+          <PublicGalleryLightbox
+            images={product.gallery}
+            productName={product.commercialName}
+          />
         </section>
 
         {/* Details */}
