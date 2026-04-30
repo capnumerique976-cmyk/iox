@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Building2,
+  Bell,
   ShoppingBag,
   Sparkles,
   ArrowRight,
@@ -144,7 +145,7 @@ export default function BuyerCockpitPage() {
       </section>
 
       {/* Raccourcis */}
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Link
           href="/marketplace"
           className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-5 hover:border-blue-300 hover:shadow-sm"
@@ -166,6 +167,19 @@ export default function BuyerCockpitPage() {
             <h3 className="text-sm font-semibold text-gray-900">Mon entreprise</h3>
             <p className="mt-1 text-xs text-gray-600">
               Coordonnées, identifiants, paramètres de votre société acheteuse.
+            </p>
+          </div>
+        </Link>
+        <Link
+          href="/buyer/preferences"
+          data-testid="link-preferences"
+          className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-5 hover:border-blue-300 hover:shadow-sm"
+        >
+          <Bell className="h-5 w-5 flex-shrink-0 text-blue-600" aria-hidden />
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Préférences notifications</h3>
+            <p className="mt-1 text-xs text-gray-600">
+              Choisissez les emails que vous voulez recevoir : RFQ, transactionnel, etc.
             </p>
           </div>
         </Link>
