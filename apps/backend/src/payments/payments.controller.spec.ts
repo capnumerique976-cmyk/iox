@@ -4,6 +4,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { PaymentsController } from './payments.controller';
 import { StripeOnboardingService } from './stripe-onboarding.service';
+import { PaymentsService } from './payments.service';
+import { PaymentsWebhookService } from './payments-webhook.service';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -34,6 +36,12 @@ describe('PaymentsController (PAY-1 phase 1 LOT 1)', () => {
       syncAccountStatus: jest.fn(),
       getAccountStatus: jest.fn(),
     };
+    const paymentsSvc = { createCheckoutSession: jest.fn() };
+    const webhookSvc = {
+      handleEvent: jest
+        .fn()
+        .mockResolvedValue({ handled: true, action: 'payment-succeeded' }),
+    };
     stripeWrapper = {
       isConfigured: () => true,
       client: () =>
@@ -53,6 +61,8 @@ describe('PaymentsController (PAY-1 phase 1 LOT 1)', () => {
       controllers: [PaymentsController],
       providers: [
         { provide: StripeOnboardingService, useValue: onboarding },
+        { provide: PaymentsService, useValue: paymentsSvc },
+        { provide: PaymentsWebhookService, useValue: webhookSvc },
         { provide: ConfigService, useValue: config },
         { provide: STRIPE_CLIENT, useValue: stripeWrapper },
       ],
