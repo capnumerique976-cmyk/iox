@@ -1,6 +1,18 @@
 // MP-NOTIF-3 phase 2a — tests page /unsubscribe.
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+// MP-NOTIF-3 phase 2c — mock global fetch pour les tests de confirm.
+const fetchMock = vi.fn();
+beforeEach(() => {
+  fetchMock.mockReset();
+  fetchMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ success: true }),
+  });
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+});
 
 const searchParamsMock = new Map<string, string>();
 vi.mock('next/navigation', () => ({
@@ -70,5 +82,45 @@ describe('UnsubscribePage (MP-NOTIF-3 phase 2a)', () => {
     searchParamsMock.set('token', 'short');
     render(<UnsubscribePage />);
     expect(await screen.findByText(/support@iox\.example/)).toBeInTheDocument();
+  });
+
+  // MP-NOTIF-3 phase 2c — backend wired
+  it('confirm appelle GET /api/v1/notif-email/unsubscribe avec token', async () => {
+    searchParamsMock.clear();
+    searchParamsMock.set('token', 'abcdefghij1234');
+    render(<UnsubscribePage />);
+    fireEvent.click(await screen.findByText('Me désinscrire'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      '/api/v1/notif-email/unsubscribe?token=abcdefghij1234',
+    );
+  });
+
+  it('400 backend → état invalid', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: { code: 'BAD_REQUEST', message: 'jwt malformed' } }),
+    });
+    searchParamsMock.clear();
+    searchParamsMock.set('token', 'abcdefghij1234');
+    render(<UnsubscribePage />);
+    fireEvent.click(await screen.findByText('Me désinscrire'));
+    await waitFor(() =>
+      expect(screen.getByText(/Lien de désinscription invalide/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('500 backend → état error avec message', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: { message: 'internal' } }),
+    });
+    searchParamsMock.clear();
+    searchParamsMock.set('token', 'abcdefghij1234');
+    render(<UnsubscribePage />);
+    fireEvent.click(await screen.findByText('Me désinscrire'));
+    await waitFor(() => expect(screen.getByText('internal')).toBeInTheDocument());
   });
 });
