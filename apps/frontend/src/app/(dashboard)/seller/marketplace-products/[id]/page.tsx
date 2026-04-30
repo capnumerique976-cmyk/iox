@@ -44,6 +44,12 @@ import { PageHeader } from '@/components/ui/page-header';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 // MP-EDIT-PRODUCT.3-light — image principale via InlineMediaUploader
 import { InlineMediaUploader } from '@/components/marketplace/InlineMediaUploader';
+// MP-MEDIA-1 LOT 1 — galerie multi-images.
+import { ProductGalleryUploader } from '@/components/marketplace/ProductGalleryUploader';
+import {
+  marketplaceMediaAssetsApi,
+  type MediaAsset as MediaAssetType,
+} from '@/lib/marketplace-media-assets';
 import { MediaAssetRole, MarketplaceRelatedEntityType } from '@iox/shared';
 
 type LoadState =
@@ -451,6 +457,27 @@ export default function SellerMarketplaceProductDetailPage() {
   const [workflowBusy, setWorkflowBusy] = useState<null | 'submit' | 'archive'>(null);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
+  // MP-MEDIA-1 LOT 1 — galerie multi-images.
+  const [gallery, setGallery] = useState<MediaAssetType[]>([]);
+
+  const loadGallery = useCallback(async () => {
+    const token = authStorage.getAccessToken() ?? '';
+    try {
+      const res = await marketplaceMediaAssetsApi.list(
+        {
+          relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          relatedId: id,
+          role: MediaAssetRole.GALLERY,
+          limit: 100,
+        },
+        token,
+      );
+      setGallery(res.data);
+    } catch {
+      // Silent : la galerie n'est pas critique pour l'édition produit.
+      setGallery([]);
+    }
+  }, [id]);
 
   const load = useCallback(async () => {
     setState({ kind: 'loading' });
@@ -479,6 +506,11 @@ export default function SellerMarketplaceProductDetailPage() {
   useEffect(() => {
     if (id) load();
   }, [id, load]);
+
+  // MP-MEDIA-1 LOT 1 — charge galerie au mount + à chaque load.
+  useEffect(() => {
+    if (id) loadGallery();
+  }, [id, loadGallery]);
 
   const dirty = useMemo(
     () => JSON.stringify(initial) !== JSON.stringify(form),
@@ -838,6 +870,23 @@ export default function SellerMarketplaceProductDetailPage() {
               altTextFr={state.product.commercialName}
               onUploaded={onMediaUploaded}
               testId="product-main-media"
+            />
+          </div>
+        </Section>
+
+        {/* MP-MEDIA-1 LOT 1 — Galerie multi-images. */}
+        <Section title="Galerie produit (MP-MEDIA-1 LOT 1)">
+          <div data-testid="section-gallery" className="space-y-3">
+            <p className="text-xs text-gray-500">
+              Ajoutez jusqu&apos;à 20 photos additionnelles (vues, packaging,
+              détails). Glissez-déposez pour réordonner. Les nouvelles photos
+              passent en modération avant d&apos;apparaître publiquement.
+            </p>
+            <ProductGalleryUploader
+              productId={state.product.id}
+              sellerProfileId=""
+              existingMedia={gallery}
+              onChange={loadGallery}
             />
           </div>
         </Section>

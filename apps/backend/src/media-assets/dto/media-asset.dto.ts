@@ -1,4 +1,15 @@
-import { IsString, IsOptional, IsEnum, IsInt, IsUUID, Min } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   MarketplaceRelatedEntityType,
@@ -80,4 +91,27 @@ export class RejectMediaAssetDto {
   @ApiProperty({ example: 'Image floue, résolution insuffisante' })
   @IsString()
   reason: string;
+}
+
+// MP-MEDIA-1 LOT 1 — Reorder bulk médias.
+export class ReorderMediaAssetsItem {
+  @ApiProperty({ example: 'uuid-media-1' })
+  @IsUUID()
+  id: string;
+
+  @ApiProperty({ example: 0 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sortOrder: number;
+}
+
+export class ReorderMediaAssetsDto {
+  @ApiProperty({ type: [ReorderMediaAssetsItem] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => ReorderMediaAssetsItem)
+  items: ReorderMediaAssetsItem[];
 }
