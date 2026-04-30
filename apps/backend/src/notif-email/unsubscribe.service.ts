@@ -129,6 +129,59 @@ export class UnsubscribeService {
     });
     return count > 0;
   }
+
+  /**
+   * MP-NOTIF-3 phase 4 — Liste paginée + filtrée des désinscriptions
+   * (vue admin). Lecture seule, restreinte côté controller aux rôles
+   * ADMIN/COORDINATOR.
+   */
+  async listUnsubscribes(query: {
+    page?: number;
+    limit?: number;
+    type?: EmailUnsubscribeType;
+    email?: string;
+  }): Promise<{
+    data: Array<{
+      id: string;
+      email: string;
+      unsubscribeType: EmailUnsubscribeType;
+      userId: string | null;
+      reason: string | null;
+      createdAt: string;
+    }>;
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
+    const page = Math.max(1, Math.floor(query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(query.limit ?? 20)));
+    const where: {
+      unsubscribeType?: EmailUnsubscribeType;
+      email?: { contains: string; mode: 'insensitive' };
+    } = {};
+    if (query.type) where.unsubscribeType = query.type;
+    if (query.email) where.email = { contains: query.email, mode: 'insensitive' };
+
+    const [total, rows] = await Promise.all([
+      this.prisma.emailUnsubscribe.count({ where }),
+      this.prisma.emailUnsubscribe.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+    const data = rows.map((r) => ({
+      id: r.id,
+      email: r.email,
+      unsubscribeType: r.unsubscribeType,
+      userId: r.userId ?? null,
+      reason: r.reason ?? null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
 }
 
 export class UnsubscribeTokenError extends Error {
