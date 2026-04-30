@@ -40,4 +40,7 @@ export const notifEmailApi = {
     const suffix = qs.toString() ? `?${qs.toString()}` : '';
     return api.get<EmailLogListResponse>(`/notif-email/logs${suffix}`, token);
   },
+  // MP-NOTIF-3 phase 3 — détail unitaire (avec metadataJson complet).
+  getLogById: (id: string, token: string) =>
+    api.get<EmailLogItem>(`/notif-email/logs/${id}`, token),
 };

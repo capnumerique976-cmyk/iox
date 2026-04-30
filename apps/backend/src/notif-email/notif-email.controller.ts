@@ -3,7 +3,7 @@
 // Lecture seule, restreint aux rôles ADMIN/COORDINATOR. Pas d'endpoint
 // pour resend/retry ni pour purger : audit trail immuable.
 
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserRole } from '@iox/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -26,5 +26,12 @@ export class NotifEmailController {
   })
   listLogs(@Query() query: ListEmailLogsQueryDto) {
     return this.service.listLogs(query);
+  }
+
+  @Get('logs/:id')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
+  @ApiOperation({ summary: "Détail d'un EmailLog par id (vue admin)" })
+  getLogById(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.getLogById(id);
   }
 }
