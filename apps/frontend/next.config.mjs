@@ -1,3 +1,8 @@
+// I18N-1 phase 1 — next-intl plugin (sans i18n routing).
+// Le plugin résout les messages côté serveur via `src/i18n/request.ts`.
+import createNextIntlPlugin from 'next-intl/plugin';
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -24,4 +29,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

@@ -1,0 +1,49 @@
+{
+  "common": {
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "submit": "Submit",
+      "back": "Back",
+      "refresh": "Refresh"
+    },
+    "states": {
+      "loading": "Loading…",
+      "empty": "No results",
+      "error": "An error occurred"
+    },
+    "language": {
+      "label": "Language",
+      "fr": "Français",
+      "en": "English"
+    }
+  },
+  "marketplace": {
+    "catalog": {
+      "title": "Marketplace catalog",
+      "subtitle": "{count, plural, =0 {No published offers} one {1 published offer} other {# published offers}}",
+      "empty": "No published offers yet.",
+      "filters": {
+        "search": "Search",
+        "category": "Category",
+        "country": "Country of origin",
+        "reset": "Reset"
+      },
+      "card": {
+        "viewOffer": "View offer",
+        "from": "From",
+        "moq": "MOQ",
+        "leadTime": "Lead time",
+        "leadTimeDays": "{days, plural, one {1 day} other {# days}}",
+        "soldBy": "Sold by"
+      },
+      "priceMode": {
+        "FIXED": "Fixed price",
+        "QUOTE_ONLY": "Quote only",
+        "FROM_PRICE": "Starting from"
+      }
+    }
+  }
+}
