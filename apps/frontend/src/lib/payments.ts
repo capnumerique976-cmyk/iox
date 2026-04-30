@@ -91,4 +91,26 @@ export const paymentsApi = {
       token,
     });
   },
+
+  /** PAY-1 LOT 3 — Crée Stripe Checkout Session pour buyer payant RFQ WON. */
+  async createCheckoutSession(
+    input: {
+      quoteRequestId: string;
+      marketplaceOfferId: string;
+      amountCents: number;
+      currency?: string;
+      returnUrl: string;
+      cancelUrl: string;
+    },
+    token: string,
+  ): Promise<{ paymentId: string; sessionId: string; checkoutUrl: string }> {
+    return request<{ paymentId: string; sessionId: string; checkoutUrl: string }>(
+      '/payments/checkout-session',
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+        token,
+      },
+    );
+  },
 };
