@@ -87,12 +87,53 @@ export default function AdminNotifEmailLogsPage() {
         title="Journal des emails transactionnels"
         subtitle={`${meta.total} entrée${meta.total > 1 ? 's' : ''}`}
         actions={
-          <Link
-            href="/admin/notif-email/stats"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            📊 Statistiques
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                const token = authStorage.getAccessToken() ?? '';
+                const params = new URLSearchParams();
+                if (statusFilter) params.set('status', statusFilter);
+                if (templateId) params.set('templateId', templateId);
+                if (recipientEmail) params.set('recipientEmail', recipientEmail);
+                if (createdAtAfter)
+                  params.set('createdAtAfter', new Date(createdAtAfter).toISOString());
+                const qs = params.toString() ? `?${params.toString()}` : '';
+                try {
+                  // Fetch avec Bearer token + déclenche download via blob.
+                  const res = await fetch(
+                    `/api/v1/notif-email/logs-export.csv${qs}`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                  );
+                  if (!res.ok) {
+                    setErr(`Export échoué (HTTP ${res.status})`);
+                    return;
+                  }
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `email-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                } catch (e) {
+                  setErr(e instanceof Error ? e.message : 'Export échoué');
+                }
+              }}
+              data-testid="btn-export-csv"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              ⬇ Export CSV
+            </button>
+            <Link
+              href="/admin/notif-email/stats"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              📊 Statistiques
+            </Link>
+          </div>
         }
       />
 

@@ -78,6 +78,32 @@ describe('AdminNotifEmailLogsPage (MP-NOTIF-3)', () => {
     expect(listLogsMock.mock.calls[0][0].status).toBe('FAILED');
   });
 
+  it('clic sur Export CSV appelle /api/v1/notif-email/logs-export.csv avec Authorization', async () => {
+    listLogsMock.mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 20, totalPages: 0 },
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => new Blob(['id,status\n'], { type: 'text/csv' }),
+    });
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+    // Mock URL et a.click pour le download trick
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    const revokeObjectURL = vi.fn();
+    (URL as unknown as { createObjectURL: typeof createObjectURL }).createObjectURL = createObjectURL;
+    (URL as unknown as { revokeObjectURL: typeof revokeObjectURL }).revokeObjectURL = revokeObjectURL;
+
+    render(<AdminNotifEmailLogsPage />);
+    await waitFor(() => expect(listLogsMock).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId('btn-export-csv'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/notif-email/logs-export.csv');
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer tok');
+    expect(createObjectURL).toHaveBeenCalled();
+  });
+
   it('affiche le code d\'erreur quand status FAILED', async () => {
     listLogsMock.mockResolvedValue({
       data: [
