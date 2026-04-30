@@ -24,6 +24,7 @@ const SAFE_SELECT = {
   role: true,
   isActive: true,
   lastLoginAt: true,
+  preferredLocale: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -171,6 +172,18 @@ export class UsersService {
     return this.prisma.user.update({
       where: { id },
       data: updateData,
+      select: SAFE_SELECT,
+    });
+  }
+
+  /**
+   * I18N-3 — Update preferredLocale du user. Validation locale faite en
+   * amont (controller). Retourne user partiel safe.
+   */
+  async updateMyLocale(id: string, locale: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { preferredLocale: locale, updatedById: id },
       select: SAFE_SELECT,
     });
   }

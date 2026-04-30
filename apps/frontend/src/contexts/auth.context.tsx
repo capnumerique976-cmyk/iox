@@ -70,6 +70,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authStorage.save({ accessToken, refreshToken, expiresIn }, authUser);
       setUser(authUser);
       setToken(accessToken);
+      // I18N-3 — sync cookie NEXT_LOCALE depuis user.preferredLocale au
+      // login pour que les server components rendent dans la bonne locale
+      // sans attendre un toggle manuel.
+      if (
+        typeof document !== 'undefined' &&
+        authUser.preferredLocale &&
+        (authUser.preferredLocale === 'fr' || authUser.preferredLocale === 'en')
+      ) {
+        document.cookie = `NEXT_LOCALE=${authUser.preferredLocale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+      }
       router.push(safeRedirect(redirectTo));
     },
     [router],

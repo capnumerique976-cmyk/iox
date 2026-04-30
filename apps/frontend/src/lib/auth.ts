@@ -6,6 +6,8 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   role: UserRole;
+  // I18N-3 — Locale préférée du user (fr | en).
+  preferredLocale?: string;
 }
 
 export interface AuthTokens {
