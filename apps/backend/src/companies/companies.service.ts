@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CodeGeneratorService } from '../common/services/code-generator.service';
-import { CreateCompanyDto, UpdateCompanyDto, QueryCompaniesDto } from './dto/company.dto';
+import {
+  CreateCompanyDto,
+  UpdateCompanyDto,
+  UpdateMyCompanyDto,
+  QueryCompaniesDto,
+} from './dto/company.dto';
 import { EntityType } from '@iox/shared';
 
 const COMPANY_INCLUDE = {
@@ -51,6 +56,55 @@ export class CompaniesService {
    * BUYER-DASHBOARD-2 — Companies dont l'utilisateur courant est membre.
    * Retourne tableau (un user peut être membre de plusieurs companies).
    */
+  /**
+   * BUYER-DASHBOARD-3 — Édition self-service par le user. Scope check :
+   * `id` doit être dans `actor.companyIds` (membership). DTO restreint
+   * (UpdateMyCompanyDto) — pas de modification de `types` ou `isActive`.
+   */
+  async updateMine(
+    id: string,
+    actorCompanyIds: string[],
+    actorId: string,
+    dto: UpdateMyCompanyDto,
+  ) {
+    if (!actorCompanyIds.includes(id)) {
+      throw new ForbiddenException('Cette entreprise n\'est pas dans vos rattachements.');
+    }
+    const existing = await this.prisma.company.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!existing) throw new NotFoundException('Entreprise introuvable');
+
+    const updated = await this.prisma.company.update({
+      where: { id },
+      data: { ...dto, updatedById: actorId },
+      include: COMPANY_INCLUDE,
+    });
+
+    await this.auditService.log({
+      action: 'COMPANY_UPDATED_SELF',
+      entityType: EntityType.COMPANY,
+      entityId: id,
+      userId: actorId,
+      previousData: {
+        name: existing.name,
+        email: existing.email,
+        phone: existing.phone,
+        city: existing.city,
+        country: existing.country,
+      },
+      newData: {
+        name: updated.name,
+        email: updated.email,
+        phone: updated.phone,
+        city: updated.city,
+        country: updated.country,
+      },
+    });
+
+    return updated;
+  }
+
   async findMine(companyIds: string[]) {
     if (companyIds.length === 0) return [];
     return this.prisma.company.findMany({
