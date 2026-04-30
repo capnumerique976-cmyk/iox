@@ -43,7 +43,19 @@ async function bootstrap() {
   // Limite de taille des bodies JSON/urlencoded.
   // Protection DoS contre les payloads abusifs ; les uploads binaires (MinIO)
   // passent par Multer avec leur propre limite côté module.
-  app.use(json({ limit: bodyLimit }));
+  // PAY-1 phase 1 — Stripe webhook nécessite le body raw pour vérif signature.
+  // On le préserve sur req.rawBody uniquement pour /payments/webhook.
+  app.use(
+    json({
+      limit: bodyLimit,
+      verify: (req, _res, buf) => {
+        const url = (req as { url?: string }).url ?? '';
+        if (url.includes('/payments/webhook')) {
+          (req as { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+        }
+      },
+    }),
+  );
   app.use(urlencoded({ extended: true, limit: bodyLimit }));
 
   // Sécurité
