@@ -7,16 +7,24 @@
 Résultat :
 - **+52 nouvelles clés** (70 → 122 total).
 - Test `i18n-parity.test.ts` (6 tests) vérifie chaque clé FR a son pendant EN et inversement.
-- Conversion `/marketplace/products/[slug]` à `getTranslations` **reportée** (e2e existant teste literals — à mettre à jour avant conversion, voir TODO V2).
+- ✅ **LOT 2.x** : conversion `/marketplace/products/[slug]` à `getTranslations` appliquée + e2e P13-C/P13-E migrés vers selectors `data-testid` stables (indépendants locale).
 
 ## Périmètre couvert
 
 | Page | Statut | Notes |
 |---|---|---|
 | `/marketplace` | ✅ déjà couvert (I18N-2) | catalog + filtres + facets |
-| `/marketplace/products/[slug]` | 🟡 keys ajoutées, conversion `getTranslations` reportée | e2e existant `marketplace-global.spec.ts` P13-C/P13-E teste literals FR — à aligner avant conversion |
+| `/marketplace/products/[slug]` | ✅ **LOT 2.x** | conversion `getTranslations` + 2 testids stables (`public-documents-section`, `image-placeholder`) |
 | `/marketplace/sellers` | ✅ déjà couvert (I18N-2) | annuaire + filtres |
 | `/marketplace/sellers/[slug]` | 🟡 keys ajoutées, page à convertir V2 | namespace `marketplace.seller.*` prêt |
+
+## LOT 2.x — Pattern e2e selectors stables
+
+Pour éviter le piège des e2e qui testent des literals FR (régressent dès que la traduction change), convention adoptée :
+
+- **Selectors data-testid** > selectors literal. Ex : `getByTestId('public-documents-section')` au lieu de `getByText('Documents publics')`.
+- Testids ajoutés sur les sections clés : `public-documents-section`, `image-placeholder`.
+- Pattern recommandé pour futures pages convertibles.
 
 ## Convention namespacing
 
@@ -73,6 +81,7 @@ Frontend tsc clean.
 ## TODO V2
 
 - Convertir `/marketplace/sellers/[slug]` à `getTranslations` (keys déjà prêtes).
+- Convertir `apps/frontend/src/components/marketplace/CatalogFilters.tsx:335` (literal "Documents publics requis") — chantier I18N-6.
 - Auth pages (`/login`, `/signup`) — V1 FR only.
 - Buyer dashboard `/buyer/*` — V2.
 - Admin / seller dashboards — restent FR pro V1.
