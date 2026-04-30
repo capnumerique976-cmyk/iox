@@ -44,6 +44,13 @@ export interface SendEmailInput {
    * catégorie OU de `ALL`, le service skip l'envoi (EmailLog SKIPPED).
    */
   unsubscribeType?: 'ALL' | 'RFQ_NOTIFICATIONS' | 'TRANSACTIONAL';
+  /**
+   * I18N-4 — Locale du destinataire pour résolution template.
+   * Valeurs : `'fr'` (défaut) ou `'en'`. Fallback FR si la variante EN
+   * n'existe pas pour ce templateId. Typiquement passé par le service
+   * métier qui connaît `recipientUser.preferredLocale`.
+   */
+  locale?: string;
 }
 
 export interface SendEmailResult {
