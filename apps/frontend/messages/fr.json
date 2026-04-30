@@ -9,17 +9,24 @@
       "back": "Retour",
       "refresh": "Actualiser",
       "close": "Fermer",
-      "search": "Rechercher"
+      "search": "Rechercher",
+      "viewAll": "Tout voir",
+      "viewMore": "Voir plus",
+      "share": "Partager"
     },
     "states": {
       "loading": "Chargement…",
       "empty": "Aucun résultat",
-      "error": "Une erreur est survenue"
+      "error": "Une erreur est survenue",
+      "noImage": "Pas d'image"
     },
     "language": {
       "label": "Langue",
       "fr": "Français",
       "en": "English"
+    },
+    "breadcrumb": {
+      "label": "Fil d'Ariane"
     }
   },
   "nav": {
@@ -79,6 +86,45 @@
         "priceDesc": "Prix décroissant"
       }
     },
+    "product": {
+      "sellerLabel": "Producteur",
+      "sections": {
+        "description": "Description",
+        "characteristics": "Caractéristiques",
+        "logistics": "Logistique",
+        "capacity": "Production & disponibilité",
+        "quality": "Qualité",
+        "origin": "Origine",
+        "documents": "Documents publics",
+        "certifications": "Certifications",
+        "seasonality": "Saisonnalité",
+        "otherProducts": "Autres produits du producteur"
+      },
+      "fields": {
+        "moq": "MOQ",
+        "leadTime": "Délai",
+        "variety": "Variété",
+        "production": "Production",
+        "packaging": "Packaging",
+        "storage": "Stockage",
+        "shelfLife": "DLUO",
+        "allergens": "Allergènes",
+        "usage": "Usage",
+        "locality": "Localité",
+        "altitude": "Altitude",
+        "gps": "GPS",
+        "containers": "Conditionnements",
+        "temperature": "Température",
+        "grossWeight": "Poids brut",
+        "netWeight": "Poids net",
+        "palletization": "Palettisation",
+        "annualProduction": "Production annuelle",
+        "availableStock": "Stock disponible",
+        "restock": "Réapprovisionnement",
+        "originCountry": "Pays d'origine",
+        "originRegion": "Région"
+      }
+    },
     "sellers": {
       "title": "Nos producteurs",
       "empty": "Aucun producteur ne correspond à vos filtres.",
@@ -96,6 +142,26 @@
         "recent": "Récents",
         "nameAsc": "Nom A→Z"
       }
+    },
+    "seller": {
+      "sections": {
+        "story": "Notre histoire",
+        "products": "Produits proposés",
+        "certifications": "Certifications",
+        "logistics": "Logistique & livraison",
+        "contact": "Contact"
+      },
+      "fields": {
+        "country": "Pays",
+        "region": "Région",
+        "city": "Ville",
+        "incoterms": "Incoterms supportés",
+        "destinations": "Destinations servies",
+        "leadTime": "Délai moyen",
+        "languages": "Langues",
+        "website": "Site web"
+      },
+      "noProducts": "Aucun produit publié pour le moment."
     }
   },
   "footer": {
