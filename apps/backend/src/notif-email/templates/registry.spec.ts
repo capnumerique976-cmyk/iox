@@ -25,10 +25,39 @@ describe('templates registry — i18n locale resolution', () => {
   });
 
   it("getTemplate(id, 'en') → fallback FR si variante EN absente", () => {
-    // rfq-qualified n'a pas encore de variante EN (à faire en I18N-4 phase 2).
-    const tFr = getTemplate('rfq-qualified');
-    const tEn = getTemplate('rfq-qualified', 'en');
+    // rfq-won n'a pas encore de variante EN (à faire en phase 3).
+    const tFr = getTemplate('rfq-won');
+    const tEn = getTemplate('rfq-won', 'en');
     expect(tEn).toBe(tFr); // même référence (fallback)
+  });
+
+  // I18N-4 phase 2 — variantes EN ajoutées.
+  it("getTemplate('rfq-qualified', 'en') → variante EN", () => {
+    const t = getTemplate('rfq-qualified', 'en');
+    expect(t).not.toBeNull();
+    expect(
+      t!.subject({
+        offerTitle: 'X',
+        recipientDisplayName: '',
+        senderDisplayName: '',
+        note: null,
+        ctaUrl: '',
+      }),
+    ).toContain('qualified');
+  });
+
+  it("getTemplate('rfq-quoted', 'en') → variante EN", () => {
+    const t = getTemplate('rfq-quoted', 'en');
+    expect(t).not.toBeNull();
+    expect(
+      t!.subject({
+        offerTitle: 'X',
+        recipientDisplayName: '',
+        senderDisplayName: '',
+        note: null,
+        ctaUrl: '',
+      }),
+    ).toContain('Quote available');
   });
 
   it("getTemplate(id, 'fr') explicite → variante FR", () => {
@@ -55,8 +84,14 @@ describe('templates registry — i18n locale resolution', () => {
     expect(locales).toContain('en');
   });
 
-  it('listLocalesForTemplate(rfq-qualified) → [fr] (EN à faire)', () => {
+  it('listLocalesForTemplate(rfq-qualified) → [fr, en] (I18N-4 phase 2)', () => {
     const locales = listLocalesForTemplate('rfq-qualified');
+    expect(locales).toContain('fr');
+    expect(locales).toContain('en');
+  });
+
+  it('listLocalesForTemplate(rfq-won) → [fr] (EN à faire en phase 3)', () => {
+    const locales = listLocalesForTemplate('rfq-won');
     expect(locales).toEqual(['fr']);
   });
 });
