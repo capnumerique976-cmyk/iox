@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { MediaAssetsService, MEDIA_MAX_BYTES } from './media-assets.service';
+import {
+  MediaAssetsService,
+  MEDIA_MAX_BYTES,
+  MEDIA_VIDEO_MAX_BYTES,
+} from './media-assets.service';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StorageService } from '../common/services/storage.service';
@@ -810,6 +814,76 @@ describe('MediaAssetsService', () => {
           data: expect.objectContaining({ role: MediaAssetRole.GALLERY }),
         }),
       );
+    });
+
+    it('upload mp4 vidéo : mediaType=VIDEO résolu côté serveur', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: productId });
+      const tx = getTxMocks();
+      tx.create.mockResolvedValue({
+        id: 'media-vid',
+        relatedType: 'MARKETPLACE_PRODUCT',
+        relatedId: productId,
+        role: 'GALLERY',
+        mediaType: 'VIDEO',
+      });
+      await service.upload(
+        {
+          relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          relatedId: productId,
+        },
+        mockFile({ mimetype: 'video/mp4', size: 1024 * 1024, originalname: 'demo.mp4' }),
+        'actor-1',
+      );
+      const data = tx.create.mock.calls[0][0].data;
+      expect(data.mediaType).toBe('VIDEO');
+      expect(data.mimeType).toBe('video/mp4');
+    });
+
+    it('upload webm vidéo : accepté', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: productId });
+      const tx = getTxMocks();
+      tx.create.mockResolvedValue({ id: 'mv2', mediaType: 'VIDEO' });
+      await service.upload(
+        {
+          relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          relatedId: productId,
+        },
+        mockFile({ mimetype: 'video/webm', size: 2 * 1024 * 1024, originalname: 'd.webm' }),
+        'actor-1',
+      );
+      expect(tx.create).toHaveBeenCalled();
+    });
+
+    it('upload vidéo > 50 MB → BadRequestException', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: productId });
+      await expect(
+        service.upload(
+          {
+            relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+            relatedId: productId,
+          },
+          mockFile({
+            mimetype: 'video/mp4',
+            size: MEDIA_VIDEO_MAX_BYTES + 1,
+            originalname: 'huge.mp4',
+          }),
+          'actor-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('upload MIME vidéo non whitelisté (avi) → BadRequestException', async () => {
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: productId });
+      await expect(
+        service.upload(
+          {
+            relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+            relatedId: productId,
+          },
+          mockFile({ mimetype: 'video/x-msvideo', size: 1024, originalname: 'd.avi' }),
+          'actor-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('upload role=GALLERY ne dégrade PAS un PRIMARY existant', async () => {

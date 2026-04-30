@@ -216,6 +216,8 @@ export class MarketplaceCatalogService {
       select: {
         id: true,
         role: true,
+        mediaType: true,
+        mimeType: true,
         publicUrl: true,
         altTextFr: true,
         altTextEn: true,
@@ -223,11 +225,16 @@ export class MarketplaceCatalogService {
       },
     });
 
-    const primary = media.find((m) => m.role === MediaAssetRole.PRIMARY);
+    // MP-MEDIA-1 LOT 2 — sépare images (PRIMARY + GALLERY images) des vidéos
+    // afin de ne pas polluer la galerie photos avec un player vidéo.
+    const videos = media.filter((m) => m.mediaType === 'VIDEO');
+    const images = media.filter((m) => m.mediaType !== 'VIDEO');
+    const primary = images.find((m) => m.role === MediaAssetRole.PRIMARY);
     if (!primary) {
       throw new NotFoundException('Produit marketplace sans image principale approuvée');
     }
-    const gallery = media.filter((m) => m.role !== MediaAssetRole.PRIMARY);
+    const gallery = images.filter((m) => m.role !== MediaAssetRole.PRIMARY);
+    const video = videos[0] ?? null;
 
     const offersOut = product.offers.map((o, idx) => ({
       ...o,
@@ -313,6 +320,8 @@ export class MarketplaceCatalogService {
       seller: product.sellerProfile,
       primaryImage: primary,
       gallery,
+      // MP-MEDIA-1 LOT 2 — vidéo unique produit (V1, null si absente).
+      video,
       offers: offersOut,
       documents,
       certifications,

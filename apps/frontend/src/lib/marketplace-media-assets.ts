@@ -25,7 +25,16 @@ export const MEDIA_ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp
 // MP-MEDIA-1 LOT 1 — Cap UI client (backend illimité V1).
 export const MEDIA_GALLERY_MAX_PER_PRODUCT_UI = 20;
 
+// MP-MEDIA-1 LOT 2 — Bornes vidéo produit V1.
+export const MEDIA_VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
+export const MEDIA_ALLOWED_VIDEO_MIMES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+] as const;
+
 export type MediaAllowedMime = (typeof MEDIA_ALLOWED_IMAGE_MIMES)[number];
+export type MediaAllowedVideoMime = (typeof MEDIA_ALLOWED_VIDEO_MIMES)[number];
 
 export interface MediaAsset {
   id: string;
@@ -73,6 +82,25 @@ export function validateImageFile(file: File): string | null {
     return `Fichier trop volumineux (${mb} Mo) — maximum 5 Mo.`;
   }
   return null;
+}
+
+/**
+ * MP-MEDIA-1 LOT 2 — Validation vidéo (miroir backend).
+ * Renvoie `{ ok: true }` ou `{ ok: false, error }`.
+ */
+export function validateVideoFile(file: File): { ok: true } | { ok: false; error: string } {
+  if (!(MEDIA_ALLOWED_VIDEO_MIMES as readonly string[]).includes(file.type)) {
+    return {
+      ok: false,
+      error:
+        'Format vidéo non supporté : seules les vidéos MP4, WebM ou MOV (QuickTime) sont acceptées.',
+    };
+  }
+  if (file.size > MEDIA_VIDEO_MAX_BYTES) {
+    const mb = (file.size / (1024 * 1024)).toFixed(1);
+    return { ok: false, error: `Vidéo trop volumineuse (${mb} Mo) — maximum 50 Mo.` };
+  }
+  return { ok: true };
 }
 
 export const marketplaceMediaAssetsApi = {
