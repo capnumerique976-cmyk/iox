@@ -184,6 +184,74 @@ export class NotifEmailService {
    * plutôt que faire échouer un workflow métier critique.
    */
   /**
+   * MP-NOTIF-3 phase 5 — Stats agrégées EmailLog (vue admin).
+   *
+   * Retourne :
+   *  - `byStatus` : count par status (SENT/FAILED/SKIPPED)
+   *  - `byTemplate` : top 10 templates (count desc)
+   *  - `byDay` : count des 30 derniers jours, par status
+   *
+   * Requêtes parallèles (3 en `Promise.all`), pas de side effect.
+   * Réservé ADMIN/COORDINATOR côté controller.
+   */
+  async getLogsStats(): Promise<{
+    byStatus: Array<{ status: 'SENT' | 'FAILED' | 'SKIPPED'; count: number }>;
+    byTemplate: Array<{ templateId: string; count: number }>;
+    byDay: Array<{ day: string; sent: number; failed: number; skipped: number }>;
+  }> {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+
+    const [byStatusRows, byTemplateRows, byDayRows] = await Promise.all([
+      this.prisma.emailLog.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      this.prisma.emailLog.groupBy({
+        by: ['templateId'],
+        _count: { _all: true },
+        orderBy: { _count: { templateId: 'desc' } },
+        take: 10,
+      }),
+      this.prisma.$queryRaw<
+        Array<{ day: Date; status: string; count: bigint }>
+      >(Prisma.sql`
+        SELECT date_trunc('day', created_at)::date AS day, status, count(*)::bigint AS count
+        FROM email_logs
+        WHERE created_at >= ${since}
+        GROUP BY day, status
+        ORDER BY day ASC
+      `),
+    ]);
+
+    const byStatus = byStatusRows.map((r) => ({
+      status: r.status as 'SENT' | 'FAILED' | 'SKIPPED',
+      count: r._count._all,
+    }));
+    const byTemplate = byTemplateRows.map((r) => ({
+      templateId: r.templateId,
+      count: r._count._all,
+    }));
+
+    // Pivot byDay rows (day, status, count) → { day, sent, failed, skipped }.
+    const dayMap = new Map<string, { sent: number; failed: number; skipped: number }>();
+    for (const r of byDayRows) {
+      const key = r.day.toISOString().slice(0, 10);
+      const cur = dayMap.get(key) ?? { sent: 0, failed: 0, skipped: 0 };
+      const c = Number(r.count);
+      if (r.status === 'SENT') cur.sent = c;
+      else if (r.status === 'FAILED') cur.failed = c;
+      else if (r.status === 'SKIPPED') cur.skipped = c;
+      dayMap.set(key, cur);
+    }
+    const byDay = Array.from(dayMap.entries())
+      .map(([day, counts]) => ({ day, ...counts }))
+      .sort((a, b) => a.day.localeCompare(b.day));
+
+    return { byStatus, byTemplate, byDay };
+  }
+
+  /**
    * MP-NOTIF-3 phase 3 — Récupère un EmailLog par id (vue admin détail).
    * Lecture seule. Throw NotFoundException si introuvable.
    */
