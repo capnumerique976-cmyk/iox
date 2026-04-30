@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Heart, LogIn, Users } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useLang } from '@/lib/i18n';
 import { LangSwitcher } from './LangSwitcher';
 import { Logo } from '@/components/brand/logo';
@@ -12,7 +13,10 @@ import { Logo } from '@/components/brand/logo';
  * Consomme `useLang` pour traduire les libellés ; layout parent reste RSC.
  */
 export function PublicMarketplaceHeader() {
+  // I18N-2 — utilise next-intl en complément du legacy useLang. Le bridge
+  // (useLang.setLang pose le cookie NEXT_LOCALE) garantit la cohérence.
   const { t } = useLang();
+  const tNav = useTranslations('nav');
   const pathname = usePathname();
   const isSellers = pathname?.startsWith('/marketplace/sellers') ?? false;
   const isCatalog = pathname === '/marketplace';
@@ -22,12 +26,12 @@ export function PublicMarketplaceHeader() {
         <Link
           href="/marketplace"
           className="group flex items-center gap-3 transition-opacity hover:opacity-90"
-          aria-label="IOX Marketplace — Accueil"
+          aria-label={tNav('homeAlt')}
         >
           <Logo variant="horizontal" height={38} className="hidden sm:block" />
           <Logo variant="emblem" height={34} className="sm:hidden" />
           <span className="hidden rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#00D4FF] md:inline-block">
-            Marketplace B2B
+            {tNav('marketplaceBadge')}
           </span>
         </Link>
         <nav className="flex items-center gap-1 text-sm sm:gap-2">
@@ -74,12 +78,14 @@ export function PublicMarketplaceHeader() {
 }
 
 export function PublicMarketplaceFooter() {
-  const { t } = useLang();
+  // I18N-2 — migration progressive vers next-intl. Le legacy useLang
+  // garde son DICT pour compat composants client non encore migrés.
+  const tFooter = useTranslations('footer');
   return (
     <footer className="relative z-10 mt-12 border-t border-white/10 bg-[#0A0E1A]/60 py-8 text-center text-xs text-white/50">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4">
         <Logo variant="horizontal" height={30} />
-        <p>{t('footer.tagline')}</p>
+        <p>{tFooter('tagline')}</p>
       </div>
     </footer>
   );
