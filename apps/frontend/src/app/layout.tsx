@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { AuthProvider } from '@/contexts/auth.context';
 import '@/styles/globals.css';
 
@@ -24,11 +26,18 @@ export const metadata: Metadata = {
   themeColor: '#0a1f4d',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // I18N-1 phase 1 — résolution locale + messages côté serveur via next-intl.
+  // `getLocale()` lit la valeur produite par `src/i18n/request.ts`.
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className={inter.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AuthProvider>{children}</AuthProvider>
+        </NextIntlClientProvider>
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
