@@ -172,6 +172,26 @@ describe('MediaAssetsService', () => {
       });
     });
 
+    it('LOT 3 — filtre mediaType=VIDEO appliqué au where', async () => {
+      prisma.mediaAsset.findMany.mockResolvedValue([]);
+      prisma.mediaAsset.count.mockResolvedValue(0);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await service.findAll({ mediaType: 'VIDEO' as any });
+      const call = prisma.mediaAsset.findMany.mock.calls[0][0];
+      expect(call.where).toMatchObject({ mediaType: 'VIDEO' });
+    });
+
+    it('LOT 3 — moderationStatus array → where.in', async () => {
+      prisma.mediaAsset.findMany.mockResolvedValue([]);
+      prisma.mediaAsset.count.mockResolvedValue(0);
+      await service.findAll({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        moderationStatus: ['PENDING', 'REJECTED'] as any,
+      });
+      const call = prisma.mediaAsset.findMany.mock.calls[0][0];
+      expect(call.where.moderationStatus).toEqual({ in: ['PENDING', 'REJECTED'] });
+    });
+
     it('clamp limit à 100', async () => {
       prisma.mediaAsset.findMany.mockResolvedValue([]);
       prisma.mediaAsset.count.mockResolvedValue(0);

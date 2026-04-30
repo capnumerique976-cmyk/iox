@@ -79,7 +79,14 @@ export class MediaAssetsService {
     if (query.relatedType) where.relatedType = query.relatedType;
     if (query.relatedId) where.relatedId = query.relatedId;
     if (query.role) where.role = query.role;
-    if (query.moderationStatus) where.moderationStatus = query.moderationStatus;
+    // MP-MEDIA-1 LOT 3 — moderationStatus accepte string | string[] (CSV).
+    if (query.moderationStatus) {
+      where.moderationStatus = Array.isArray(query.moderationStatus)
+        ? { in: query.moderationStatus }
+        : query.moderationStatus;
+    }
+    // MP-MEDIA-1 LOT 3 — filtre mediaType (IMAGE / VIDEO / ILLUSTRATION).
+    if (query.mediaType) where.mediaType = query.mediaType;
     if (actor) {
       Object.assign(where, await this.ownership.scopeRelatedEntityFilter(actor));
     }

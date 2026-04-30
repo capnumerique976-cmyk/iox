@@ -8,6 +8,8 @@ import {
   IsString,
   IsUUID,
   Min,
+  MaxLength,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -17,7 +19,7 @@ import {
   MediaAssetType,
   MediaModerationStatus,
 } from '@iox/shared';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class UploadMediaAssetDto {
   @ApiProperty({ enum: MarketplaceRelatedEntityType })
@@ -82,14 +84,29 @@ export class QueryMediaAssetsDto {
   @IsEnum(MediaAssetRole)
   role?: MediaAssetRole;
 
+  // MP-MEDIA-1 LOT 3 — filtre status (CSV multi via Transform).
   @IsOptional()
-  @IsEnum(MediaModerationStatus)
-  moderationStatus?: MediaModerationStatus;
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      return value.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return value;
+  })
+  @IsEnum(MediaModerationStatus, { each: true })
+  moderationStatus?: MediaModerationStatus | MediaModerationStatus[];
+
+  // MP-MEDIA-1 LOT 3 — filtre type média (IMAGE | VIDEO | ILLUSTRATION).
+  @IsOptional()
+  @IsEnum(MediaAssetType)
+  mediaType?: MediaAssetType;
 }
 
 export class RejectMediaAssetDto {
   @ApiProperty({ example: 'Image floue, résolution insuffisante' })
   @IsString()
+  @MinLength(3)
+  @MaxLength(500)
   reason: string;
 }
 
