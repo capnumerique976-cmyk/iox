@@ -234,3 +234,17 @@ Helper privé `notifyOnStatusTransition(updated, targetStatus, note)` :
 - Token unsubscribe **opaque** (pas JWT) côté URL pour éviter de
   dévoiler la structure du payload.
 
+
+
+---
+
+## Activation production Resend
+
+Voir doc dédiée : [`docs/ops/RESEND_PROD_ACTIVATION.md`](../ops/RESEND_PROD_ACTIVATION.md).
+
+Scripts ops :
+- `deploy/scripts/activate-resend.sh` — bascule `NOTIF_EMAIL_TRANSPORT=mock` → `resend` sur VPS (avec backup .env auto + restart container).
+- `deploy/scripts/smoke-resend.sh` — smoke post-bascule (login smoke-buyer + RFQ test + check EmailLog).
+
+Rollback : re-bascule `NOTIF_EMAIL_TRANSPORT=mock` → comportement V0 immédiat. EmailLog persistent dans les 2 modes.
+
