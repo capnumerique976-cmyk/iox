@@ -162,6 +162,9 @@ model User {
   role         UserRole
   isActive     Boolean  @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at")
+  // I18N-3 — Locale préférée pour UI + emails. Migration additive,
+  // défaut "fr" (rétrocompat). Synchro avec cookie NEXT_LOCALE au login.
+  preferredLocale String @default("fr") @map("preferred_locale")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

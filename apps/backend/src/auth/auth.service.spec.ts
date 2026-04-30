@@ -21,6 +21,7 @@ const mockUser = {
   role: UserRole.ADMIN,
   isActive: true,
   lastLoginAt: null,
+  preferredLocale: 'fr',
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,

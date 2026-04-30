@@ -13,6 +13,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Languages } from 'lucide-react';
 import { LOCALES, LOCALE_COOKIE_NAME, type Locale } from '@/i18n/config';
+import { authStorage } from '@/lib/auth';
+import { api } from '@/lib/api';
 
 export function LocaleSwitcher() {
   const t = useTranslations('common.language');
@@ -23,6 +25,17 @@ export function LocaleSwitcher() {
   const switchLocale = (next: Locale) => {
     if (next === currentLocale) return;
     document.cookie = `${LOCALE_COOKIE_NAME}=${next}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+    // I18N-3 — si user authentifié, persister la préférence côté DB.
+    // Best-effort : si le PATCH échoue, le cookie reste posé donc l'UI
+    // reste cohérente jusqu'au prochain login.
+    const token = authStorage.getAccessToken();
+    if (token) {
+      api
+        .patch<{ id: string }>('/users/me/locale', { locale: next }, token)
+        .catch(() => {
+          /* silent — cookie déjà posé, UI reste cohérente */
+        });
+    }
     startTransition(() => {
       router.refresh();
     });
