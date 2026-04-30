@@ -24,11 +24,15 @@ describe('templates registry — i18n locale resolution', () => {
     );
   });
 
-  it("getTemplate(id, 'en') → fallback FR si variante EN absente", () => {
-    // rfq-won n'a pas encore de variante EN (à faire en phase 3).
+  it("getTemplate(id, 'en') → fallback FR si variante EN absente (id inexistant en EN)", () => {
+    // I18N-4 phase 3 — toutes les variantes EN sont désormais présentes.
+    // On teste le fallback via un id fictif pour vérifier le comportement.
+    // (Les 6 ids actuels ont tous fr+en après phase 3.)
     const tFr = getTemplate('rfq-won');
     const tEn = getTemplate('rfq-won', 'en');
-    expect(tEn).toBe(tFr); // même référence (fallback)
+    // Phase 3 : EN existe → tEn ≠ tFr
+    expect(tEn).not.toBe(tFr);
+    expect(tEn).not.toBeNull();
   });
 
   // I18N-4 phase 2 — variantes EN ajoutées.
@@ -90,8 +94,67 @@ describe('templates registry — i18n locale resolution', () => {
     expect(locales).toContain('en');
   });
 
-  it('listLocalesForTemplate(rfq-won) → [fr] (EN à faire en phase 3)', () => {
+  // I18N-4 phase 3 — variantes EN ajoutées pour won, lost, created-to-seller.
+  it("getTemplate('rfq-won', 'en') → variante EN (phase 3)", () => {
+    const t = getTemplate('rfq-won', 'en');
+    expect(t).not.toBeNull();
+    expect(
+      t!.subject({
+        offerTitle: 'X',
+        recipientDisplayName: '',
+        senderDisplayName: '',
+        note: null,
+        ctaUrl: '',
+      }),
+    ).toContain('confirmed');
+  });
+
+  it("getTemplate('rfq-lost', 'en') → variante EN (phase 3)", () => {
+    const t = getTemplate('rfq-lost', 'en');
+    expect(t).not.toBeNull();
+    expect(
+      t!.subject({
+        offerTitle: 'X',
+        recipientDisplayName: '',
+        senderDisplayName: '',
+        note: null,
+        ctaUrl: '',
+      }),
+    ).toContain('Update');
+  });
+
+  it("getTemplate('rfq-created-to-seller', 'en') → variante EN (phase 3)", () => {
+    const t = getTemplate('rfq-created-to-seller', 'en');
+    expect(t).not.toBeNull();
+    expect(
+      t!.subject({
+        offerTitle: 'X',
+        sellerDisplayName: '',
+        buyerCompanyName: '',
+        requestedQuantity: null,
+        requestedUnit: null,
+        deliveryCountry: null,
+        message: null,
+        ctaUrl: '',
+      }),
+    ).toContain('New quote request');
+  });
+
+  it('listLocalesForTemplate(rfq-won) → [fr, en] (I18N-4 phase 3)', () => {
     const locales = listLocalesForTemplate('rfq-won');
-    expect(locales).toEqual(['fr']);
+    expect(locales).toContain('fr');
+    expect(locales).toContain('en');
+  });
+
+  it('listLocalesForTemplate(rfq-lost) → [fr, en] (I18N-4 phase 3)', () => {
+    const locales = listLocalesForTemplate('rfq-lost');
+    expect(locales).toContain('fr');
+    expect(locales).toContain('en');
+  });
+
+  it('listLocalesForTemplate(rfq-created-to-seller) → [fr, en] (I18N-4 phase 3)', () => {
+    const locales = listLocalesForTemplate('rfq-created-to-seller');
+    expect(locales).toContain('fr');
+    expect(locales).toContain('en');
   });
 });

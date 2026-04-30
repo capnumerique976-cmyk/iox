@@ -13,6 +13,7 @@
 
 import type { EmailTemplate } from '../notif-email.types';
 import { rfqCreatedToSellerTemplate } from './rfq-created-to-seller.template';
+import { rfqCreatedToSellerEnTemplate } from './rfq-created-to-seller.en.template';
 import { rfqMessageCreatedTemplate } from './rfq-message-created.template';
 import { rfqMessageCreatedEnTemplate } from './rfq-message-created.en.template';
 import { rfqQualifiedTemplate } from './rfq-qualified.template';
@@ -20,7 +21,9 @@ import { rfqQualifiedEnTemplate } from './rfq-qualified.en.template';
 import { rfqQuotedTemplate } from './rfq-quoted.template';
 import { rfqQuotedEnTemplate } from './rfq-quoted.en.template';
 import { rfqWonTemplate } from './rfq-won.template';
+import { rfqWonEnTemplate } from './rfq-won.en.template';
 import { rfqLostTemplate } from './rfq-lost.template';
+import { rfqLostEnTemplate } from './rfq-lost.en.template';
 
 // I18N-4 — Type structure : id → { fr: required, en?: optional }.
 // Si la variante EN n'existe pas, fallback FR (graceful degradation).
@@ -30,14 +33,18 @@ type LocaleVariants = {
 };
 
 const REGISTRY: Record<string, LocaleVariants> = {
-  'rfq-created-to-seller': { fr: rfqCreatedToSellerTemplate as EmailTemplate },
+  // I18N-4 phase 3 — variante EN ajoutée pour rfq-created-to-seller.
+  'rfq-created-to-seller': {
+    fr: rfqCreatedToSellerTemplate as EmailTemplate,
+    en: rfqCreatedToSellerEnTemplate as EmailTemplate,
+  },
   'rfq-message-created': {
     fr: rfqMessageCreatedTemplate as EmailTemplate,
     en: rfqMessageCreatedEnTemplate as EmailTemplate,
   },
   // MP-NOTIF-2 phase 2 — transitions RFQ status.
   // I18N-4 phase 2 — variantes EN ajoutées pour rfq-qualified + rfq-quoted.
-  // rfq-won + rfq-lost gardent fallback FR (à ajouter en phase 3).
+  // I18N-4 phase 3 — variantes EN ajoutées pour rfq-won + rfq-lost (clôt I18N-4).
   'rfq-qualified': {
     fr: rfqQualifiedTemplate as EmailTemplate,
     en: rfqQualifiedEnTemplate as EmailTemplate,
@@ -46,8 +53,14 @@ const REGISTRY: Record<string, LocaleVariants> = {
     fr: rfqQuotedTemplate as EmailTemplate,
     en: rfqQuotedEnTemplate as EmailTemplate,
   },
-  'rfq-won': { fr: rfqWonTemplate as EmailTemplate },
-  'rfq-lost': { fr: rfqLostTemplate as EmailTemplate },
+  'rfq-won': {
+    fr: rfqWonTemplate as EmailTemplate,
+    en: rfqWonEnTemplate as EmailTemplate,
+  },
+  'rfq-lost': {
+    fr: rfqLostTemplate as EmailTemplate,
+    en: rfqLostEnTemplate as EmailTemplate,
+  },
 };
 
 export type TemplateId = keyof typeof REGISTRY;
