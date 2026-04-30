@@ -16,7 +16,9 @@ import { rfqCreatedToSellerTemplate } from './rfq-created-to-seller.template';
 import { rfqMessageCreatedTemplate } from './rfq-message-created.template';
 import { rfqMessageCreatedEnTemplate } from './rfq-message-created.en.template';
 import { rfqQualifiedTemplate } from './rfq-qualified.template';
+import { rfqQualifiedEnTemplate } from './rfq-qualified.en.template';
 import { rfqQuotedTemplate } from './rfq-quoted.template';
+import { rfqQuotedEnTemplate } from './rfq-quoted.en.template';
 import { rfqWonTemplate } from './rfq-won.template';
 import { rfqLostTemplate } from './rfq-lost.template';
 
@@ -33,9 +35,17 @@ const REGISTRY: Record<string, LocaleVariants> = {
     fr: rfqMessageCreatedTemplate as EmailTemplate,
     en: rfqMessageCreatedEnTemplate as EmailTemplate,
   },
-  // MP-NOTIF-2 phase 2 — transitions RFQ status. Variantes EN à ajouter en I18N-4 phase 2.
-  'rfq-qualified': { fr: rfqQualifiedTemplate as EmailTemplate },
-  'rfq-quoted': { fr: rfqQuotedTemplate as EmailTemplate },
+  // MP-NOTIF-2 phase 2 — transitions RFQ status.
+  // I18N-4 phase 2 — variantes EN ajoutées pour rfq-qualified + rfq-quoted.
+  // rfq-won + rfq-lost gardent fallback FR (à ajouter en phase 3).
+  'rfq-qualified': {
+    fr: rfqQualifiedTemplate as EmailTemplate,
+    en: rfqQualifiedEnTemplate as EmailTemplate,
+  },
+  'rfq-quoted': {
+    fr: rfqQuotedTemplate as EmailTemplate,
+    en: rfqQuotedEnTemplate as EmailTemplate,
+  },
   'rfq-won': { fr: rfqWonTemplate as EmailTemplate },
   'rfq-lost': { fr: rfqLostTemplate as EmailTemplate },
 };
