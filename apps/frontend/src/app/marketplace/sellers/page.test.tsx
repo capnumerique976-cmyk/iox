@@ -1,11 +1,42 @@
 // MP-S-INDEX — couverture page RSC /marketplace/sellers.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import frMessages from '../../../../messages/fr.json';
 import type { SellersResult, PublicSeller } from '@/lib/marketplace/types';
 
 const fetchSellersMock = vi.fn();
 vi.mock('@/lib/marketplace/api', () => ({
   fetchSellers: (...args: unknown[]) => fetchSellersMock(...args),
+}));
+
+// I18N-6 — mock next-intl/server (ne fonctionne pas en jsdom hors RSC).
+// Renvoie une fonction qui résout les clés depuis fr.json.
+vi.mock('next-intl/server', () => ({
+  getTranslations: async (namespace: string) => {
+    return (key: string, vars: Record<string, unknown> = {}) => {
+      const path = `${namespace}.${key}`.split('.');
+      let cur: unknown = frMessages;
+      for (const seg of path) {
+        if (cur && typeof cur === 'object') cur = (cur as Record<string, unknown>)[seg];
+      }
+      let str = typeof cur === 'string' ? cur : path.join('.');
+      // Sub plurals + var simple : remplace {var} et {count, plural, ...} (V1 raw).
+      for (const [k, v] of Object.entries(vars)) {
+        str = str.replaceAll(`{${k}}`, String(v));
+      }
+      // Plural fallback : sortir le 'other' si pattern présent + var count.
+      str = str.replace(
+        /\{count, plural, =0 \{([^}]+)\} one \{([^}]+)\} other \{([^}]+)\}\}/,
+        (_, zero: string, one: string, other: string) => {
+          const c = Number(vars.count);
+          if (c === 0) return zero;
+          if (c === 1) return one;
+          return other.replace('#', String(c));
+        },
+      );
+      return str;
+    };
+  },
 }));
 
 // SellersFilters est un client component qui utilise next/navigation —
