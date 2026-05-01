@@ -60,6 +60,11 @@ describe('i18n parity FR ↔ EN', () => {
     expect(frKeys.size).toBeGreaterThanOrEqual(160);
   });
 
+  // I18N-8 — migration useLang → useTranslations + clés filtres/readiness/months.
+  it('compte total ≥ 210 clés (I18N-8 — filters + months + quality labels)', () => {
+    expect(frKeys.size).toBeGreaterThanOrEqual(210);
+  });
+
   it('namespaces I18N-6 présents : sellers.heroBadge / heroDescription / emptyTitle, seller.sections.about / publishedProducts', () => {
     const requiredKeys = [
       'marketplace.sellers.heroBadge',

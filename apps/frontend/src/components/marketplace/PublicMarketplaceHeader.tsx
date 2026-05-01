@@ -4,18 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Heart, LogIn, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useLang } from '@/lib/i18n';
 import { LangSwitcher } from './LangSwitcher';
 import { Logo } from '@/components/brand/logo';
 
 /**
  * Header client du marketplace public — dark-premium (DS Neon).
- * Consomme `useLang` pour traduire les libellés ; layout parent reste RSC.
+ * I18N-8 — migré de useLang vers useTranslations uniquement.
  */
 export function PublicMarketplaceHeader() {
-  // I18N-2 — utilise next-intl en complément du legacy useLang. Le bridge
-  // (useLang.setLang pose le cookie NEXT_LOCALE) garantit la cohérence.
-  const { t } = useLang();
   const tNav = useTranslations('nav');
   const pathname = usePathname();
   const isSellers = pathname?.startsWith('/marketplace/sellers') ?? false;
@@ -42,7 +38,7 @@ export function PublicMarketplaceHeader() {
               isCatalog ? 'bg-white/10 text-white' : 'text-white/70'
             }`}
           >
-            {t('nav.catalog')}
+            {tNav('catalog')}
           </Link>
           <Link
             href="/marketplace/sellers"
@@ -53,21 +49,21 @@ export function PublicMarketplaceHeader() {
             }`}
           >
             <Users className="h-3.5 w-3.5" aria-hidden />
-            <span className="hidden sm:inline">{t('nav.sellers', 'Producteurs')}</span>
+            <span className="hidden sm:inline">{tNav('sellers')}</span>
           </Link>
           <Link
             href="/marketplace/favorites"
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-white/70 transition-colors hover:bg-white/5 hover:text-white"
           >
             <Heart className="h-3.5 w-3.5" aria-hidden />
-            <span className="hidden sm:inline">{t('nav.favorites')}</span>
+            <span className="hidden sm:inline">{tNav('favorites')}</span>
           </Link>
           <Link
             href="/login"
             className="flex items-center gap-1.5 rounded-lg bg-gradient-iox-neon px-3 py-1.5 font-medium text-white shadow-glow-cyan-sm transition-all duration-base ease-premium hover:brightness-110 hover:shadow-glow-cyan active:scale-[0.98]"
           >
             <LogIn className="h-3.5 w-3.5" aria-hidden />
-            <span>{t('nav.proArea')}</span>
+            <span>{tNav('proArea')}</span>
           </Link>
           <span className="mx-1 hidden h-5 w-px bg-white/10 sm:block" aria-hidden />
           <LangSwitcher />
@@ -78,8 +74,6 @@ export function PublicMarketplaceHeader() {
 }
 
 export function PublicMarketplaceFooter() {
-  // I18N-2 — migration progressive vers next-intl. Le legacy useLang
-  // garde son DICT pour compat composants client non encore migrés.
   const tFooter = useTranslations('footer');
   return (
     <footer className="relative z-10 mt-12 border-t border-white/10 bg-[#0A0E1A]/60 py-8 text-center text-xs text-white/50">

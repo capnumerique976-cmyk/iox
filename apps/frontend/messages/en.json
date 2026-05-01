@@ -22,6 +22,7 @@
     },
     "language": {
       "label": "Language",
+      "switcherAriaLabel": "Language selector",
       "fr": "Français",
       "en": "English"
     },
@@ -50,14 +51,28 @@
       "heroAvailable": "{count, plural, =0 {available} other {available}}",
       "filters": {
         "search": "Search",
-        "searchPlaceholder": "Product name…",
-        "category": "Category",
+        "searchPlaceholder": "Name, producer, variety…",
+        "category": "Category (slug)",
         "country": "Country of origin",
+        "originRegion": "Origin region",
+        "originRegionPlaceholder": "Region, state…",
+        "categoryPlaceholder": "spices, coffee…",
+        "productionMethod": "Production method",
+        "productionMethodPlaceholder": "organic, sustainable…",
+        "qualityAttribute": "Quality attribute",
+        "seasonalityMonth": "Available in",
+        "allYear": "Year-round",
+        "temperature": "Temperature",
+        "temperaturePlaceholder": "Frozen, ambient…",
         "reset": "Reset",
+        "apply": "Filter",
         "all": "All",
         "readiness": "Export readiness",
         "priceMode": "Price mode",
-        "sort": "Sort"
+        "moqMax": "Max MOQ",
+        "availableOnly": "Available only",
+        "hasPublicDocs": "Public documents required",
+        "sort": "Sort by"
       },
       "card": {
         "viewOffer": "View offer",
@@ -76,15 +91,58 @@
       },
       "readinessLabels": {
         "EXPORT_READY": "Export ready",
-        "EXPORT_READY_WITH_CONDITIONS": "Ready with conditions",
-        "INTERNAL_ONLY": "Local market only"
+        "EXPORT_READY_WITH_CONDITIONS": "Export ready (conditional)",
+        "INTERNAL_ONLY": "Local market",
+        "PENDING_DOCUMENTS": "Docs pending",
+        "PENDING_QUALITY_REVIEW": "Quality review",
+        "NOT_ELIGIBLE": "Not export eligible"
+      },
+      "priceLabels": {
+        "FIXED": "Fixed price",
+        "FROM_PRICE": "Starting from",
+        "QUOTE_ONLY": "Quote only"
       },
       "sortLabels": {
         "featured": "Featured",
         "recent": "Most recent",
         "nameAsc": "Name A→Z",
         "priceAsc": "Price ascending",
-        "priceDesc": "Price descending"
+        "priceDesc": "Price descending",
+        "readiness": "Export readiness"
+      },
+      "months": {
+        "JAN": "January",
+        "FEB": "February",
+        "MAR": "March",
+        "APR": "April",
+        "MAY": "May",
+        "JUN": "June",
+        "JUL": "July",
+        "AUG": "August",
+        "SEP": "September",
+        "OCT": "October",
+        "NOV": "November",
+        "DEC": "December"
+      },
+      "qualityLabels": {
+        "NON_GMO": "Non-GMO",
+        "ORGANIC": "Organic",
+        "HANDMADE": "Handmade",
+        "TRADITIONAL": "Traditional",
+        "HAND_HARVESTED": "Hand harvested",
+        "GLUTEN_FREE": "Gluten free",
+        "LACTOSE_FREE": "Lactose free",
+        "VEGAN": "Vegan",
+        "VEGETARIAN": "Vegetarian",
+        "KOSHER": "Kosher",
+        "HALAL": "Halal",
+        "WILD_HARVESTED": "Wild harvested",
+        "SMALL_BATCH": "Small batch",
+        "COLD_PRESSED": "Cold pressed",
+        "RAW": "Raw",
+        "FAIR_TRADE": "Fair trade",
+        "ARTISANAL": "Artisanal",
+        "OTHER": "Other"
       }
     },
     "product": {
@@ -189,7 +247,9 @@
         "country": "Country",
         "region": "Region",
         "featuredOnly": "Featured only",
-        "sort": "Sort"
+        "sort": "Sort",
+        "reset": "Reset",
+        "apply": "Apply"
       },
       "sortLabels": {
         "featured": "Featured first",

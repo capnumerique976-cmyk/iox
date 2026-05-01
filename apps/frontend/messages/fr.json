@@ -22,6 +22,7 @@
     },
     "language": {
       "label": "Langue",
+      "switcherAriaLabel": "Sélecteur de langue",
       "fr": "Français",
       "en": "English"
     },
@@ -49,15 +50,29 @@
       "heroDescription": "Découvrez les offres d'export des entreprises engagées dans le programme MCH — traçabilité garantie, conformité validée.",
       "heroAvailable": "{count, plural, =0 {disponibles} other {disponibles}}",
       "filters": {
-        "search": "Rechercher",
-        "searchPlaceholder": "Nom de produit…",
-        "category": "Catégorie",
+        "search": "Recherche",
+        "searchPlaceholder": "Nom, producteur, variété…",
+        "category": "Catégorie (slug)",
         "country": "Pays d'origine",
+        "originRegion": "Région d'origine",
+        "originRegionPlaceholder": "Région, département…",
+        "categoryPlaceholder": "epices, cafe…",
+        "productionMethod": "Méthode de production",
+        "productionMethodPlaceholder": "biologique, raisonné…",
+        "qualityAttribute": "Qualité structurée",
+        "seasonalityMonth": "Disponible en",
+        "allYear": "Toute l'année",
+        "temperature": "Température",
+        "temperaturePlaceholder": "Frozen, ambiant…",
         "reset": "Réinitialiser",
+        "apply": "Filtrer",
         "all": "Tous",
-        "readiness": "Préparation export",
+        "readiness": "Readiness export",
         "priceMode": "Mode de prix",
-        "sort": "Tri"
+        "moqMax": "MOQ max",
+        "availableOnly": "Disponibles uniquement",
+        "hasPublicDocs": "Documents publics requis",
+        "sort": "Trier par"
       },
       "card": {
         "viewOffer": "Voir l'offre",
@@ -75,16 +90,59 @@
         "FROM_PRICE": "À partir de"
       },
       "readinessLabels": {
-        "EXPORT_READY": "Prêt à l'export",
-        "EXPORT_READY_WITH_CONDITIONS": "Prêt sous conditions",
-        "INTERNAL_ONLY": "Marché local uniquement"
+        "EXPORT_READY": "Export prêt",
+        "EXPORT_READY_WITH_CONDITIONS": "Export sous conditions",
+        "INTERNAL_ONLY": "Marché local",
+        "PENDING_DOCUMENTS": "Docs attendus",
+        "PENDING_QUALITY_REVIEW": "Revue qualité",
+        "NOT_ELIGIBLE": "Non éligible export"
+      },
+      "priceLabels": {
+        "FIXED": "Prix fixe",
+        "FROM_PRICE": "À partir de",
+        "QUOTE_ONLY": "Sur devis"
       },
       "sortLabels": {
         "featured": "Recommandés",
         "recent": "Plus récents",
         "nameAsc": "Nom A→Z",
         "priceAsc": "Prix croissant",
-        "priceDesc": "Prix décroissant"
+        "priceDesc": "Prix décroissant",
+        "readiness": "Readiness export"
+      },
+      "months": {
+        "JAN": "Janvier",
+        "FEB": "Février",
+        "MAR": "Mars",
+        "APR": "Avril",
+        "MAY": "Mai",
+        "JUN": "Juin",
+        "JUL": "Juillet",
+        "AUG": "Août",
+        "SEP": "Septembre",
+        "OCT": "Octobre",
+        "NOV": "Novembre",
+        "DEC": "Décembre"
+      },
+      "qualityLabels": {
+        "NON_GMO": "Sans OGM",
+        "ORGANIC": "Bio",
+        "HANDMADE": "Fait main",
+        "TRADITIONAL": "Traditionnel",
+        "HAND_HARVESTED": "Récolte manuelle",
+        "GLUTEN_FREE": "Sans gluten",
+        "LACTOSE_FREE": "Sans lactose",
+        "VEGAN": "Vegan",
+        "VEGETARIAN": "Végétarien",
+        "KOSHER": "Kasher",
+        "HALAL": "Halal",
+        "WILD_HARVESTED": "Cueillette sauvage",
+        "SMALL_BATCH": "Petites séries",
+        "COLD_PRESSED": "Pression à froid",
+        "RAW": "Cru",
+        "FAIR_TRADE": "Commerce équitable",
+        "ARTISANAL": "Artisanal",
+        "OTHER": "Autre"
       }
     },
     "product": {
@@ -189,7 +247,9 @@
         "country": "Pays",
         "region": "Région",
         "featuredOnly": "Vedettes uniquement",
-        "sort": "Tri"
+        "sort": "Tri",
+        "reset": "Réinitialiser",
+        "apply": "Appliquer"
       },
       "sortLabels": {
         "featured": "Vedettes d'abord",

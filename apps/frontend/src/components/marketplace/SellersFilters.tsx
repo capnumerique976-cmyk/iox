@@ -2,22 +2,19 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useEffect, FormEvent } from 'react';
-import { useLang } from '@/lib/i18n';
+import { useTranslations } from 'next-intl';
 
 /**
  * MP-S-INDEX — Filtres URL-state pour l'annuaire public seller.
- *
- * Pattern aligné sur `CatalogFilters` : état local contrôlé hydraté depuis
- * `searchParams`, soumission via `router.push(?qs)`. Pas de react-hook-form
- * pour rester homogène avec le reste du marketplace public.
+ * I18N-8 — migré de useLang vers useTranslations('marketplace.sellers').
  */
 export function SellersFilters() {
-  const { t } = useLang();
+  const t = useTranslations('marketplace.sellers');
 
-  const SORT_OPTS: Array<{ value: string; label: string }> = [
-    { value: 'featured', label: t('sellers.sort.featured', "Vedettes d'abord") },
-    { value: 'recent', label: t('sellers.sort.recent', 'Récents') },
-    { value: 'name_asc', label: t('sellers.sort.nameAsc', 'Nom A→Z') },
+  const SORT_OPTS: Array<{ value: string; labelKey: string }> = [
+    { value: 'featured', labelKey: 'sortLabels.featured' },
+    { value: 'recent', labelKey: 'sortLabels.recent' },
+    { value: 'name_asc', labelKey: 'sortLabels.nameAsc' },
   ];
 
   const router = useRouter();
@@ -65,20 +62,20 @@ export function SellersFilters() {
     >
       <div>
         <label className={labelCls} htmlFor="sellers-q">
-          {t('sellers.filters.search', 'Rechercher')}
+          {t('filters.search')}
         </label>
         <input
           id="sellers-q"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={t('sellers.filters.searchPlaceholder', 'Nom, ville…')}
+          placeholder={t('filters.searchPlaceholder')}
           className={fieldCls}
         />
       </div>
 
       <div>
         <label className={labelCls} htmlFor="sellers-country">
-          {t('sellers.filters.country', 'Pays')}
+          {t('filters.country')}
         </label>
         <input
           id="sellers-country"
@@ -92,7 +89,7 @@ export function SellersFilters() {
 
       <div>
         <label className={labelCls} htmlFor="sellers-region">
-          {t('sellers.filters.region', 'Région')}
+          {t('filters.region')}
         </label>
         <input
           id="sellers-region"
@@ -110,12 +107,12 @@ export function SellersFilters() {
           className="h-3.5 w-3.5 rounded border-white/20 bg-white/10 accent-[#00D4FF]"
           data-testid="sellers-filters-featured"
         />
-        {t('sellers.filters.featuredOnly', 'Vedettes uniquement')}
+        {t('filters.featuredOnly')}
       </label>
 
       <div>
         <label className={labelCls} htmlFor="sellers-sort">
-          {t('sellers.filters.sort', 'Tri')}
+          {t('filters.sort')}
         </label>
         <select
           id="sellers-sort"
@@ -125,7 +122,7 @@ export function SellersFilters() {
         >
           {SORT_OPTS.map((o) => (
             <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
-              {o.label}
+              {t(o.labelKey)}
             </option>
           ))}
         </select>
@@ -136,14 +133,15 @@ export function SellersFilters() {
           type="button"
           onClick={reset}
           className="text-xs text-white/50 underline-offset-2 hover:text-white hover:underline"
+          data-testid="sellers-filters-reset"
         >
-          {t('filters.reset', 'Réinitialiser')}
+          {t('filters.reset')}
         </button>
         <button
           type="submit"
           className="rounded-lg bg-gradient-iox-neon px-3 py-1.5 text-sm font-medium text-white shadow-glow-cyan-sm transition-all duration-base ease-premium hover:brightness-110 hover:shadow-glow-cyan active:scale-[0.98]"
         >
-          {t('filters.apply', 'Appliquer')}
+          {t('filters.apply')}
         </button>
       </div>
     </form>

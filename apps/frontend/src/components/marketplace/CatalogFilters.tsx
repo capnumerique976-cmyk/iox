@@ -2,74 +2,52 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useEffect, FormEvent } from 'react';
-import { useLang } from '@/lib/i18n';
+import { useTranslations } from 'next-intl';
 import type {
   ProductQualityAttribute,
   SeasonalityMonth,
 } from '@/lib/marketplace/types';
 
-// MP-FILTERS-1 — Liste des 18 valeurs FP-7 + libellés FR locaux. On
-// duplique côté front pour ne pas dépendre du build serveur.
-const QUALITY_ATTR_OPTIONS: Array<{ value: ProductQualityAttribute; label: string }> = [
-  { value: 'NON_GMO', label: 'Sans OGM' },
-  { value: 'ORGANIC', label: 'Bio' },
-  { value: 'HANDMADE', label: 'Fait main' },
-  { value: 'TRADITIONAL', label: 'Traditionnel' },
-  { value: 'HAND_HARVESTED', label: 'Récolte manuelle' },
-  { value: 'GLUTEN_FREE', label: 'Sans gluten' },
-  { value: 'LACTOSE_FREE', label: 'Sans lactose' },
-  { value: 'VEGAN', label: 'Vegan' },
-  { value: 'VEGETARIAN', label: 'Végétarien' },
-  { value: 'KOSHER', label: 'Kasher' },
-  { value: 'HALAL', label: 'Halal' },
-  { value: 'WILD_HARVESTED', label: 'Cueillette sauvage' },
-  { value: 'SMALL_BATCH', label: 'Petites séries' },
-  { value: 'COLD_PRESSED', label: 'Pression à froid' },
-  { value: 'RAW', label: 'Cru' },
-  { value: 'FAIR_TRADE', label: 'Commerce équitable' },
-  { value: 'ARTISANAL', label: 'Artisanal' },
-  { value: 'OTHER', label: 'Autre' },
+// I18N-8 — migré de useLang vers useTranslations('marketplace.catalog').
+// Quality attributes et months restent des constantes (valeurs enum),
+// les labels sont résolus via les clés i18n catalog.qualityLabels.* et catalog.months.*.
+
+const QUALITY_ATTR_VALUES: ProductQualityAttribute[] = [
+  'NON_GMO', 'ORGANIC', 'HANDMADE', 'TRADITIONAL', 'HAND_HARVESTED',
+  'GLUTEN_FREE', 'LACTOSE_FREE', 'VEGAN', 'VEGETARIAN', 'KOSHER',
+  'HALAL', 'WILD_HARVESTED', 'SMALL_BATCH', 'COLD_PRESSED', 'RAW',
+  'FAIR_TRADE', 'ARTISANAL', 'OTHER',
 ];
 
-const SEASONALITY_OPTIONS: Array<{ value: SeasonalityMonth; label: string }> = [
-  { value: 'JAN', label: 'Janvier' },
-  { value: 'FEB', label: 'Février' },
-  { value: 'MAR', label: 'Mars' },
-  { value: 'APR', label: 'Avril' },
-  { value: 'MAY', label: 'Mai' },
-  { value: 'JUN', label: 'Juin' },
-  { value: 'JUL', label: 'Juillet' },
-  { value: 'AUG', label: 'Août' },
-  { value: 'SEP', label: 'Septembre' },
-  { value: 'OCT', label: 'Octobre' },
-  { value: 'NOV', label: 'Novembre' },
-  { value: 'DEC', label: 'Décembre' },
+const SEASONALITY_VALUES: SeasonalityMonth[] = [
+  'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+  'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
 ];
 
 export function CatalogFilters() {
-  const { t } = useLang();
+  const t = useTranslations('marketplace.catalog');
 
-  const READINESS_OPTS: Array<{ value: string; label: string }> = [
-    { value: '', label: t('filters.all', 'Toutes') },
-    { value: 'EXPORT_READY', label: t('readiness.EXPORT_READY') },
-    { value: 'EXPORT_READY_WITH_CONDITIONS', label: t('readiness.EXPORT_READY_WITH_CONDITIONS') },
-    { value: 'INTERNAL_ONLY', label: t('readiness.INTERNAL_ONLY') },
+  const READINESS_OPTS: Array<{ value: string; labelKey: string }> = [
+    { value: '', labelKey: 'filters.all' },
+    { value: 'EXPORT_READY', labelKey: 'readinessLabels.EXPORT_READY' },
+    { value: 'EXPORT_READY_WITH_CONDITIONS', labelKey: 'readinessLabels.EXPORT_READY_WITH_CONDITIONS' },
+    { value: 'INTERNAL_ONLY', labelKey: 'readinessLabels.INTERNAL_ONLY' },
   ];
 
-  const PRICE_OPTS: Array<{ value: string; label: string }> = [
-    { value: '', label: t('filters.all', 'Tous') },
-    { value: 'FIXED', label: t('price.fixed', 'Prix fixe') },
-    { value: 'FROM_PRICE', label: t('price.fromPrice') },
-    { value: 'QUOTE_ONLY', label: t('price.quoteOnly') },
+  const PRICE_OPTS: Array<{ value: string; labelKey: string }> = [
+    { value: '', labelKey: 'filters.all' },
+    { value: 'FIXED', labelKey: 'priceLabels.FIXED' },
+    { value: 'FROM_PRICE', labelKey: 'priceLabels.FROM_PRICE' },
+    { value: 'QUOTE_ONLY', labelKey: 'priceLabels.QUOTE_ONLY' },
   ];
 
-  const SORT_OPTS: Array<{ value: string; label: string }> = [
-    { value: 'featured', label: t('sort.featured', 'Recommandés') },
-    { value: 'recent', label: t('sort.recent', 'Plus récents') },
-    { value: 'name_asc', label: t('sort.nameAsc', 'Nom A→Z') },
-    { value: 'price_asc', label: t('sort.priceAsc', 'Prix croissant') },
-    { value: 'price_desc', label: t('sort.priceDesc', 'Prix décroissant') },
-    { value: 'readiness', label: t('filters.readiness') },
+  const SORT_OPTS: Array<{ value: string; labelKey: string }> = [
+    { value: 'featured', labelKey: 'sortLabels.featured' },
+    { value: 'recent', labelKey: 'sortLabels.recent' },
+    { value: 'name_asc', labelKey: 'sortLabels.nameAsc' },
+    { value: 'price_asc', labelKey: 'sortLabels.priceAsc' },
+    { value: 'price_desc', labelKey: 'sortLabels.priceDesc' },
+    { value: 'readiness', labelKey: 'sortLabels.readiness' },
   ];
 
   const router = useRouter();
@@ -174,49 +152,49 @@ export function CatalogFilters() {
 
       <div>
         <label className={labelCls} htmlFor="catalog-filter-region">
-          Région d'origine
+          {t('filters.originRegion')}
         </label>
         <input
           id="catalog-filter-region"
           data-testid="catalog-filter-originRegion"
           value={originRegion}
           onChange={(e) => setOriginRegion(e.target.value)}
-          placeholder="Région, département…"
+          placeholder={t('filters.originRegionPlaceholder')}
           className={fieldCls}
         />
       </div>
 
       <div>
         <label className={labelCls} htmlFor="catalog-filter-category">
-          Catégorie (slug)
+          {t('filters.category')}
         </label>
         <input
           id="catalog-filter-category"
           data-testid="catalog-filter-categorySlug"
           value={categorySlug}
           onChange={(e) => setCategorySlug(e.target.value.toLowerCase())}
-          placeholder="epices, cafe…"
+          placeholder={t('filters.categoryPlaceholder')}
           className={fieldCls}
         />
       </div>
 
       <div>
         <label className={labelCls} htmlFor="catalog-filter-method">
-          Méthode de production
+          {t('filters.productionMethod')}
         </label>
         <input
           id="catalog-filter-method"
           data-testid="catalog-filter-productionMethod"
           value={productionMethod}
           onChange={(e) => setProductionMethod(e.target.value)}
-          placeholder="biologique, raisonné…"
+          placeholder={t('filters.productionMethodPlaceholder')}
           className={fieldCls}
         />
       </div>
 
       <div>
         <label className={labelCls} htmlFor="catalog-filter-quality">
-          Qualité structurée
+          {t('filters.qualityAttribute')}
         </label>
         <select
           id="catalog-filter-quality"
@@ -226,11 +204,11 @@ export function CatalogFilters() {
           className={fieldCls}
         >
           <option value="" className="bg-[#12161F] text-white">
-            {t('filters.all', 'Toutes')}
+            {t('filters.all')}
           </option>
-          {QUALITY_ATTR_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
-              {o.label}
+          {QUALITY_ATTR_VALUES.map((val) => (
+            <option key={val} value={val} className="bg-[#12161F] text-white">
+              {t(`qualityLabels.${val}`)}
             </option>
           ))}
         </select>
@@ -238,7 +216,7 @@ export function CatalogFilters() {
 
       <div>
         <label className={labelCls} htmlFor="catalog-filter-season">
-          Disponible en
+          {t('filters.seasonalityMonth')}
         </label>
         <select
           id="catalog-filter-season"
@@ -248,11 +226,11 @@ export function CatalogFilters() {
           className={fieldCls}
         >
           <option value="" className="bg-[#12161F] text-white">
-            Toute l'année
+            {t('filters.allYear')}
           </option>
-          {SEASONALITY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
-              {o.label}
+          {SEASONALITY_VALUES.map((val) => (
+            <option key={val} value={val} className="bg-[#12161F] text-white">
+              {t(`months.${val}`)}
             </option>
           ))}
         </select>
@@ -260,14 +238,14 @@ export function CatalogFilters() {
 
       <div>
         <label className={labelCls} htmlFor="catalog-filter-temp">
-          Température
+          {t('filters.temperature')}
         </label>
         <input
           id="catalog-filter-temp"
           data-testid="catalog-filter-temperatureRequirements"
           value={temperatureRequirements}
           onChange={(e) => setTemperatureRequirements(e.target.value)}
-          placeholder="Frozen, ambiant…"
+          placeholder={t('filters.temperaturePlaceholder')}
           maxLength={100}
           className={fieldCls}
         />
@@ -282,7 +260,7 @@ export function CatalogFilters() {
         >
           {READINESS_OPTS.map((o) => (
             <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
-              {o.label}
+              {t(o.labelKey)}
             </option>
           ))}
         </select>
@@ -297,7 +275,7 @@ export function CatalogFilters() {
         >
           {PRICE_OPTS.map((o) => (
             <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
-              {o.label}
+              {t(o.labelKey)}
             </option>
           ))}
         </select>
@@ -332,7 +310,7 @@ export function CatalogFilters() {
           onChange={(e) => setHasPublicDocs(e.target.checked)}
           className="h-3.5 w-3.5 rounded border-white/20 bg-white/10 accent-[#00D4FF]"
         />
-        Documents publics requis
+        {t('filters.hasPublicDocs')}
       </label>
 
       <div>
@@ -340,7 +318,7 @@ export function CatalogFilters() {
         <select value={sort} onChange={(e) => setSort(e.target.value)} className={fieldCls}>
           {SORT_OPTS.map((o) => (
             <option key={o.value} value={o.value} className="bg-[#12161F] text-white">
-              {o.label}
+              {t(o.labelKey)}
             </option>
           ))}
         </select>
@@ -351,6 +329,7 @@ export function CatalogFilters() {
           type="button"
           onClick={reset}
           className="text-xs text-white/50 underline-offset-2 hover:text-white hover:underline"
+          data-testid="catalog-filters-reset"
         >
           {t('filters.reset')}
         </button>
