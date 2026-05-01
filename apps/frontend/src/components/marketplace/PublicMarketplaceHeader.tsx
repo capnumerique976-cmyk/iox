@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Heart, LogIn, Users } from 'lucide-react';
+import { FolderTree, Heart, LogIn, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { LangSwitcher } from './LangSwitcher';
 import { Logo } from '@/components/brand/logo';
@@ -15,6 +15,7 @@ export function PublicMarketplaceHeader() {
   const tNav = useTranslations('nav');
   const pathname = usePathname();
   const isSellers = pathname?.startsWith('/marketplace/sellers') ?? false;
+  const isCategories = pathname?.startsWith('/marketplace/categories') ?? false;
   const isCatalog = pathname === '/marketplace';
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0A0E1A]/80 backdrop-blur-xl">
@@ -39,6 +40,17 @@ export function PublicMarketplaceHeader() {
             }`}
           >
             {tNav('catalog')}
+          </Link>
+          <Link
+            href="/marketplace/categories"
+            aria-current={isCategories ? 'page' : undefined}
+            data-testid="nav-categories"
+            className={`hidden items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors hover:bg-white/5 hover:text-white sm:flex ${
+              isCategories ? 'bg-white/10 text-white' : 'text-white/70'
+            }`}
+          >
+            <FolderTree className="h-3.5 w-3.5" aria-hidden />
+            <span>{tNav('categories')}</span>
           </Link>
           <Link
             href="/marketplace/sellers"

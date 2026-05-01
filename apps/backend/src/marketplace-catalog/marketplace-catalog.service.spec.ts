@@ -30,6 +30,7 @@ describe('MarketplaceCatalogService', () => {
     mediaAsset: { findMany: jest.Mock };
     marketplaceDocument: { findMany: jest.Mock };
     certification: { findMany: jest.Mock };
+    marketplaceCategory: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -45,6 +46,7 @@ describe('MarketplaceCatalogService', () => {
       mediaAsset: { findMany: jest.fn() },
       marketplaceDocument: { findMany: jest.fn().mockResolvedValue([]) },
       certification: { findMany: jest.fn().mockResolvedValue([]) },
+      marketplaceCategory: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn((ops: Array<Promise<unknown>>) => Promise.all(ops)),
     };
 
@@ -661,6 +663,38 @@ describe('MarketplaceCatalogService', () => {
       expect(where.relatedType).toBe(MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT);
       expect(where.role).toBe(MediaAssetRole.PRIMARY);
       expect(where.moderationStatus).toBe(MediaModerationStatus.APPROVED);
+    });
+  });
+
+  // ── findCategoriesTree (MP-CATEGORY-2) ─────────────────────────────────
+
+  describe('findCategoriesTree', () => {
+    it('retourne un arbre vide si aucune catégorie active', async () => {
+      prisma.marketplaceCategory.findMany.mockResolvedValue([]);
+      const res = await service.findCategoriesTree();
+      expect(res.data).toEqual([]);
+    });
+
+    it('construit un arbre parent → children à partir de données plates', async () => {
+      prisma.marketplaceCategory.findMany.mockResolvedValue([
+        { id: 'r1', parentId: null, nameFr: 'Épices', nameEn: 'Spices', slug: 'epices', description: null, sortOrder: 0, _count: { marketplaceProducts: 5 } },
+        { id: 'c1', parentId: 'r1', nameFr: 'Vanille', nameEn: 'Vanilla', slug: 'vanille', description: null, sortOrder: 0, _count: { marketplaceProducts: 3 } },
+        { id: 'r2', parentId: null, nameFr: 'Fruits', nameEn: 'Fruits', slug: 'fruits', description: null, sortOrder: 1, _count: { marketplaceProducts: 0 } },
+      ]);
+      const res = await service.findCategoriesTree();
+      expect(res.data).toHaveLength(2);
+      expect(res.data[0].slug).toBe('epices');
+      expect(res.data[0].children).toHaveLength(1);
+      expect(res.data[0].children[0].slug).toBe('vanille');
+      expect(res.data[1].slug).toBe('fruits');
+      expect(res.data[1].children).toHaveLength(0);
+    });
+
+    it('filtre uniquement les catégories actives (where isActive=true)', async () => {
+      prisma.marketplaceCategory.findMany.mockResolvedValue([]);
+      await service.findCategoriesTree();
+      const call = prisma.marketplaceCategory.findMany.mock.calls[0][0];
+      expect(call.where.isActive).toBe(true);
     });
   });
 });

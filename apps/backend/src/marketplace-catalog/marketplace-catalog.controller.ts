@@ -24,6 +24,14 @@ export class MarketplaceCatalogController {
     return this.service.findProductBySlug(slug);
   }
 
+  // MP-CATEGORY-2 — arborescence publique des catégories actives.
+  @Public()
+  @Get('categories')
+  @ApiOperation({ summary: 'Arborescence publique des catégories actives' })
+  categoriesTree() {
+    return this.service.findCategoriesTree();
+  }
+
   // MP-S-INDEX — La route `sellers` (liste) DOIT être déclarée AVANT
   // `sellers/:slug` (fiche détail), sinon Express considère "sellers" comme
   // un slug et appelle la mauvaise méthode. Ne pas réordonner.

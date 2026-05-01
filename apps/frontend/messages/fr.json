@@ -35,6 +35,7 @@
     "sellers": "Producteurs",
     "favorites": "Favoris",
     "proArea": "Espace pro",
+    "categories": "Catégories",
     "marketplaceBadge": "Marketplace B2B",
     "homeAlt": "IOX Marketplace — Accueil"
   },
@@ -227,6 +228,15 @@
       "open": "Ouvrir",
       "removeAriaLabel": "Retirer {name} des favoris",
       "remove": "Retirer"
+    },
+    "categories": {
+      "title": "Catégories",
+      "heroDescription": "Parcourez nos catégories de produits pour trouver ce que vous cherchez.",
+      "emptyTitle": "Aucune catégorie disponible",
+      "emptyHint": "Les catégories seront ajoutées prochainement.",
+      "productsCount": "{count, plural, =0 {Aucun produit} one {1 produit} other {# produits}}",
+      "browseCategory": "Voir les produits",
+      "subcategories": "{count, plural, one {1 sous-catégorie} other {# sous-catégories}}"
     },
     "sellers": {
       "title": "Nos producteurs",

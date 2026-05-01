@@ -66,3 +66,20 @@ export function fetchSellers(search: URLSearchParams): Promise<SellersResult> {
   const qs = search.toString();
   return publicGet<SellersResult>(`/marketplace/catalog/sellers${qs ? `?${qs}` : ''}`);
 }
+
+/** MP-CATEGORY-2 — arborescence publique des catégories actives. */
+export interface PublicCategoryNode {
+  id: string;
+  parentId: string | null;
+  nameFr: string;
+  nameEn: string | null;
+  slug: string;
+  description: string | null;
+  sortOrder: number;
+  productsCount: number;
+  children: PublicCategoryNode[];
+}
+
+export function fetchCategoriesTree(): Promise<PublicCategoryNode[]> {
+  return publicGet<PublicCategoryNode[]>('/marketplace/catalog/categories');
+}
