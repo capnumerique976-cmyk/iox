@@ -7,6 +7,7 @@ import {
   ArrowRight,
   BadgeCheck,
   ClipboardList,
+  FolderTree,
   Link2,
   RefreshCw,
   ShieldAlert,
@@ -507,6 +508,11 @@ export default function AdminDashboardPage() {
             href="/admin/diagnostics"
             label="Diagnostics"
             icon={<ShieldAlert className="h-4 w-4" />}
+          />
+          <QuickLink
+            href="/admin/marketplace/categories"
+            label="Catégories"
+            icon={<FolderTree className="h-4 w-4" />}
           />
           <QuickLink
             href="/audit-logs"
