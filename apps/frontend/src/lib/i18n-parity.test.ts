@@ -65,6 +65,11 @@ describe('i18n parity FR ↔ EN', () => {
     expect(frKeys.size).toBeGreaterThanOrEqual(210);
   });
 
+  // MP-CATEGORY-2 — page publique catégories + nav + common.language.
+  it('compte total ≥ 225 clés (MP-CATEGORY-2 — catégories publiques)', () => {
+    expect(frKeys.size).toBeGreaterThanOrEqual(225);
+  });
+
   it('namespaces I18N-6 présents : sellers.heroBadge / heroDescription / emptyTitle, seller.sections.about / publishedProducts', () => {
     const requiredKeys = [
       'marketplace.sellers.heroBadge',
@@ -121,6 +126,23 @@ describe('i18n parity FR ↔ EN', () => {
       'marketplace.favorites.empty',
       'marketplace.favorites.addedOn',
       'marketplace.catalog.emptyHint',
+    ];
+    for (const key of requiredKeys) {
+      expect(frKeys.has(key)).toBe(true);
+      expect(enKeys.has(key)).toBe(true);
+    }
+  });
+
+  it('namespaces MP-CATEGORY-2 présents : categories page + nav link', () => {
+    const requiredKeys = [
+      'marketplace.categories.title',
+      'marketplace.categories.heroDescription',
+      'marketplace.categories.productsCount',
+      'marketplace.categories.browseCategory',
+      'marketplace.categories.emptyTitle',
+      'marketplace.categories.emptyHint',
+      'nav.categories',
+      'common.language.switcherAriaLabel',
     ];
     for (const key of requiredKeys) {
       expect(frKeys.has(key)).toBe(true);
