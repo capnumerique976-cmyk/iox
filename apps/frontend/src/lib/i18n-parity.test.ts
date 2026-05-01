@@ -55,6 +55,11 @@ describe('i18n parity FR ↔ EN', () => {
     expect(frKeys.size).toBeGreaterThanOrEqual(140);
   });
 
+  // I18N-7 — product detail complet + favorites + catalog emptyHint.
+  it('compte total ≥ 160 clés (I18N-7 — extraction product detail + favorites)', () => {
+    expect(frKeys.size).toBeGreaterThanOrEqual(160);
+  });
+
   it('namespaces I18N-6 présents : sellers.heroBadge / heroDescription / emptyTitle, seller.sections.about / publishedProducts', () => {
     const requiredKeys = [
       'marketplace.sellers.heroBadge',
@@ -87,6 +92,30 @@ describe('i18n parity FR ↔ EN', () => {
       'marketplace.seller.fields.country',
       'common.states.noImage',
       'common.breadcrumb.label',
+    ];
+    for (const key of requiredKeys) {
+      expect(frKeys.has(key)).toBe(true);
+      expect(enKeys.has(key)).toBe(true);
+    }
+  });
+
+  it('namespaces I18N-7 présents : product quality + favorites + catalog emptyHint', () => {
+    const requiredKeys = [
+      'marketplace.product.breadcrumbCatalog',
+      'marketplace.product.primaryOfferBadge',
+      'marketplace.product.requestQuote',
+      'marketplace.product.loginRequired',
+      'marketplace.product.otherOffersTitle',
+      'marketplace.product.volumesTitle',
+      'marketplace.product.quality.ORGANIC',
+      'marketplace.product.quality.HALAL',
+      'marketplace.product.quality.VEGAN',
+      'marketplace.product.fields.incoterm',
+      'marketplace.product.fields.departure',
+      'marketplace.favorites.title',
+      'marketplace.favorites.empty',
+      'marketplace.favorites.addedOn',
+      'marketplace.catalog.emptyHint',
     ];
     for (const key of requiredKeys) {
       expect(frKeys.has(key)).toBe(true);

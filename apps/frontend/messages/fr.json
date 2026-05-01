@@ -42,6 +42,7 @@
       "title": "Catalogue marketplace",
       "subtitle": "{count, plural, =0 {Aucune offre publiée} one {1 offre publiée} other {# offres publiées}}",
       "empty": "Aucune offre ne correspond à vos filtres.",
+      "emptyHint": "Essayez d'élargir vos filtres pour découvrir plus de produits.",
       "unavailable": "Le catalogue n'a pas pu être chargé. Rafraîchissez la page dans un instant ; si le problème persiste, nos équipes sont déjà alertées.",
       "heroBadge": "Produits de Mayotte sélectionnés",
       "heroTitleHighlight": "marketplace",
@@ -87,7 +88,17 @@
       }
     },
     "product": {
+      "breadcrumbCatalog": "Catalogue",
       "sellerLabel": "Producteur",
+      "primaryOfferBadge": "Offre principale",
+      "requestQuote": "Demander un devis",
+      "loginRequired": "Connexion requise pour envoyer une demande",
+      "otherOffersTitle": "Autres offres publiées",
+      "volumesTitle": "Volumes et capacités",
+      "videoAriaLabel": "Vidéo {name}",
+      "seasonalityAriaLabel": "Saisonnalité de {name}",
+      "certificationsAriaLabel": "Certifications de {name}",
+      "leadTimeDaysSuffix": "{days, plural, one {1 j} other {# j}}",
       "sections": {
         "description": "Description",
         "characteristics": "Caractéristiques",
@@ -103,6 +114,8 @@
       "fields": {
         "moq": "MOQ",
         "leadTime": "Délai",
+        "incoterm": "Incoterm",
+        "departure": "Départ",
         "variety": "Variété",
         "production": "Production",
         "packaging": "Packaging",
@@ -123,7 +136,39 @@
         "restock": "Réapprovisionnement",
         "originCountry": "Pays d'origine",
         "originRegion": "Région"
+      },
+      "quality": {
+        "ORGANIC": "Bio",
+        "NON_GMO": "Non-OGM",
+        "HANDMADE": "Fait main",
+        "ARTISANAL": "Artisanal",
+        "TRADITIONAL": "Tradition",
+        "HAND_HARVESTED": "Récolte manuelle",
+        "WILD_HARVESTED": "Cueillette sauvage",
+        "SMALL_BATCH": "Petite série",
+        "COLD_PRESSED": "Pressé à froid",
+        "RAW": "Cru / non transformé",
+        "FAIR_TRADE": "Équitable",
+        "GLUTEN_FREE": "Sans gluten",
+        "LACTOSE_FREE": "Sans lactose",
+        "VEGAN": "Vegan",
+        "VEGETARIAN": "Végétarien",
+        "KOSHER": "Casher",
+        "HALAL": "Halal",
+        "OTHER": "Autre"
       }
+    },
+    "favorites": {
+      "title": "Mes favoris",
+      "subtitle": "Produits marqués sur cet appareil. Stockage local uniquement.",
+      "catalog": "Catalogue",
+      "loading": "Chargement…",
+      "empty": "Vous n'avez pas encore de favoris.",
+      "exploreCatalog": "Explorer le catalogue",
+      "addedOn": "Ajouté le {date}",
+      "open": "Ouvrir",
+      "removeAriaLabel": "Retirer {name} des favoris",
+      "remove": "Retirer"
     },
     "sellers": {
       "title": "Nos producteurs",

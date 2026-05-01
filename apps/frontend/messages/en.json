@@ -42,6 +42,7 @@
       "title": "Marketplace catalog",
       "subtitle": "{count, plural, =0 {No published offers} one {1 published offer} other {# published offers}}",
       "empty": "No offers match your filters.",
+      "emptyHint": "Try broadening your filters to discover more products.",
       "unavailable": "The catalog could not be loaded. Please refresh in a moment — our team is already alerted if the issue persists.",
       "heroBadge": "Curated products from Mayotte",
       "heroTitleHighlight": "marketplace",
@@ -87,7 +88,17 @@
       }
     },
     "product": {
+      "breadcrumbCatalog": "Catalog",
       "sellerLabel": "Producer",
+      "primaryOfferBadge": "Primary offer",
+      "requestQuote": "Request a quote",
+      "loginRequired": "Login required to submit a quote request",
+      "otherOffersTitle": "Other published offers",
+      "volumesTitle": "Volumes & capacity",
+      "videoAriaLabel": "Video {name}",
+      "seasonalityAriaLabel": "Seasonality of {name}",
+      "certificationsAriaLabel": "Certifications of {name}",
+      "leadTimeDaysSuffix": "{days, plural, one {1 d} other {# d}}",
       "sections": {
         "description": "Description",
         "characteristics": "Characteristics",
@@ -103,6 +114,8 @@
       "fields": {
         "moq": "MOQ",
         "leadTime": "Lead time",
+        "incoterm": "Incoterm",
+        "departure": "Departure",
         "variety": "Variety",
         "production": "Production method",
         "packaging": "Packaging",
@@ -123,7 +136,39 @@
         "restock": "Restock frequency",
         "originCountry": "Country of origin",
         "originRegion": "Region"
+      },
+      "quality": {
+        "ORGANIC": "Organic",
+        "NON_GMO": "Non-GMO",
+        "HANDMADE": "Handmade",
+        "ARTISANAL": "Artisanal",
+        "TRADITIONAL": "Traditional",
+        "HAND_HARVESTED": "Hand harvested",
+        "WILD_HARVESTED": "Wild harvested",
+        "SMALL_BATCH": "Small batch",
+        "COLD_PRESSED": "Cold pressed",
+        "RAW": "Raw / unprocessed",
+        "FAIR_TRADE": "Fair trade",
+        "GLUTEN_FREE": "Gluten free",
+        "LACTOSE_FREE": "Lactose free",
+        "VEGAN": "Vegan",
+        "VEGETARIAN": "Vegetarian",
+        "KOSHER": "Kosher",
+        "HALAL": "Halal",
+        "OTHER": "Other"
       }
+    },
+    "favorites": {
+      "title": "My favorites",
+      "subtitle": "Products bookmarked on this device. Local storage only.",
+      "catalog": "Catalog",
+      "loading": "Loading…",
+      "empty": "You don't have any favorites yet.",
+      "exploreCatalog": "Explore the catalog",
+      "addedOn": "Added on {date}",
+      "open": "Open",
+      "removeAriaLabel": "Remove {name} from favorites",
+      "remove": "Remove"
     },
     "sellers": {
       "title": "Our producers",

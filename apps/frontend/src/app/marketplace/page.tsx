@@ -79,7 +79,7 @@ export default async function CatalogPage({ searchParams }: PageProps) {
               </div>
               <h2 className="text-sm font-semibold text-white">{t('empty')}</h2>
               <p className="mt-1 text-sm text-white/50">
-                Essayez d&apos;élargir vos filtres pour découvrir plus de produits.
+                {t('emptyHint')}
               </p>
             </div>
           ) : (
