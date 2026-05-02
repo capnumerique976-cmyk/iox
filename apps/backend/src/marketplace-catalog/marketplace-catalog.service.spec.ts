@@ -748,18 +748,22 @@ describe('MarketplaceCatalogService', () => {
       expect(result).toEqual({ data: [] });
     });
 
-    it('searches products and sellers with term >= 2 chars', async () => {
+    it('searches products, sellers, and categories with term >= 2 chars', async () => {
       prisma.marketplaceProduct.findMany.mockResolvedValue([
         { id: 'p1', slug: 'vanille', commercialName: 'Vanille Bourbon' },
       ]);
       prisma.sellerProfile.findMany.mockResolvedValue([
         { id: 's1', slug: 'seller-vanille', publicDisplayName: 'Vanille MCH' },
       ]);
+      prisma.marketplaceCategory.findMany.mockResolvedValue([
+        { id: 'c1', slug: 'vanille-epices', nameFr: 'Vanille & Épices' },
+      ]);
 
       const result = await service.suggest('van');
-      expect(result.data).toHaveLength(2);
+      expect(result.data).toHaveLength(3);
       expect(result.data[0]).toEqual({ type: 'product', id: 'p1', slug: 'vanille', label: 'Vanille Bourbon' });
       expect(result.data[1]).toEqual({ type: 'seller', id: 's1', slug: 'seller-vanille', label: 'Vanille MCH' });
+      expect(result.data[2]).toEqual({ type: 'category', id: 'c1', slug: 'vanille-epices', label: 'Vanille & Épices' });
     });
 
     it('uses case-insensitive contains filter', async () => {
