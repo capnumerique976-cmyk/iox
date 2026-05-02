@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, ChevronRight, RotateCcw, Sparkles, Users } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
@@ -7,6 +8,23 @@ import { SellersFilters } from '@/components/marketplace/SellersFilters';
 import { Pagination } from '@/components/marketplace/Pagination';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Producteurs certifiés — IOX Marketplace',
+  description:
+    'Annuaire des producteurs et exportateurs certifiés de l\'océan Indien. Sourcing direct, profils vérifiés.',
+  openGraph: {
+    title: 'Producteurs certifiés — IOX Marketplace',
+    description: 'Annuaire producteurs vérifiés — sourcing direct océan Indien.',
+    type: 'website',
+    siteName: 'IOX Marketplace',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Producteurs certifiés — IOX Marketplace',
+    description: 'Annuaire producteurs vérifiés — sourcing direct océan Indien.',
+  },
+};
 
 interface PageProps {
   searchParams: Record<string, string | string[] | undefined>;
