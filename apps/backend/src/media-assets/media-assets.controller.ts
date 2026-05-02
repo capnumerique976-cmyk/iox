@@ -17,6 +17,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { MediaAssetsService } from './media-assets.service';
 import {
   UploadMediaAssetDto,
@@ -106,6 +107,7 @@ export class MediaAssetsController {
   }
 
   @Post('upload')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Roles(...SELLER_ROLES)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   @ApiConsumes('multipart/form-data')
