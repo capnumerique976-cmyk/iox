@@ -9,8 +9,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from '../database/database.module';
 import { NotifEmailService } from './notif-email.service';
+import { NotifEmailRetryService } from './notif-email-retry.service';
 import { NotifEmailController } from './notif-email.controller';
 import { NotifEmailTransportFactory } from './transport.factory';
 import { MockEmailTransport } from './transports/mock.transport';
@@ -24,6 +26,8 @@ import { NotifEmailMePreferencesController } from './me-preferences.controller';
   imports: [
     ConfigModule,
     DatabaseModule,
+    // MP-NOTIF-3 phase 7 — ScheduleModule for cron-based retry.
+    ScheduleModule.forRoot(),
     // MP-NOTIF-2 — JwtModule local pour signer/vérifier les tokens
     // unsubscribe ; le secret est résolu dynamiquement dans
     // `UnsubscribeService.resolveSecret`.
@@ -41,6 +45,7 @@ import { NotifEmailMePreferencesController } from './me-preferences.controller';
     NotifEmailTransportFactory,
     UnsubscribeService,
     NotifEmailService,
+    NotifEmailRetryService,
   ],
   exports: [NotifEmailService, MockEmailTransport, UnsubscribeService],
 })
