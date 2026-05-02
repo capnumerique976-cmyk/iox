@@ -13,6 +13,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { MarketplaceOffersService } from './marketplace-offers.service';
 import {
   CreateMarketplaceOfferDto,
@@ -81,6 +82,7 @@ export class MarketplaceOffersController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   @Roles(...SELLER_EDIT)
   @ApiOperation({ summary: 'Créer une offre marketplace (brouillon)' })
   create(@Body() dto: CreateMarketplaceOfferDto, @CurrentUser() actor: RequestUser) {
