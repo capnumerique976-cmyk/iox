@@ -504,6 +504,39 @@ describe('NotifEmailService.listLogs', () => {
     });
   });
 
+  // MP-NOTIF-3 phase 7 — replayFailedLog
+  describe('replayFailedLog', () => {
+    it('replay FAILED log → resend + returns originalId + status', async () => {
+      const failedRow = makeRow({
+        id: 'fail-1',
+        status: 'FAILED',
+        templateId: 'raw',
+        subject: 'Hello',
+        recipientEmail: 'buyer@ex.com',
+        errorCode: 'TRANSPORT_FAILURE',
+        metadataJson: { data: {} },
+      });
+      prisma.emailLog.findUnique.mockResolvedValue(failedRow);
+      prisma.emailLog.create.mockResolvedValue({ id: 'log-new' });
+
+      const res = await service.replayFailedLog('fail-1', { id: 'admin-1' });
+      expect(res.originalId).toBe('fail-1');
+      expect(res.status).toBe('SENT');
+      // send() was called which triggers persistLog → emailLog.create
+      expect(prisma.emailLog.create).toHaveBeenCalled();
+    });
+
+    it('replay non-FAILED log → throws BadRequestException', async () => {
+      prisma.emailLog.findUnique.mockResolvedValue(makeRow({ id: 'sent-1', status: 'SENT' }));
+      await expect(service.replayFailedLog('sent-1')).rejects.toThrow(/Only FAILED/);
+    });
+
+    it('replay unknown id → throws NotFoundException', async () => {
+      prisma.emailLog.findUnique.mockResolvedValue(null);
+      await expect(service.replayFailedLog('absent')).rejects.toThrow(/introuvable/i);
+    });
+  });
+
   // MP-NOTIF-3 phase 6 — exportLogsCsv
   describe('exportLogsCsv', () => {
     it('retourne header + 0 ligne quand findMany vide', async () => {

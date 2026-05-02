@@ -40,9 +40,17 @@ export const notifEmailApi = {
     const suffix = qs.toString() ? `?${qs.toString()}` : '';
     return api.get<EmailLogListResponse>(`/notif-email/logs${suffix}`, token);
   },
-  // MP-NOTIF-3 phase 3 — détail unitaire (avec metadataJson complet).
+  // MP-NOTIF-3 phase 3 — detail unitaire (avec metadataJson complet).
   getLogById: (id: string, token: string) =>
     api.get<EmailLogItem>(`/notif-email/logs/${id}`, token),
+
+  // MP-NOTIF-3 phase 7 — replay un email FAILED.
+  replayLog: (id: string, token: string) =>
+    api.post<{ originalId: string; newLogId: string | null; status: string }>(
+      `/notif-email/logs/${id}/replay`,
+      {},
+      token,
+    ),
 
   // MP-NOTIF-3 phase 4 — liste désinscriptions (admin).
   listUnsubscribes: (params: ListUnsubscribesParams, token: string) => {

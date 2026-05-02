@@ -9,7 +9,9 @@ import {
   Header,
   Param,
   ParseUUIDPipe,
+  Post,
   Query,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -71,6 +73,14 @@ export class NotifEmailController {
   @ApiOperation({ summary: "Détail d'un EmailLog par id (vue admin)" })
   getLogById(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.getLogById(id);
+  }
+
+  // MP-NOTIF-3 phase 7 — Replay un email FAILED (admin only).
+  @Post('logs/:id/replay')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Replay un EmailLog FAILED (admin only)' })
+  replayLog(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.service.replayFailedLog(id, req.user);
   }
 
   // MP-NOTIF-3 phase 4 — Admin EmailUnsubscribe.

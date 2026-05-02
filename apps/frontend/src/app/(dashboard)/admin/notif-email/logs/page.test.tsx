@@ -11,6 +11,7 @@ vi.mock('@/lib/auth', async () => {
 });
 
 const listLogsMock = vi.fn();
+const replayLogMock = vi.fn();
 vi.mock('@/lib/notif-email', async () => {
   const actual = await vi.importActual<typeof import('@/lib/notif-email')>('@/lib/notif-email');
   return {
@@ -18,6 +19,7 @@ vi.mock('@/lib/notif-email', async () => {
     notifEmailApi: {
       ...actual.notifEmailApi,
       listLogs: (...args: unknown[]) => listLogsMock(...args),
+      replayLog: (...args: unknown[]) => replayLogMock(...args),
     },
   };
 });
@@ -40,7 +42,10 @@ const baseRow = {
 };
 
 describe('AdminNotifEmailLogsPage (MP-NOTIF-3)', () => {
-  beforeEach(() => listLogsMock.mockReset());
+  beforeEach(() => {
+    listLogsMock.mockReset();
+    replayLogMock.mockReset();
+  });
   afterEach(() => vi.clearAllMocks());
 
   it('rend les lignes avec statut + sujet + template', async () => {
@@ -119,5 +124,53 @@ describe('AdminNotifEmailLogsPage (MP-NOTIF-3)', () => {
     render(<AdminNotifEmailLogsPage />);
     await waitFor(() => expect(screen.getByText('Échec')).toBeInTheDocument());
     expect(screen.getByText('TRANSPORT_FAILURE')).toBeInTheDocument();
+  });
+
+  // MP-NOTIF-3 phase 7 — Replay button tests
+  it('affiche le bouton Rejouer pour les logs FAILED', async () => {
+    listLogsMock.mockResolvedValue({
+      data: [
+        {
+          ...baseRow,
+          id: 'fail-1',
+          status: 'FAILED',
+          errorCode: 'TRANSPORT_FAILURE',
+          errorMessage: 'timeout',
+        },
+      ],
+      meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+    });
+    render(<AdminNotifEmailLogsPage />);
+    await waitFor(() => expect(screen.getByTestId('replay-fail-1')).toBeInTheDocument());
+    expect(screen.getByText('Rejouer')).toBeInTheDocument();
+  });
+
+  it('ne montre PAS le bouton Rejouer pour les logs SENT', async () => {
+    listLogsMock.mockResolvedValue({
+      data: [baseRow],
+      meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+    });
+    render(<AdminNotifEmailLogsPage />);
+    await waitFor(() => expect(screen.getByText('Envoyé')).toBeInTheDocument());
+    expect(screen.queryByText('Rejouer')).not.toBeInTheDocument();
+  });
+
+  it('clic Rejouer appelle POST /notif-email/logs/:id/replay', async () => {
+    listLogsMock.mockResolvedValue({
+      data: [
+        {
+          ...baseRow,
+          id: 'fail-2',
+          status: 'FAILED',
+          errorCode: 'TRANSPORT_FAILURE',
+        },
+      ],
+      meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+    });
+    replayLogMock.mockResolvedValue({ originalId: 'fail-2', newLogId: 'new-1', status: 'SENT' });
+    render(<AdminNotifEmailLogsPage />);
+    await waitFor(() => expect(screen.getByTestId('replay-fail-2')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('replay-fail-2'));
+    await waitFor(() => expect(replayLogMock).toHaveBeenCalledWith('fail-2', 'tok'));
   });
 });
