@@ -1,5 +1,6 @@
 import { Controller, Get, Header, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/roles.decorator';
 import { MarketplaceCatalogService } from './marketplace-catalog.service';
 import { CatalogQueryDto } from './dto/catalog-query.dto';
@@ -23,6 +24,7 @@ const CACHE_STATIC = 'public, s-maxage=300, max-age=120, stale-while-revalidate=
 
 @ApiTags('marketplace - catalog (public)')
 @Controller('marketplace/catalog')
+@Throttle({ default: { limit: 60, ttl: 60_000 } })
 export class MarketplaceCatalogController {
   constructor(private service: MarketplaceCatalogService) {}
 
@@ -54,6 +56,7 @@ export class MarketplaceCatalogController {
   // SEARCH-FULLTEXT — autocomplete/suggestions sur produits + vendeurs.
   @Public()
   @Get('suggest')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Header('Cache-Control', CACHE_LIST)
   @ApiOperation({ summary: 'Suggestions autocomplétion (produits + vendeurs)' })
   suggest(@Query('q') q: string) {
