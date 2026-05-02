@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { RefreshCw, LayoutDashboard, ShoppingBag } from 'lucide-react';
 
 export default function GlobalError({
   error,
@@ -16,13 +17,13 @@ export default function GlobalError({
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full text-center space-y-6">
-        <div className="space-y-2">
+      <div className="max-w-lg w-full text-center space-y-6">
+        <div className="space-y-3">
           <p className="text-7xl font-black text-red-100 select-none">!</p>
           <h1 className="text-2xl font-bold text-gray-900">Cette page n&apos;a pas pu être affichée</h1>
-          <p className="text-sm text-gray-500">
-            Un incident technique a interrompu le rendu. Réessayer suffit généralement ; si l&apos;erreur
-            se reproduit, communiquez la référence ci-dessous à votre administrateur IOX.
+          <p className="text-sm text-gray-500 max-w-sm mx-auto">
+            Un incident technique a interrompu le rendu. Réessayer suffit généralement ; si
+            l&apos;erreur se reproduit, communiquez la référence ci-dessous à votre administrateur IOX.
           </p>
           {error.digest && (
             <p className="text-xs font-mono text-gray-400 bg-gray-100 rounded px-2 py-1 inline-block">
@@ -30,17 +31,26 @@ export default function GlobalError({
             </p>
           )}
         </div>
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
           >
+            <RefreshCw className="h-4 w-4" />
             Réessayer
           </button>
           <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            href="/marketplace"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
+            <ShoppingBag className="h-4 w-4" />
+            Marketplace
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <LayoutDashboard className="h-4 w-4" />
             Tableau de bord
           </Link>
         </div>
