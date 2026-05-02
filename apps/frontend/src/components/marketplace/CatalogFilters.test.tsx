@@ -1,6 +1,6 @@
-// MP-FILTERS-1 + I18N-8 — couverture du composant CatalogFilters.
+// MP-FILTERS-1 + I18N-8 + MP-CATEGORY-3 — couverture du composant CatalogFilters.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import path from 'path';
 import fs from 'fs';
 
@@ -37,24 +37,57 @@ vi.mock('next-intl', () => ({
   },
 }));
 
+// MP-CATEGORY-3 — mock global fetch for categories tree endpoint.
+const MOCK_CATEGORIES_RESPONSE = {
+  data: [
+    {
+      id: 'r1', parentId: null, nameFr: 'Épices', nameEn: 'Spices',
+      slug: 'epices', description: null, sortOrder: 0, productsCount: 5,
+      children: [
+        {
+          id: 'c1', parentId: 'r1', nameFr: 'Vanille', nameEn: 'Vanilla',
+          slug: 'vanille', description: null, sortOrder: 0, productsCount: 3,
+          children: [],
+        },
+      ],
+    },
+    {
+      id: 'r2', parentId: null, nameFr: 'Fruits', nameEn: 'Fruits',
+      slug: 'fruits', description: null, sortOrder: 1, productsCount: 2,
+      children: [],
+    },
+  ],
+};
+
+const fetchMock = vi.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve(MOCK_CATEGORIES_RESPONSE),
+  } as Response),
+);
+vi.stubGlobal('fetch', fetchMock);
+
 import { CatalogFilters } from './CatalogFilters';
 
 describe('CatalogFilters (MP-FILTERS-1 + I18N-8)', () => {
   beforeEach(() => {
     pushMock.mockReset();
+    fetchMock.mockClear();
     searchParamsImpl = new URLSearchParams();
   });
 
-  it('hydrate les 7 nouveaux contrôles depuis searchParams', () => {
+  it('hydrate les 7 nouveaux contrôles depuis searchParams', async () => {
     searchParamsImpl = new URLSearchParams(
       'categorySlug=epices&originRegion=Mamoudzou&productionMethod=bio' +
         '&hasPublicDocs=true&seasonalityMonth=JUN&qualityAttribute=ORGANIC' +
         '&temperatureRequirements=Frozen',
     );
     render(<CatalogFilters />);
-    expect(
-      (screen.getByTestId('catalog-filter-categorySlug') as HTMLInputElement).value,
-    ).toBe('epices');
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('catalog-filter-categorySlug') as HTMLSelectElement).value,
+      ).toBe('epices');
+    });
     expect(
       (screen.getByTestId('catalog-filter-originRegion') as HTMLInputElement).value,
     ).toBe('Mamoudzou');
@@ -75,10 +108,13 @@ describe('CatalogFilters (MP-FILTERS-1 + I18N-8)', () => {
     ).toBe('Frozen');
   });
 
-  it('pousse une URL contenant les 7 paramètres à la soumission', () => {
+  it('pousse une URL contenant les 7 paramètres à la soumission', async () => {
     render(<CatalogFilters />);
+    await waitFor(() => {
+      expect(screen.getByTestId('catalog-filter-categorySlug')).toBeTruthy();
+    });
     fireEvent.change(screen.getByTestId('catalog-filter-categorySlug'), {
-      target: { value: 'cafe' },
+      target: { value: 'epices' },
     });
     fireEvent.change(screen.getByTestId('catalog-filter-originRegion'), {
       target: { value: 'Bandrele' },
@@ -99,7 +135,7 @@ describe('CatalogFilters (MP-FILTERS-1 + I18N-8)', () => {
     fireEvent.submit(screen.getByTestId('catalog-filters'));
     expect(pushMock).toHaveBeenCalledTimes(1);
     const url = pushMock.mock.calls[0][0] as string;
-    expect(url).toContain('categorySlug=cafe');
+    expect(url).toContain('categorySlug=epices');
     expect(url).toContain('originRegion=Bandrele');
     expect(url).toContain('productionMethod=agroforesterie');
     expect(url).toContain('hasPublicDocs=true');
@@ -135,10 +171,60 @@ describe('CatalogFilters (MP-FILTERS-1 + I18N-8)', () => {
     expect(pushMock).toHaveBeenCalledWith('/marketplace');
   });
 
-  it('lowercase le slug catégorie à la saisie', () => {
+  it('le filtre catégorie est un select avec data-testid', () => {
     render(<CatalogFilters />);
-    const input = screen.getByTestId('catalog-filter-categorySlug') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'EPICES' } });
-    expect(input.value).toBe('epices');
+    const el = screen.getByTestId('catalog-filter-categorySlug');
+    expect(el.tagName).toBe('SELECT');
+  });
+});
+
+// MP-CATEGORY-3 — category dropdown tests.
+describe('CatalogFilters — MP-CATEGORY-3 category dropdown', () => {
+  beforeEach(() => {
+    pushMock.mockReset();
+    fetchMock.mockClear();
+    searchParamsImpl = new URLSearchParams();
+  });
+
+  it('fetches categories on mount and populates select options', async () => {
+    render(<CatalogFilters />);
+    await waitFor(() => {
+      const select = screen.getByTestId('catalog-filter-categorySlug') as HTMLSelectElement;
+      // default "all" + 3 categories (Épices, — Vanille, Fruits)
+      expect(select.options.length).toBe(4);
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/marketplace/catalog/categories');
+    const select = screen.getByTestId('catalog-filter-categorySlug') as HTMLSelectElement;
+    const optTexts = Array.from(select.options).map((o) => o.textContent);
+    expect(optTexts[0]).toBe('Toutes les catégories');
+    expect(optTexts[1]).toContain('Épices');
+    expect(optTexts[1]).toContain('(5)');
+    expect(optTexts[2]).toContain('— Vanille');
+    expect(optTexts[2]).toContain('(3)');
+    expect(optTexts[3]).toContain('Fruits');
+    expect(optTexts[3]).toContain('(2)');
+  });
+
+  it('gracefully handles fetch failure with empty categories', async () => {
+    fetchMock.mockImplementationOnce(() => Promise.reject(new Error('network')));
+    render(<CatalogFilters />);
+    // Wait for the effect to settle
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    const select = screen.getByTestId('catalog-filter-categorySlug') as HTMLSelectElement;
+    // Only the default "all" option
+    expect(select.options.length).toBe(1);
+  });
+
+  it('uses slug as option value for backward compat', async () => {
+    render(<CatalogFilters />);
+    await waitFor(() => {
+      const select = screen.getByTestId('catalog-filter-categorySlug') as HTMLSelectElement;
+      expect(select.options.length).toBe(4);
+    });
+    const select = screen.getByTestId('catalog-filter-categorySlug') as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual(['', 'epices', 'vanille', 'fruits']);
   });
 });
