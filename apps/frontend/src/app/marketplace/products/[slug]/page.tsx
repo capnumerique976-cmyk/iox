@@ -76,8 +76,42 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const seller = await fetchSellerBySlug(product.seller.slug).catch(() => null);
   const otherProducts = (seller?.products ?? []).filter((p) => p.slug !== product.slug).slice(0, 4);
 
+  // JSON-LD structured data for Google Rich Results
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://iox.mycloud.yt';
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.commercialName,
+    ...(product.descriptionShort && { description: product.descriptionShort }),
+    ...(product.primaryImage?.publicUrl && { image: product.primaryImage.publicUrl }),
+    url: `${siteUrl}/marketplace/products/${product.slug}`,
+    brand: {
+      '@type': 'Organization',
+      name: product.seller.publicDisplayName,
+      url: `${siteUrl}/marketplace/sellers/${product.seller.slug}`,
+    },
+    ...(product.originCountry && {
+      countryOfOrigin: { '@type': 'Country', name: product.originCountry },
+    }),
+    ...(primary && primary.unitPrice != null && {
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: primary.currency ?? 'EUR',
+        price: String(primary.unitPrice),
+        availability: 'https://schema.org/InStock',
+        seller: { '@type': 'Organization', name: product.seller.publicDisplayName },
+      },
+    }),
+  };
+
   return (
     <div className="space-y-8">
+      {/* JSON-LD for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Breadcrumb */}
       <nav
         aria-label={tCommon('breadcrumb.label')}
