@@ -1,9 +1,11 @@
 // PAY-1 phase 1 — PaymentsService.
+// PAY-2 — refund(id, dto, actor).
 //
 // Lecture des Payment rows + (LOT 3) création de Stripe Checkout Sessions.
 
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   Logger,
@@ -11,12 +13,16 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import { AuditService } from '../audit/audit.service';
 import {
+  EntityType,
   PaymentStatus,
   QuoteRequestStatus,
   RequestUser,
+  UserRole,
 } from '@iox/shared';
 import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
+import type { RefundPaymentDto } from './dto/payments.dto';
 
 /**
  * Commission IOX V1 : 5% du montant brut.
@@ -41,6 +47,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ownership: SellerOwnershipService,
+    private readonly audit: AuditService,
     @Inject(STRIPE_CLIENT) private readonly stripeWrapper: StripeClientWrapper,
   ) {}
 
@@ -218,5 +225,81 @@ export class PaymentsService {
     ]);
 
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+  }
+
+  // ─── PAY-2 — Remboursement (total ou partiel) ───────────────────────────
+
+  async refund(id: string, dto: RefundPaymentDto, actor: RequestUser) {
+    if (!this.stripeWrapper.isConfigured()) {
+      throw new BadRequestException(
+        'Stripe non configuré côté serveur. Contacter l\'admin.',
+      );
+    }
+
+    const payment = await this.prisma.payment.findUnique({ where: { id } });
+    if (!payment) throw new NotFoundException('Paiement introuvable');
+
+    if (payment.status !== PaymentStatus.SUCCEEDED) {
+      throw new BadRequestException(
+        `Remboursement impossible : statut ${payment.status} (requis: SUCCEEDED)`,
+      );
+    }
+
+    // Ownership : staff (ADMIN, COORDINATOR) ou seller propriétaire.
+    if (!this.ownership.isStaff(actor)) {
+      if (actor.role === UserRole.MARKETPLACE_SELLER) {
+        if (!(actor.sellerProfileIds ?? []).includes(payment.sellerProfileId)) {
+          throw new ForbiddenException('Ce paiement n\'appartient pas à votre profil vendeur');
+        }
+      } else {
+        throw new ForbiddenException('Rôle non autorisé pour le remboursement');
+      }
+    }
+
+    const stripe = this.stripeWrapper.client();
+    const refundParams: Record<string, unknown> = {
+      payment_intent: payment.stripePaymentIntentId,
+      reason: 'requested_by_customer' as const,
+    };
+    if (dto.amountCents) {
+      refundParams.amount = dto.amountCents;
+    }
+
+    const refund = await stripe.refunds.create(refundParams as never);
+
+    const existingMeta =
+      (payment.metadataJson as Record<string, unknown> | null) ?? {};
+    const updated = await this.prisma.payment.update({
+      where: { id },
+      data: {
+        status: PaymentStatus.REFUNDED,
+        metadataJson: {
+          ...existingMeta,
+          refundId: (refund as { id: string }).id,
+          refundReason: dto.reason ?? null,
+          refundAmountCents: dto.amountCents ?? payment.amountCents,
+        },
+      },
+    });
+
+    await this.audit.log({
+      action: 'PAYMENT_REFUNDED',
+      entityType: EntityType.PAYMENT,
+      entityId: id,
+      userId: actor.id,
+      previousData: { status: payment.status },
+      newData: {
+        status: PaymentStatus.REFUNDED,
+        refundId: (refund as { id: string }).id,
+        refundAmountCents: dto.amountCents ?? payment.amountCents,
+      },
+      notes: dto.reason ?? undefined,
+    });
+
+    this.logger.log(
+      `Payment REFUNDED paymentId=${id} refundId=${(refund as { id: string }).id} amountCents=${dto.amountCents ?? payment.amountCents}`,
+    );
+
+    return updated;
   }
 }

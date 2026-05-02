@@ -1,10 +1,12 @@
 // PAY-1 phase 1 LOT 1+3 — Spec PaymentsService.
+// PAY-2 — refund specs.
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { APPLICATION_FEE_PERCENT, PaymentsService } from './payments.service';
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import { AuditService } from '../audit/audit.service';
 import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
 import {
   PaymentStatus,
@@ -12,6 +14,8 @@ import {
   UserRole,
   RequestUser,
 } from '@iox/shared';
+
+const refundsCreateMock = jest.fn().mockResolvedValue({ id: 're_test_123' });
 
 function makeStripeMock(opts: { configured?: boolean } = {}): StripeClientWrapper {
   return {
@@ -25,6 +29,9 @@ function makeStripeMock(opts: { configured?: boolean } = {}): StripeClientWrappe
               url: 'https://checkout.stripe.com/c/pay/cs_test_abc',
             }),
           },
+        },
+        refunds: {
+          create: refundsCreateMock,
         },
       }) as never,
   };
@@ -47,8 +54,12 @@ describe('PaymentsService', () => {
     isStaff: jest.fn().mockReturnValue(true),
     assertSellerProfileOwnership: jest.fn().mockResolvedValue(undefined),
   };
+  const auditMock = {
+    log: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     prisma = {
       payment: {
         findUnique: jest.fn(),
@@ -68,6 +79,7 @@ describe('PaymentsService', () => {
         PaymentsService,
         { provide: PrismaService, useValue: prisma },
         { provide: SellerOwnershipService, useValue: ownershipMock },
+        { provide: AuditService, useValue: auditMock },
         { provide: STRIPE_CLIENT, useValue: makeStripeMock() },
       ],
     }).compile();
@@ -287,6 +299,115 @@ describe('PaymentsService', () => {
           buyer,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // PAY-2 — refund specs.
+
+  describe('refund', () => {
+    const admin: RequestUser = {
+      id: 'u-admin',
+      email: 'admin@iox.co',
+      role: UserRole.ADMIN,
+      sellerProfileIds: [],
+      companyIds: [],
+    };
+
+    const seller: RequestUser = {
+      id: 'u-seller',
+      email: 'seller@iox.co',
+      role: UserRole.MARKETPLACE_SELLER,
+      sellerProfileIds: ['sp1'],
+      companyIds: [],
+    };
+
+    const succeededPayment = {
+      id: 'pay1',
+      status: PaymentStatus.SUCCEEDED,
+      stripePaymentIntentId: 'pi_test',
+      sellerProfileId: 'sp1',
+      buyerUserId: 'u-buyer',
+      buyerCompanyId: 'co-buyer',
+      amountCents: 10000,
+      currency: 'EUR',
+      metadataJson: null,
+    };
+
+    it('happy path : SUCCEEDED → REFUNDED, stripe refunds.create called', async () => {
+      prisma.payment.findUnique.mockResolvedValue(succeededPayment);
+      prisma.payment.update.mockResolvedValue({
+        ...succeededPayment,
+        status: PaymentStatus.REFUNDED,
+      });
+      ownershipMock.isStaff.mockReturnValue(true);
+
+      const result = await service.refund('pay1', {}, admin);
+
+      expect(result.status).toBe(PaymentStatus.REFUNDED);
+      expect(refundsCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payment_intent: 'pi_test',
+          reason: 'requested_by_customer',
+        }),
+      );
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { id: 'pay1' },
+        data: expect.objectContaining({
+          status: PaymentStatus.REFUNDED,
+        }),
+      });
+      expect(auditMock.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'PAYMENT_REFUNDED' }),
+      );
+    });
+
+    it('refund on non-SUCCEEDED payment throws BadRequestException', async () => {
+      prisma.payment.findUnique.mockResolvedValue({
+        ...succeededPayment,
+        status: PaymentStatus.PENDING,
+      });
+
+      await expect(service.refund('pay1', {}, admin)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('refund on non-existent payment throws NotFoundException', async () => {
+      prisma.payment.findUnique.mockResolvedValue(null);
+
+      await expect(service.refund('pay404', {}, admin)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('partial refund passes amountCents to stripe', async () => {
+      prisma.payment.findUnique.mockResolvedValue(succeededPayment);
+      prisma.payment.update.mockResolvedValue({
+        ...succeededPayment,
+        status: PaymentStatus.REFUNDED,
+      });
+      ownershipMock.isStaff.mockReturnValue(true);
+
+      await service.refund('pay1', { amountCents: 5000 }, admin);
+
+      expect(refundsCreateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payment_intent: 'pi_test',
+          amount: 5000,
+        }),
+      );
+    });
+
+    it('seller who does not own payment → ForbiddenException', async () => {
+      prisma.payment.findUnique.mockResolvedValue({
+        ...succeededPayment,
+        sellerProfileId: 'sp-other',
+      });
+      ownershipMock.isStaff.mockReturnValue(false);
+
+      await expect(
+        service.refund('pay1', {}, seller),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

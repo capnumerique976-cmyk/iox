@@ -1,7 +1,8 @@
 // PAY-1 phase 1 LOT 3 — Service de traitement des events Stripe webhook.
+// PAY-2 — Email notification on payment_intent.succeeded.
 //
 // Handlers V1 :
-//  - payment_intent.succeeded → Payment status=SUCCEEDED + IDs Stripe
+//  - payment_intent.succeeded → Payment status=SUCCEEDED + IDs Stripe + email buyer
 //  - payment_intent.payment_failed → Payment status=FAILED + errorCode/errorMessage
 //  - account.updated (Connect) → SellerStripeAccount status sync
 //  - autres → log + ignore (return 200)
@@ -10,6 +11,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { PaymentStatus } from '@iox/shared';
 import { StripeOnboardingService } from './stripe-onboarding.service';
+import { NotifEmailService } from '../notif-email/notif-email.service';
 // Types Stripe (Event, PaymentIntent, Account) : le SDK 22.x complique
 // l'extraction des types depuis le default export (cf. namespace merging
 // quirks). On utilise des shapes minimales typées localement — sufficient
@@ -43,6 +45,7 @@ export class PaymentsWebhookService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly onboarding: StripeOnboardingService,
+    private readonly notifEmail: NotifEmailService,
   ) {}
 
   async handleEvent(event: StripeEventBase): Promise<{ handled: boolean; action: string }> {
@@ -74,7 +77,7 @@ export class PaymentsWebhookService {
     const chargeId =
       typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id;
 
-    await this.prisma.payment.update({
+    const payment = await this.prisma.payment.update({
       where: { id: paymentId },
       data: {
         status: PaymentStatus.SUCCEEDED,
@@ -86,7 +89,72 @@ export class PaymentsWebhookService {
     this.logger.log(
       `Payment SUCCEEDED paymentId=${paymentId} pi=${pi.id} amount=${pi.amount}`,
     );
+
+    // PAY-2 — safeNotify buyer by email.
+    await this.safeNotifyBuyer(payment);
+
     return { handled: true, action: 'payment-succeeded' };
+  }
+
+  /**
+   * PAY-2 — Envoie l'email "Paiement confirmé" au buyer.
+   * Pattern safeNotify : try/catch, pas de throw sur échec email.
+   */
+  private async safeNotifyBuyer(payment: {
+    id: string;
+    buyerUserId: string;
+    amountCents: number;
+    currency: string;
+    marketplaceOfferId: string | null;
+  }): Promise<void> {
+    try {
+      const buyer = await this.prisma.user.findUnique({
+        where: { id: payment.buyerUserId },
+        select: {
+          email: true,
+          firstName: true,
+          lastName: true,
+          preferredLocale: true,
+        },
+      });
+      if (!buyer?.email) {
+        this.logger.warn(`safeNotifyBuyer skipped — no buyer email paymentId=${payment.id}`);
+        return;
+      }
+
+      // Resolve offer title for template data.
+      let offerTitle = 'Commande IOX Marketplace';
+      if (payment.marketplaceOfferId) {
+        const offer = await this.prisma.marketplaceOffer.findUnique({
+          where: { id: payment.marketplaceOfferId },
+          select: { title: true },
+        });
+        if (offer?.title) offerTitle = offer.title;
+      }
+
+      const amountFormatted = `${(payment.amountCents / 100).toFixed(2)} ${payment.currency}`;
+      const recipientDisplayName =
+        [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || buyer.email;
+
+      await this.notifEmail.send({
+        to: buyer.email,
+        templateId: 'payment-confirmed-to-buyer',
+        locale: buyer.preferredLocale ?? 'fr',
+        recipientUserId: payment.buyerUserId,
+        templateData: {
+          buyerDisplayName: recipientDisplayName,
+          sellerDisplayName: '', // V1 — seller name non résolu ici
+          offerTitle,
+          amountFormatted,
+          paymentId: payment.id,
+          ctaUrl: '', // V1 — URL commande non encore disponible
+        },
+      });
+      this.logger.log(`safeNotifyBuyer email sent paymentId=${payment.id}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'unknown';
+      this.logger.warn(`safeNotifyBuyer failed (non-blocking) paymentId=${payment.id} error=${msg}`);
+    }
   }
 
   private async handlePaymentIntentFailed(
