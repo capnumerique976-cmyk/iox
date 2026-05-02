@@ -27,6 +27,9 @@ import { rfqLostEnTemplate } from './rfq-lost.en.template';
 // PAY-1 phase 1 LOT 3 — Email confirmation paiement.
 import { paymentConfirmedToBuyerTemplate } from './payment-confirmed-to-buyer.template';
 import { paymentConfirmedToBuyerEnTemplate } from './payment-confirmed-to-buyer.en.template';
+// BÊTA-PRIVÉE-PREP — Email welcome seller.
+import { sellerWelcomeTemplate } from './seller-welcome.template';
+import { sellerWelcomeEnTemplate } from './seller-welcome.en.template';
 
 // I18N-4 — Type structure : id → { fr: required, en?: optional }.
 // Si la variante EN n'existe pas, fallback FR (graceful degradation).
@@ -68,6 +71,11 @@ const REGISTRY: Record<string, LocaleVariants> = {
   'payment-confirmed-to-buyer': {
     fr: paymentConfirmedToBuyerTemplate as EmailTemplate,
     en: paymentConfirmedToBuyerEnTemplate as EmailTemplate,
+  },
+  // BÊTA-PRIVÉE-PREP — Welcome seller.
+  'seller-welcome': {
+    fr: sellerWelcomeTemplate as EmailTemplate,
+    en: sellerWelcomeEnTemplate as EmailTemplate,
   },
 };
 

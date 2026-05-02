@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# BÊTA-PRIVÉE — Génère une URL d'invite seller pour un agent MCH terrain.
+# Usage: ./deploy/scripts/generate-seller-invite.sh <email> <nom> <slug>
+# Output: URL console pour copier-coller (pas d'envoi email réel).
+
+set -euo pipefail
+
+EMAIL="${1:?Usage: $0 <email> <nom> <slug>}"
+NOM="${2:?Usage: $0 <email> <nom> <slug>}"
+SLUG="${3:?Usage: $0 <email> <nom> <slug>}"
+
+FRONTEND_URL="${FRONTEND_URL:-https://iox.mycloud.yt}"
+
+echo ""
+echo "═══════════════════════════════════════════"
+echo "  IOX Marketplace — Invitation Seller BÊTA"
+echo "═══════════════════════════════════════════"
+echo ""
+echo "  Email:  ${EMAIL}"
+echo "  Nom:    ${NOM}"
+echo "  Slug:   ${SLUG}"
+echo ""
+echo "  Étapes pour l'agent MCH :"
+echo "  1. Créer le compte via /admin/users"
+echo "     → Email: ${EMAIL}"
+echo "     → Rôle: MARKETPLACE_SELLER"
+echo "  2. Créer la Company via /admin ou seed"
+echo "  3. Rattacher le profil seller slug=${SLUG}"
+echo "  4. Envoyer au seller :"
+echo ""
+echo "  URL onboarding: ${FRONTEND_URL}/seller/profile/edit"
+echo "  URL login:      ${FRONTEND_URL}/login"
+echo ""
+echo "  Message WhatsApp/SMS (FR) :"
+echo "  ---"
+echo "  Bonjour ${NOM}, bienvenue sur IOX Marketplace !"
+echo "  Votre compte a été créé. Connectez-vous ici :"
+echo "  ${FRONTEND_URL}/login"
+echo "  Email : ${EMAIL}"
+echo "  Mot de passe temporaire : (communiqué séparément)"
+echo "  Puis complétez votre profil : ${FRONTEND_URL}/seller/profile/edit"
+echo "  ---"
+echo ""
+echo "  Message SMS (Shimaoré) :"
+echo "  ---"
+echo "  Karibu ${NOM} ! Wafikia IOX Marketplace."
+echo "  Ingia hapa: ${FRONTEND_URL}/login"
+echo "  ---"
+echo ""
+echo "═══════════════════════════════════════════"
