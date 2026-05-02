@@ -835,4 +835,63 @@ export class MarketplaceCatalogService {
     });
     return rows;
   }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // MP-CATEGORY-2 — arborescence publique des catégories (actives seules).
+  // ──────────────────────────────────────────────────────────────────────
+
+  async findCategoriesTree() {
+    const rows = await this.prisma.marketplaceCategory.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        parentId: true,
+        nameFr: true,
+        nameEn: true,
+        slug: true,
+        description: true,
+        sortOrder: true,
+        _count: { select: { marketplaceProducts: true } },
+      },
+      orderBy: [{ sortOrder: 'asc' }, { nameFr: 'asc' }],
+    });
+
+    type Node = {
+      id: string;
+      parentId: string | null;
+      nameFr: string;
+      nameEn: string | null;
+      slug: string;
+      description: string | null;
+      sortOrder: number;
+      productsCount: number;
+      children: Node[];
+    };
+
+    const map = new Map<string, Node>();
+    for (const r of rows) {
+      map.set(r.id, {
+        id: r.id,
+        parentId: r.parentId,
+        nameFr: r.nameFr,
+        nameEn: r.nameEn,
+        slug: r.slug,
+        description: r.description,
+        sortOrder: r.sortOrder,
+        productsCount: r._count.marketplaceProducts,
+        children: [],
+      });
+    }
+
+    const roots: Node[] = [];
+    for (const node of map.values()) {
+      if (node.parentId && map.has(node.parentId)) {
+        map.get(node.parentId)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+
+    return { data: roots };
+  }
 }

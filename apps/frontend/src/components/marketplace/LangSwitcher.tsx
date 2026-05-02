@@ -1,15 +1,15 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useLang } from '@/lib/i18n';
 
 /**
  * Toggle FR / EN — stockage localStorage, réactif via event `iox:lang:changed`.
- *
- * Volontairement minimal : deux boutons 2 lettres, état actif en gras.
- * Affiché dans le header marketplace public.
+ * I18N-8 — aria-label via useTranslations, setLang via useLang (bridge cookie).
  */
 export function LangSwitcher() {
   const { lang, setLang, hydrated } = useLang();
+  const tLang = useTranslations('common.language');
   if (!hydrated) return <span className="w-12" aria-hidden />;
 
   const btn = (target: 'fr' | 'en') => (
@@ -28,7 +28,7 @@ export function LangSwitcher() {
   );
 
   return (
-    <div className="flex items-center gap-0.5" aria-label="Sélecteur de langue">
+    <div className="flex items-center gap-0.5" aria-label={tLang('switcherAriaLabel')}>
       {btn('fr')}
       {btn('en')}
     </div>

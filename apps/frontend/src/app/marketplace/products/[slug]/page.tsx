@@ -13,7 +13,6 @@ import {
   ImageIcon,
 } from 'lucide-react';
 import { fetchProductBySlug, fetchSellerBySlug } from '@/lib/marketplace/api';
-import type { ProductQualityAttribute } from '@/lib/marketplace/types';
 import { ReadinessBadge } from '@/components/marketplace/ReadinessBadge';
 import { PriceTag } from '@/components/marketplace/PriceTag';
 import { FavoriteButton } from '@/components/marketplace/FavoriteButton';
@@ -25,30 +24,6 @@ import { PublicGalleryLightbox } from '@/components/marketplace/PublicGalleryLig
 
 export const dynamic = 'force-dynamic';
 
-// FP-7 — Libellés FR des attributs qualité (cohérent avec la page seller).
-// Si l'enum backend ajoute une valeur non listée, le composant tombe en
-// fallback sur le slug brut.
-const QUALITY_ATTRIBUTE_LABEL_FR: Record<ProductQualityAttribute, string> = {
-  ORGANIC: 'Bio',
-  NON_GMO: 'Non-OGM',
-  HANDMADE: 'Fait main',
-  ARTISANAL: 'Artisanal',
-  TRADITIONAL: 'Tradition',
-  HAND_HARVESTED: 'Récolte manuelle',
-  WILD_HARVESTED: 'Cueillette sauvage',
-  SMALL_BATCH: 'Petite série',
-  COLD_PRESSED: 'Pressé à froid',
-  RAW: 'Cru / non transformé',
-  FAIR_TRADE: 'Équitable',
-  GLUTEN_FREE: 'Sans gluten',
-  LACTOSE_FREE: 'Sans lactose',
-  VEGAN: 'Vegan',
-  VEGETARIAN: 'Végétarien',
-  KOSHER: 'Casher',
-  HALAL: 'Halal',
-  OTHER: 'Autre',
-};
-
 interface PageProps {
   params: { slug: string };
 }
@@ -57,8 +32,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await fetchProductBySlug(params.slug).catch(() => null);
   if (!product) notFound();
 
-  // I18N-5 LOT 2.x — strings publics fiche produit.
+  // I18N-5 LOT 2.x + I18N-7 — strings publics fiche produit.
   const t = await getTranslations('marketplace.product');
+  const tQuality = await getTranslations('marketplace.product.quality');
   const tCommon = await getTranslations('common');
 
   const primary = product.offers.find((o) => o.isPrimaryOffer) ?? product.offers[0];
@@ -75,7 +51,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         className="flex flex-wrap items-center gap-1.5 text-xs text-white/50"
       >
         <Link href="/marketplace" className="transition-colors hover:text-[#00D4FF]">
-          Catalogue
+          {t('breadcrumbCatalog')}
         </Link>
         <ChevronRight className="h-3.5 w-3.5 text-white/20" aria-hidden />
         {product.category && (
@@ -126,7 +102,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 controls
                 preload="metadata"
                 className="aspect-video w-full bg-black"
-                aria-label={product.video.altTextFr ?? `Vidéo ${product.commercialName}`}
+                aria-label={product.video.altTextFr ?? t('videoAriaLabel', { name: product.commercialName })}
               >
                 <track kind="captions" />
               </video>
@@ -207,7 +183,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   <div className="min-w-0">
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-gradient-iox-neon px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-glow-cyan-sm">
                       <Sparkles className="h-3 w-3" aria-hidden />
-                      Offre principale
+                      {t('primaryOfferBadge')}
                     </div>
                     <div className="mt-2 text-lg font-semibold text-white">{primary.title}</div>
                     {primary.shortDescription && (
@@ -238,7 +214,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       <div className="min-w-0">
                         <dt className="text-[10px] uppercase tracking-wide text-white/50">{t('fields.leadTime')}</dt>
                         <dd className="truncate font-semibold text-white">
-                          {primary.leadTimeDays} j
+                          {t('leadTimeDaysSuffix', { days: primary.leadTimeDays })}
                         </dd>
                       </div>
                     </div>
@@ -248,7 +224,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       <Truck className="h-3.5 w-3.5 flex-shrink-0 text-[#00D4FF]" aria-hidden />
                       <div className="min-w-0">
                         <dt className="text-[10px] uppercase tracking-wide text-white/50">
-                          Incoterm
+                          {t('fields.incoterm')}
                         </dt>
                         <dd className="truncate font-semibold text-white">{primary.incoterm}</dd>
                       </div>
@@ -259,7 +235,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-[#00D4FF]" aria-hidden />
                       <div className="min-w-0">
                         <dt className="text-[10px] uppercase tracking-wide text-white/50">
-                          Départ
+                          {t('fields.departure')}
                         </dt>
                         <dd className="truncate font-semibold text-white">
                           {primary.departureLocation}
@@ -271,16 +247,17 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
                 <Link
                   href={`/login?redirect=${encodeURIComponent(`/quote-requests/new?offerId=${primary.id}`)}`}
+                  data-testid="cta-request-quote"
                   className="group mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-iox-neon px-4 py-3 text-sm font-semibold text-white shadow-glow-cyan-sm transition-all duration-base ease-premium hover:brightness-110 hover:shadow-glow-cyan active:scale-[0.98]"
                 >
-                  Demander un devis
+                  {t('requestQuote')}
                   <ArrowRight
                     className="h-4 w-4 transition-transform duration-base group-hover:translate-x-0.5"
                     aria-hidden
                   />
                 </Link>
                 <p className="mt-2 text-center text-[11px] text-white/40">
-                  Connexion requise pour envoyer une demande
+                  {t('loginRequired')}
                 </p>
               </div>
             </div>
@@ -290,7 +267,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           {product.offers.length > 1 && (
             <div className="iox-glass rounded-xl p-4">
               <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-[#00D4FF]/80">
-                Autres offres publiées
+                {t('otherOffersTitle')}
               </div>
               <ul className="space-y-2">
                 {product.offers
@@ -510,7 +487,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
               />
               <h2 className="mb-3 pl-3 text-sm font-semibold text-white">
-                Volumes et capacités
+                {t('volumesTitle')}
               </h2>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 pl-3 text-xs">
                 {product.annualProductionCapacity != null && (
@@ -561,7 +538,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                     data-testid={`quality-badge-${attr}`}
                     className="inline-flex items-center rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-2.5 py-0.5 text-[11px] font-medium text-[#00D4FF]"
                   >
-                    {QUALITY_ATTRIBUTE_LABEL_FR[attr] ?? attr}
+                    {tQuality(attr)}
                   </span>
                 ))}
               </div>
@@ -574,7 +551,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
               availabilityMonths={product.availabilityMonths}
               harvestMonths={product.harvestMonths}
               isYearRound={product.isYearRound}
-              ariaLabel={`Saisonnalité de ${product.commercialName}`}
+              ariaLabel={t('seasonalityAriaLabel', { name: product.commercialName })}
             />
           </div>
 
@@ -582,7 +559,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           <div className="mt-4">
             <CertificationBadgeList
               certifications={product.certifications}
-              ariaLabel={`Certifications de ${product.commercialName}`}
+              ariaLabel={t('certificationsAriaLabel', { name: product.commercialName })}
             />
           </div>
         </section>

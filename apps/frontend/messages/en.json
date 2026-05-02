@@ -22,6 +22,7 @@
     },
     "language": {
       "label": "Language",
+      "switcherAriaLabel": "Language selector",
       "fr": "Français",
       "en": "English"
     },
@@ -34,6 +35,7 @@
     "sellers": "Producers",
     "favorites": "Favorites",
     "proArea": "Pro area",
+    "categories": "Categories",
     "marketplaceBadge": "B2B Marketplace",
     "homeAlt": "IOX Marketplace — Home"
   },
@@ -42,6 +44,7 @@
       "title": "Marketplace catalog",
       "subtitle": "{count, plural, =0 {No published offers} one {1 published offer} other {# published offers}}",
       "empty": "No offers match your filters.",
+      "emptyHint": "Try broadening your filters to discover more products.",
       "unavailable": "The catalog could not be loaded. Please refresh in a moment — our team is already alerted if the issue persists.",
       "heroBadge": "Curated products from Mayotte",
       "heroTitleHighlight": "marketplace",
@@ -49,14 +52,28 @@
       "heroAvailable": "{count, plural, =0 {available} other {available}}",
       "filters": {
         "search": "Search",
-        "searchPlaceholder": "Product name…",
-        "category": "Category",
+        "searchPlaceholder": "Name, producer, variety…",
+        "category": "Category (slug)",
         "country": "Country of origin",
+        "originRegion": "Origin region",
+        "originRegionPlaceholder": "Region, state…",
+        "categoryPlaceholder": "spices, coffee…",
+        "productionMethod": "Production method",
+        "productionMethodPlaceholder": "organic, sustainable…",
+        "qualityAttribute": "Quality attribute",
+        "seasonalityMonth": "Available in",
+        "allYear": "Year-round",
+        "temperature": "Temperature",
+        "temperaturePlaceholder": "Frozen, ambient…",
         "reset": "Reset",
+        "apply": "Filter",
         "all": "All",
         "readiness": "Export readiness",
         "priceMode": "Price mode",
-        "sort": "Sort"
+        "moqMax": "Max MOQ",
+        "availableOnly": "Available only",
+        "hasPublicDocs": "Public documents required",
+        "sort": "Sort by"
       },
       "card": {
         "viewOffer": "View offer",
@@ -75,19 +92,72 @@
       },
       "readinessLabels": {
         "EXPORT_READY": "Export ready",
-        "EXPORT_READY_WITH_CONDITIONS": "Ready with conditions",
-        "INTERNAL_ONLY": "Local market only"
+        "EXPORT_READY_WITH_CONDITIONS": "Export ready (conditional)",
+        "INTERNAL_ONLY": "Local market",
+        "PENDING_DOCUMENTS": "Docs pending",
+        "PENDING_QUALITY_REVIEW": "Quality review",
+        "NOT_ELIGIBLE": "Not export eligible"
+      },
+      "priceLabels": {
+        "FIXED": "Fixed price",
+        "FROM_PRICE": "Starting from",
+        "QUOTE_ONLY": "Quote only"
       },
       "sortLabels": {
         "featured": "Featured",
         "recent": "Most recent",
         "nameAsc": "Name A→Z",
         "priceAsc": "Price ascending",
-        "priceDesc": "Price descending"
+        "priceDesc": "Price descending",
+        "readiness": "Export readiness"
+      },
+      "months": {
+        "JAN": "January",
+        "FEB": "February",
+        "MAR": "March",
+        "APR": "April",
+        "MAY": "May",
+        "JUN": "June",
+        "JUL": "July",
+        "AUG": "August",
+        "SEP": "September",
+        "OCT": "October",
+        "NOV": "November",
+        "DEC": "December"
+      },
+      "qualityLabels": {
+        "NON_GMO": "Non-GMO",
+        "ORGANIC": "Organic",
+        "HANDMADE": "Handmade",
+        "TRADITIONAL": "Traditional",
+        "HAND_HARVESTED": "Hand harvested",
+        "GLUTEN_FREE": "Gluten free",
+        "LACTOSE_FREE": "Lactose free",
+        "VEGAN": "Vegan",
+        "VEGETARIAN": "Vegetarian",
+        "KOSHER": "Kosher",
+        "HALAL": "Halal",
+        "WILD_HARVESTED": "Wild harvested",
+        "SMALL_BATCH": "Small batch",
+        "COLD_PRESSED": "Cold pressed",
+        "RAW": "Raw",
+        "FAIR_TRADE": "Fair trade",
+        "ARTISANAL": "Artisanal",
+        "OTHER": "Other"
       }
     },
     "product": {
+      "breadcrumbCatalog": "Catalog",
       "sellerLabel": "Producer",
+      "primaryOfferBadge": "Primary offer",
+      "requestQuote": "Request a quote",
+      "loginRequired": "Login required to submit a quote request",
+      "otherOffersTitle": "Other published offers",
+      "volumesTitle": "Volumes & capacity",
+      "videoAriaLabel": "Video {name}",
+      "seasonalityAriaLabel": "Seasonality of {name}",
+      "certificationsAriaLabel": "Certifications of {name}",
+      "leadTimeDaysSuffix": "{days, plural, one {1 d} other {# d}}",
       "sections": {
         "description": "Description",
         "characteristics": "Characteristics",
@@ -103,6 +173,8 @@
       "fields": {
         "moq": "MOQ",
         "leadTime": "Lead time",
+        "incoterm": "Incoterm",
+        "departure": "Departure",
         "variety": "Variety",
         "production": "Production method",
         "packaging": "Packaging",
@@ -123,7 +195,48 @@
         "restock": "Restock frequency",
         "originCountry": "Country of origin",
         "originRegion": "Region"
+      },
+      "quality": {
+        "ORGANIC": "Organic",
+        "NON_GMO": "Non-GMO",
+        "HANDMADE": "Handmade",
+        "ARTISANAL": "Artisanal",
+        "TRADITIONAL": "Traditional",
+        "HAND_HARVESTED": "Hand harvested",
+        "WILD_HARVESTED": "Wild harvested",
+        "SMALL_BATCH": "Small batch",
+        "COLD_PRESSED": "Cold pressed",
+        "RAW": "Raw / unprocessed",
+        "FAIR_TRADE": "Fair trade",
+        "GLUTEN_FREE": "Gluten free",
+        "LACTOSE_FREE": "Lactose free",
+        "VEGAN": "Vegan",
+        "VEGETARIAN": "Vegetarian",
+        "KOSHER": "Kosher",
+        "HALAL": "Halal",
+        "OTHER": "Other"
       }
+    },
+    "favorites": {
+      "title": "My favorites",
+      "subtitle": "Products bookmarked on this device. Local storage only.",
+      "catalog": "Catalog",
+      "loading": "Loading…",
+      "empty": "You don't have any favorites yet.",
+      "exploreCatalog": "Explore the catalog",
+      "addedOn": "Added on {date}",
+      "open": "Open",
+      "removeAriaLabel": "Remove {name} from favorites",
+      "remove": "Remove"
+    },
+    "categories": {
+      "title": "Categories",
+      "heroDescription": "Browse our product categories to find what you are looking for.",
+      "emptyTitle": "No categories available",
+      "emptyHint": "Categories will be added soon.",
+      "productsCount": "{count, plural, =0 {No products} one {1 product} other {# products}}",
+      "browseCategory": "View products",
+      "subcategories": "{count, plural, one {1 subcategory} other {# subcategories}}"
     },
     "sellers": {
       "title": "Our producers",
@@ -144,7 +257,9 @@
         "country": "Country",
         "region": "Region",
         "featuredOnly": "Featured only",
-        "sort": "Sort"
+        "sort": "Sort",
+        "reset": "Reset",
+        "apply": "Apply"
       },
       "sortLabels": {
         "featured": "Featured first",
