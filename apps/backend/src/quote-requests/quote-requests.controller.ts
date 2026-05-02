@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { QuoteRequestsService } from './quote-requests.service';
 import {
@@ -61,6 +62,7 @@ export class QuoteRequestsController {
 
   @Post()
   @Roles(...RFQ_CREATE)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Créer une demande de devis sur une offre publiée' })
   create(@Body() dto: CreateQuoteRequestDto, @CurrentUser() actor: RequestUser) {
     return this.service.create(dto, actor);
@@ -110,6 +112,7 @@ export class QuoteRequestsController {
 
   @Post(':id/messages')
   @Roles(...RFQ_VIEW)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({ summary: 'Ajouter un message ou une note interne staff' })
   addMessage(
     @Param('id', ParseUUIDPipe) id: string,
