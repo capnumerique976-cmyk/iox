@@ -426,6 +426,8 @@ export enum EntityType {
   MEDIA_ASSET = 'MEDIA_ASSET',
   QUOTE_REQUEST = 'QUOTE_REQUEST',
   MARKETPLACE_REVIEW = 'MARKETPLACE_REVIEW',
+  PAYMENT = 'PAYMENT',
+  INVOICE = 'INVOICE',
 }
 
 // PAY-1 phase 1 — Stripe Connect Express + Payments.
@@ -446,4 +448,12 @@ export enum PaymentStatus {
   FAILED = 'FAILED',
   CANCELED = 'CANCELED',
   REFUNDED = 'REFUNDED',
+}
+
+// PAY-2 — Statuts facture.
+export enum InvoiceStatus {
+  DRAFT = 'DRAFT',
+  ISSUED = 'ISSUED',
+  PAID = 'PAID',
+  CANCELED = 'CANCELED',
 }

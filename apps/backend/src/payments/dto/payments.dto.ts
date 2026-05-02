@@ -1,4 +1,5 @@
 // PAY-1 phase 1 — DTOs payments.
+// PAY-2 — RefundPaymentDto, CreateInvoiceDto.
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsString, IsUrl, IsUUID, Min } from 'class-validator';
@@ -43,4 +44,27 @@ export class CreateCheckoutSessionDto {
   @IsOptional()
   @IsString()
   currency?: string;
+}
+
+// PAY-2 — Refund.
+
+export class RefundPaymentDto {
+  @ApiPropertyOptional({ description: 'Montant en centimes (partial refund). Omit = full refund' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  amountCents?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+// PAY-2 — Invoice creation.
+
+export class CreateInvoiceDto {
+  @ApiProperty({ example: 'uuid-payment' })
+  @IsUUID()
+  paymentId: string;
 }
