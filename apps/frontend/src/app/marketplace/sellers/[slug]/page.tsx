@@ -21,27 +21,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const seller = await fetchSellerBySlug(params.slug).catch(() => null);
   if (!seller) return { title: 'Vendeur introuvable — IOX Marketplace' };
 
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://iox.mycloud.yt').replace(/\/$/, '');
   const title = `${seller.publicDisplayName} — IOX Marketplace`;
   const description =
     seller.descriptionShort ??
     `Vendeur ${seller.publicDisplayName} — ${[seller.country, seller.region].filter(Boolean).join(', ')}`;
   const imageUrl = seller.logo?.publicUrl ?? seller.banner?.publicUrl ?? undefined;
+  const ogImageFallback = `${siteUrl}/marketplace/og?title=${encodeURIComponent(seller.publicDisplayName)}&subtitle=${encodeURIComponent(description.slice(0, 100))}&type=seller`;
+  const canonicalUrl = `${siteUrl}/marketplace/sellers/${seller.slug}`;
 
   return {
     title,
     description,
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
       type: 'profile',
       siteName: 'IOX Marketplace',
-      ...(imageUrl && { images: [{ url: imageUrl, alt: seller.publicDisplayName }] }),
+      url: canonicalUrl,
+      images: [{ url: imageUrl ?? ogImageFallback, alt: seller.publicDisplayName, width: 1200, height: 630 }],
     },
     twitter: {
-      card: imageUrl ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title,
       description,
-      ...(imageUrl && { images: [imageUrl] }),
+      images: [imageUrl ?? ogImageFallback],
     },
   };
 }
