@@ -320,6 +320,13 @@ export const SECTIONS: NavSection[] = [
         description: 'Demandes reçues et en cours',
       },
       {
+        label: 'Analytique',
+        href: '/seller/analytics',
+        permission: '*',
+        icon: Activity,
+        description: 'Performance et conversion des ventes',
+      },
+      {
         label: 'Documents marketplace',
         href: '/seller/documents',
         permission: '*',
