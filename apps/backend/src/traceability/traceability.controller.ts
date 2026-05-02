@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { TraceabilityService } from './traceability.service';
 import { AuditService } from '../audit/audit.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -46,6 +47,8 @@ class QueryAuditLogsDto {
   limit?: number;
 }
 
+@ApiTags('traceability')
+@ApiBearerAuth('access-token')
 @Controller('traceability')
 export class TraceabilityController {
   constructor(
@@ -53,19 +56,19 @@ export class TraceabilityController {
     private readonly auditService: AuditService,
   ) {}
 
-  /** Timeline chronologique complète d'un lot fini */
+  @ApiOperation({ summary: 'Get full chronological timeline for a product batch' })
   @Get('batch/:batchId/timeline')
   getTimeline(@Param('batchId', ParseUUIDPipe) batchId: string) {
     return this.traceabilityService.getTimeline(batchId);
   }
 
-  /** Chaîne de traçabilité : lot entrant → transformation → lot fini → décisions */
+  @ApiOperation({ summary: 'Get full traceability chain (input → transformation → output → decisions)' })
   @Get('batch/:batchId/chain')
   getChain(@Param('batchId', ParseUUIDPipe) batchId: string) {
     return this.traceabilityService.getChain(batchId);
   }
 
-  /** Journal d'audit global (ADMIN / COORDINATOR / AUDITOR seulement) */
+  @ApiOperation({ summary: 'Query global audit logs (admin/coordinator/auditor only)' })
   @Get('audit-logs')
   @Roles(UserRole.ADMIN, UserRole.COORDINATOR, UserRole.AUDITOR)
   getAuditLogs(@Query() query: QueryAuditLogsDto) {
