@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FolderTree, Heart, LogIn, Users } from 'lucide-react';
+import { FolderTree, Heart, HelpCircle, LogIn, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { LangSwitcher } from './LangSwitcher';
 import { Logo } from '@/components/brand/logo';
@@ -16,6 +16,7 @@ export function PublicMarketplaceHeader() {
   const pathname = usePathname();
   const isSellers = pathname?.startsWith('/marketplace/sellers') ?? false;
   const isCategories = pathname?.startsWith('/marketplace/categories') ?? false;
+  const isHowItWorks = pathname?.startsWith('/marketplace/how-it-works') ?? false;
   const isCatalog = pathname === '/marketplace';
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0A0E1A]/80 backdrop-blur-xl">
@@ -71,6 +72,16 @@ export function PublicMarketplaceHeader() {
             <span className="hidden sm:inline">{tNav('favorites')}</span>
           </Link>
           <Link
+            href="/marketplace/how-it-works"
+            aria-current={isHowItWorks ? 'page' : undefined}
+            className={`hidden items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors hover:bg-white/5 hover:text-white lg:flex ${
+              isHowItWorks ? 'bg-white/10 text-white' : 'text-white/70'
+            }`}
+          >
+            <HelpCircle className="h-3.5 w-3.5" aria-hidden />
+            <span>{tNav('howItWorks')}</span>
+          </Link>
+          <Link
             href="/login"
             className="flex items-center gap-1.5 rounded-lg bg-gradient-iox-neon px-3 py-1.5 font-medium text-white shadow-glow-cyan-sm transition-all duration-base ease-premium hover:brightness-110 hover:shadow-glow-cyan active:scale-[0.98]"
           >
@@ -87,11 +98,31 @@ export function PublicMarketplaceHeader() {
 
 export function PublicMarketplaceFooter() {
   const tFooter = useTranslations('footer');
+  const tNav = useTranslations('nav');
   return (
-    <footer className="relative z-10 mt-12 border-t border-white/10 bg-[#0A0E1A]/60 py-8 text-center text-xs text-white/50">
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4">
-        <Logo variant="horizontal" height={30} />
-        <p>{tFooter('tagline')}</p>
+    <footer className="relative z-10 mt-12 border-t border-white/10 bg-[#0A0E1A]/60 py-10 text-xs text-white/50">
+      <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col items-center gap-2 sm:items-start">
+          <Logo variant="horizontal" height={30} />
+          <p className="max-w-xs text-center sm:text-left">{tFooter('tagline')}</p>
+        </div>
+        <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 sm:justify-end">
+          <Link href="/marketplace" className="transition-colors hover:text-white">
+            {tNav('catalog')}
+          </Link>
+          <Link href="/marketplace/sellers" className="transition-colors hover:text-white">
+            {tNav('sellers')}
+          </Link>
+          <Link href="/marketplace/categories" className="transition-colors hover:text-white">
+            {tNav('categories')}
+          </Link>
+          <Link href="/marketplace/how-it-works" className="transition-colors hover:text-white">
+            {tNav('howItWorks')}
+          </Link>
+          <Link href="/login" className="transition-colors hover:text-white">
+            {tNav('proArea')}
+          </Link>
+        </nav>
       </div>
     </footer>
   );
