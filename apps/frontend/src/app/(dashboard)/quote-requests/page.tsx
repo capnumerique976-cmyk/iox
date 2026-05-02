@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { MessageSquare, Search, ShoppingBag } from 'lucide-react';
+import { MessageSquare, Search, ShoppingBag, Clock, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
 import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
 import { UserRole, QuoteRequestStatus } from '@iox/shared';
@@ -54,6 +54,7 @@ export default function QuoteRequestsListPage() {
   const [err, setErr] = useState<string | null>(null);
   const [status, setStatus] = useState<QuoteRequestStatus | ''>('');
   const [query, setQuery] = useState('');
+  const [sortOldest, setSortOldest] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -86,7 +87,7 @@ export default function QuoteRequestsListPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items.filter((it) => {
+    const result = items.filter((it) => {
       if (status && it.status !== status) return false;
       if (!q) return true;
       const hay = [
@@ -102,7 +103,11 @@ export default function QuoteRequestsListPage() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [items, status, query]);
+    if (sortOldest) {
+      result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
+    return result;
+  }, [items, status, query, sortOldest]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -156,14 +161,28 @@ export default function QuoteRequestsListPage() {
         })}
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher une offre, un vendeur, un acheteur…"
-          className="w-full rounded-md border border-gray-300 py-2 pl-8 pr-3 text-sm focus:border-blue-500 focus:outline-none"
-        />
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-md flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher une offre, un vendeur, un acheteur…"
+            className="w-full rounded-md border border-gray-300 py-2 pl-8 pr-3 text-sm focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+        <button
+          onClick={() => setSortOldest((v) => !v)}
+          className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-2 text-xs font-medium transition-colors ${
+            sortOldest
+              ? 'border-orange-300 bg-orange-50 text-orange-700'
+              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+          title="Trier par ancienneté (plus anciennes en premier)"
+        >
+          <Clock className="h-3.5 w-3.5" />
+          Urgentes
+        </button>
       </div>
 
       {err && (
@@ -226,7 +245,10 @@ export default function QuoteRequestsListPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2 text-gray-500">
-                    {new Date(q.createdAt).toLocaleDateString('fr-FR')}
+                    <div className="flex items-center gap-1.5">
+                      <span>{new Date(q.createdAt).toLocaleDateString('fr-FR')}</span>
+                      <AgeBadge createdAt={q.createdAt} status={q.status} />
+                    </div>
                   </td>
                   <td className="px-4 py-2 text-right">
                     <Link
@@ -303,5 +325,40 @@ function EmptyState({
     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-sm text-gray-600">
       Aucune demande de devis.
     </div>
+  );
+}
+
+/**
+ * AgeBadge — affiche l'ancienneté d'une RFQ avec code couleur urgence.
+ * Visible uniquement pour les statuts actifs (pas WON/LOST/CANCELLED).
+ * - < 3 jours : rien (frais)
+ * - 3-7 jours : badge gris "Xj"
+ * - 7-14 jours : badge orange "Xj"
+ * - > 14 jours : badge rouge "Xj !" (urgent)
+ */
+function AgeBadge({ createdAt, status }: { createdAt: string; status: QuoteRequestStatus }) {
+  const TERMINAL = new Set([QuoteRequestStatus.WON, QuoteRequestStatus.LOST, QuoteRequestStatus.CANCELLED]);
+  if (TERMINAL.has(status)) return null;
+
+  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
+  if (days < 3) return null;
+
+  let className = 'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium';
+  let icon = <Clock className="h-2.5 w-2.5" />;
+
+  if (days >= 14) {
+    className += ' bg-red-50 text-red-700';
+    icon = <AlertTriangle className="h-2.5 w-2.5" />;
+  } else if (days >= 7) {
+    className += ' bg-orange-50 text-orange-700';
+  } else {
+    className += ' bg-gray-100 text-gray-600';
+  }
+
+  return (
+    <span className={className} title={`Créée il y a ${days} jour${days > 1 ? 's' : ''}`}>
+      {icon}
+      {days}j
+    </span>
   );
 }
