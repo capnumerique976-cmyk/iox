@@ -5,6 +5,7 @@ import { getTranslations } from 'next-intl/server';
 import { fetchSellers } from '@/lib/marketplace/api';
 import { SellerCard } from '@/components/marketplace/SellerCard';
 import { SellersFilters } from '@/components/marketplace/SellersFilters';
+import { MobileSellersFiltersTrigger } from '@/components/marketplace/MobileSellersFiltersTrigger';
 import { Pagination } from '@/components/marketplace/Pagination';
 
 export const dynamic = 'force-dynamic';
@@ -91,6 +92,9 @@ export default async function SellersPage({ searchParams }: PageProps) {
           </div>
         </div>
       </section>
+
+      {/* Mobile filters trigger — visible < md */}
+      <MobileSellersFiltersTrigger />
 
       {/* Grille : filtres + résultats */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_1fr] md:gap-8 lg:grid-cols-[280px_1fr]">
