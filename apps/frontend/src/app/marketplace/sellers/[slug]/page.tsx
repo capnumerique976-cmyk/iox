@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, MapPin, Clock, Globe2, Ship, Package } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { fetchSellerBySlug } from '@/lib/marketplace/api';
 import { ReadinessBadge } from '@/components/marketplace/ReadinessBadge';
 import { CertificationBadgeList } from '@/components/marketplace/CertificationBadgeList';
@@ -14,6 +15,11 @@ interface PageProps {
 export default async function SellerPage({ params }: PageProps) {
   const seller = await fetchSellerBySlug(params.slug).catch(() => null);
   if (!seller) notFound();
+
+  // I18N-6 — strings publics fiche seller.
+  const t = await getTranslations('marketplace.seller');
+  const tNav = await getTranslations('nav');
+  const tCommon = await getTranslations('common');
 
   const languages = Array.isArray(seller.languages) ? (seller.languages as string[]) : [];
   const incoterms = Array.isArray(seller.supportedIncoterms)
@@ -29,9 +35,9 @@ export default async function SellerPage({ params }: PageProps) {
   return (
     <article className="flex flex-col gap-8">
       {/* Breadcrumb */}
-      <nav aria-label="Fil d'Ariane" className="flex items-center gap-1.5 text-xs text-white/50">
+      <nav aria-label={tCommon('breadcrumb.label')} className="flex items-center gap-1.5 text-xs text-white/50">
         <Link href="/marketplace" className="transition-colors hover:text-[#00D4FF]">
-          Catalogue
+          {tNav('catalog')}
         </Link>
         <ChevronRight className="h-3 w-3 text-white/20" aria-hidden />
         <span className="font-medium text-white/80">{seller.publicDisplayName}</span>
@@ -99,12 +105,12 @@ export default async function SellerPage({ params }: PageProps) {
               {seller.averageLeadTimeDays != null && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-2.5 py-1 font-medium text-[#6fe5ff] backdrop-blur-sm">
                   <Clock className="h-3 w-3" aria-hidden />
-                  Délai ~ {seller.averageLeadTimeDays} j
+                  {t('fields.leadTimeShort', { days: seller.averageLeadTimeDays })}
                 </span>
               )}
               <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-white/70 backdrop-blur-sm">
                 <Package className="h-3 w-3" aria-hidden />
-                {seller.products.length} produit{seller.products.length > 1 ? 's' : ''}
+                {t('productsCount', { count: seller.products.length })}
               </span>
             </div>
           </div>
@@ -114,7 +120,7 @@ export default async function SellerPage({ params }: PageProps) {
       {/* FP-2 — Certifications du vendeur (no-op si liste vide) */}
       <CertificationBadgeList
         certifications={seller.certifications}
-        ariaLabel={`Certifications de ${seller.publicDisplayName}`}
+        ariaLabel={t('certificationsAriaLabel', { name: seller.publicDisplayName })}
       />
 
       {/* Story / Description */}
@@ -126,7 +132,7 @@ export default async function SellerPage({ params }: PageProps) {
                 aria-hidden
                 className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
               />
-              <h2 className="mb-2 pl-3 text-sm font-semibold text-white">À propos</h2>
+              <h2 className="mb-2 pl-3 text-sm font-semibold text-white">{t('sections.about')}</h2>
               <p className="whitespace-pre-line pl-3 text-sm leading-relaxed text-white/75">
                 {seller.descriptionLong}
               </p>
@@ -138,7 +144,7 @@ export default async function SellerPage({ params }: PageProps) {
                 aria-hidden
                 className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full bg-gradient-iox-neon"
               />
-              <h2 className="mb-2 pl-3 text-sm font-semibold text-white">Histoire</h2>
+              <h2 className="mb-2 pl-3 text-sm font-semibold text-white">{t('sections.story')}</h2>
               <p className="whitespace-pre-line pl-3 text-sm leading-relaxed text-white/75">
                 {seller.story}
               </p>
@@ -152,13 +158,13 @@ export default async function SellerPage({ params }: PageProps) {
         <section className="iox-glass rounded-2xl p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
             <Ship className="h-4 w-4 text-[#00D4FF]" aria-hidden />
-            Capacités export
+            {t('sections.exportCapabilities')}
           </h2>
           <dl className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {incoterms.length > 0 && (
               <div>
                 <dt className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
-                  Incoterms supportés
+                  {t('fields.incoterms')}
                 </dt>
                 <dd className="mt-2 flex flex-wrap gap-1.5">
                   {incoterms.map((i) => (
@@ -175,7 +181,7 @@ export default async function SellerPage({ params }: PageProps) {
             {destinations.length > 0 && (
               <div>
                 <dt className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
-                  Destinations servies
+                  {t('fields.destinations')}
                 </dt>
                 <dd className="mt-2 flex flex-wrap gap-1.5">
                   {destinations.map((d) => (
@@ -197,7 +203,7 @@ export default async function SellerPage({ params }: PageProps) {
       <section>
         <div className="mb-4 flex items-end justify-between">
           <h2 className="text-lg font-semibold text-white">
-            Produits publiés
+            {t('sections.publishedProducts')}
             <span className="ml-2 text-sm font-normal text-white/50">
               ({seller.products.length})
             </span>
@@ -206,7 +212,7 @@ export default async function SellerPage({ params }: PageProps) {
         {seller.products.length === 0 ? (
           <div className="iox-glass rounded-2xl border-dashed p-10 text-center">
             <Package className="mx-auto h-8 w-8 text-white/30" aria-hidden />
-            <p className="mt-2 text-sm text-white/60">Aucun produit publié pour l&apos;instant.</p>
+            <p className="mt-2 text-sm text-white/60">{t('noProductsCard')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

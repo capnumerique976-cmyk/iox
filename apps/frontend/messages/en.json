@@ -127,8 +127,17 @@
     },
     "sellers": {
       "title": "Our producers",
+      "titleHighlight": "producers",
+      "titlePrefix": "Our",
+      "heroBadge": "Validated MCH producers",
+      "heroDescription": "Discover Mayotte companies engaged in the Mayotte Cluster Hub program — direct sourcing, local know-how, export ready.",
+      "totalCount": "{count, plural, =0 {0 producers} one {1 producer} other {# producers}}",
+      "totalCountSuffix": "listed",
+      "loading": "Loading…",
       "empty": "No producer matches your filters.",
-      "unavailable": "Producer directory could not be loaded. Please refresh in a moment.",
+      "emptyTitle": "No producer found",
+      "emptyHint": "Try broadening your filters to discover more profiles.",
+      "unavailable": "Producer directory could not be loaded. Please refresh in a moment — our team is already alerted.",
       "filters": {
         "search": "Search",
         "searchPlaceholder": "Name, city…",
@@ -146,9 +155,12 @@
     "seller": {
       "sections": {
         "story": "Our story",
+        "about": "About",
         "products": "Products offered",
+        "publishedProducts": "Published products",
         "certifications": "Certifications",
         "logistics": "Logistics & shipping",
+        "exportCapabilities": "Export capabilities",
         "contact": "Contact"
       },
       "fields": {
@@ -158,10 +170,17 @@
         "incoterms": "Supported incoterms",
         "destinations": "Destinations served",
         "leadTime": "Average lead time",
+        "leadTimeShort": "Lead time ~ {days} d",
         "languages": "Languages",
         "website": "Website"
       },
-      "noProducts": "No products published yet."
+      "productsCount": "{count, plural, =0 {No products} one {1 product} other {# products}}",
+      "noProductsHero": "Validated MCH producers",
+      "sellersTitle": "Our producers",
+      "noProductsTitle": "No producer found",
+      "noProducts": "No products published yet.",
+      "noProductsCard": "No products published yet.",
+      "certificationsAriaLabel": "Certifications of {name}"
     }
   },
   "footer": {
