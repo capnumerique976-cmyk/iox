@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
@@ -26,6 +27,38 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: { slug: string };
+}
+
+/**
+ * SEO-META — Open Graph + Twitter Card dynamiques pour la fiche produit.
+ */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const product = await fetchProductBySlug(params.slug).catch(() => null);
+  if (!product) return { title: 'Produit introuvable — IOX Marketplace' };
+
+  const title = `${product.commercialName} — IOX Marketplace`;
+  const description =
+    product.descriptionShort ??
+    `${product.commercialName} par ${product.seller.publicDisplayName} — ${product.originCountry}`;
+  const imageUrl = product.primaryImage?.publicUrl ?? undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      siteName: 'IOX Marketplace',
+      ...(imageUrl && { images: [{ url: imageUrl, alt: product.commercialName }] }),
+    },
+    twitter: {
+      card: imageUrl ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
+  };
 }
 
 export default async function ProductDetailPage({ params }: PageProps) {
