@@ -977,9 +977,24 @@ export class MarketplaceCatalogService {
       orderBy: { publicDisplayName: 'asc' },
     });
 
+    // Catégories actives avec au moins 1 produit
+    const categories = await this.prisma.marketplaceCategory.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { nameFr: { contains: term, mode: 'insensitive' } },
+          { nameEn: { contains: term, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true, slug: true, nameFr: true },
+      take: 3,
+      orderBy: { nameFr: 'asc' },
+    });
+
     const data = [
       ...products.map((p) => ({ type: 'product' as const, id: p.id, slug: p.slug, label: p.commercialName })),
       ...sellers.map((s) => ({ type: 'seller' as const, id: s.id, slug: s.slug, label: s.publicDisplayName })),
+      ...categories.map((c) => ({ type: 'category' as const, id: c.id, slug: c.slug, label: c.nameFr })),
     ];
 
     return { data };
