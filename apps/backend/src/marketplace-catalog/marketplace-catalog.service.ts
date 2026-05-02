@@ -894,4 +894,55 @@ export class MarketplaceCatalogService {
 
     return { data: roots };
   }
+
+  // ─── Suggest / Autocomplete ─────────────────────────────────────────────────
+
+  /**
+   * Recherche rapide sur les noms de produits et vendeurs publiés.
+   * Retourne max 8 suggestions groupées par type (product / seller).
+   * Utilise un simple ILIKE (pas besoin de pg_trgm pour ce volume).
+   */
+  async suggest(q: string) {
+    const term = q.trim();
+    if (!term || term.length < 2) {
+      return { data: [] };
+    }
+
+    const pattern = `%${term}%`;
+
+    // Produits publiés avec une offre PUBLISHED
+    const products = await this.prisma.marketplaceProduct.findMany({
+      where: {
+        commercialName: { contains: term, mode: 'insensitive' },
+        publicationStatus: { in: [MarketplacePublicationStatus.APPROVED, MarketplacePublicationStatus.PUBLISHED] },
+        offers: {
+          some: {
+            publicationStatus: MarketplacePublicationStatus.PUBLISHED,
+            visibilityScope: { not: MarketplaceVisibilityScope.PRIVATE },
+          },
+        },
+      },
+      select: { id: true, slug: true, commercialName: true },
+      take: 5,
+      orderBy: { commercialName: 'asc' },
+    });
+
+    // Vendeurs APPROVED
+    const sellers = await this.prisma.sellerProfile.findMany({
+      where: {
+        publicDisplayName: { contains: term, mode: 'insensitive' },
+        status: SellerProfileStatus.APPROVED,
+      },
+      select: { id: true, slug: true, publicDisplayName: true },
+      take: 3,
+      orderBy: { publicDisplayName: 'asc' },
+    });
+
+    const data = [
+      ...products.map((p) => ({ type: 'product' as const, id: p.id, slug: p.slug, label: p.commercialName })),
+      ...sellers.map((s) => ({ type: 'seller' as const, id: s.id, slug: s.slug, label: s.publicDisplayName })),
+    ];
+
+    return { data };
+  }
 }

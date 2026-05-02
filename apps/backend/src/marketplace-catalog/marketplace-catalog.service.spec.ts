@@ -704,4 +704,53 @@ describe('MarketplaceCatalogService', () => {
       expect(call.where.isActive).toBe(true);
     });
   });
+
+  // ── suggest ─────────────────────────────────────────────────────────────────
+
+  describe('suggest', () => {
+    it('returns empty for short queries (< 2 chars)', async () => {
+      const result = await service.suggest('a');
+      expect(result).toEqual({ data: [] });
+      expect(prisma.marketplaceProduct.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns empty for empty string', async () => {
+      const result = await service.suggest('');
+      expect(result).toEqual({ data: [] });
+    });
+
+    it('searches products and sellers with term >= 2 chars', async () => {
+      prisma.marketplaceProduct.findMany.mockResolvedValue([
+        { id: 'p1', slug: 'vanille', commercialName: 'Vanille Bourbon' },
+      ]);
+      prisma.sellerProfile.findMany.mockResolvedValue([
+        { id: 's1', slug: 'seller-vanille', publicDisplayName: 'Vanille MCH' },
+      ]);
+
+      const result = await service.suggest('van');
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0]).toEqual({ type: 'product', id: 'p1', slug: 'vanille', label: 'Vanille Bourbon' });
+      expect(result.data[1]).toEqual({ type: 'seller', id: 's1', slug: 'seller-vanille', label: 'Vanille MCH' });
+    });
+
+    it('uses case-insensitive contains filter', async () => {
+      prisma.marketplaceProduct.findMany.mockResolvedValue([]);
+      prisma.sellerProfile.findMany.mockResolvedValue([]);
+
+      await service.suggest('Yla');
+      const productCall = prisma.marketplaceProduct.findMany.mock.calls[0][0];
+      expect(productCall.where.commercialName).toEqual({ contains: 'Yla', mode: 'insensitive' });
+    });
+
+    it('limits products to 5 and sellers to 3', async () => {
+      prisma.marketplaceProduct.findMany.mockResolvedValue([]);
+      prisma.sellerProfile.findMany.mockResolvedValue([]);
+
+      await service.suggest('test');
+      const productCall = prisma.marketplaceProduct.findMany.mock.calls[0][0];
+      const sellerCall = prisma.sellerProfile.findMany.mock.calls[0][0];
+      expect(productCall.take).toBe(5);
+      expect(sellerCall.take).toBe(3);
+    });
+  });
 });

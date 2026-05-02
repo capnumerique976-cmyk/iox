@@ -24,6 +24,14 @@ export class MarketplaceCatalogController {
     return this.service.findProductBySlug(slug);
   }
 
+  // SEARCH-FULLTEXT — autocomplete/suggestions sur produits + vendeurs.
+  @Public()
+  @Get('suggest')
+  @ApiOperation({ summary: 'Suggestions autocomplétion (produits + vendeurs)' })
+  suggest(@Query('q') q: string) {
+    return this.service.suggest(q ?? '');
+  }
+
   // MP-CATEGORY-2 — arborescence publique des catégories actives.
   @Public()
   @Get('categories')
