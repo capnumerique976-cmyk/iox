@@ -1,9 +1,11 @@
 // PAY-1 phase 1 LOT 3 — Spec PaymentsWebhookService.
+// PAY-2 — Email notification specs.
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentsWebhookService } from './payments-webhook.service';
 import { PrismaService } from '../database/prisma.service';
 import { StripeOnboardingService } from './stripe-onboarding.service';
+import { NotifEmailService } from '../notif-email/notif-email.service';
 import { PaymentStatus, SellerStripeAccountStatus } from '@iox/shared';
 
 describe('PaymentsWebhookService', () => {
@@ -11,22 +13,48 @@ describe('PaymentsWebhookService', () => {
   let prisma: {
     payment: { update: jest.Mock };
     sellerStripeAccount: { update: jest.Mock };
+    user: { findUnique: jest.Mock };
+    marketplaceOffer: { findUnique: jest.Mock };
   };
   let onboarding: { computeStatus: jest.Mock };
+  let notifEmail: { send: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
-      payment: { update: jest.fn().mockResolvedValue({}) },
+      payment: {
+        update: jest.fn().mockResolvedValue({
+          id: 'pay_1',
+          buyerUserId: 'u-buyer',
+          amountCents: 10000,
+          currency: 'EUR',
+          marketplaceOfferId: 'offer-1',
+        }),
+      },
       sellerStripeAccount: { update: jest.fn().mockResolvedValue({}) },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          email: 'buyer@test.com',
+          firstName: 'Jean',
+          lastName: 'Dupont',
+          preferredLocale: 'fr',
+        }),
+      },
+      marketplaceOffer: {
+        findUnique: jest.fn().mockResolvedValue({ title: 'Vanille premium' }),
+      },
     };
     onboarding = {
       computeStatus: jest.fn().mockReturnValue(SellerStripeAccountStatus.PAYOUTS_ENABLED),
+    };
+    notifEmail = {
+      send: jest.fn().mockResolvedValue({ success: true, messageId: 'msg-1', transport: 'mock' }),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PaymentsWebhookService,
         { provide: PrismaService, useValue: prisma },
         { provide: StripeOnboardingService, useValue: onboarding },
+        { provide: NotifEmailService, useValue: notifEmail },
       ],
     }).compile();
     service = module.get(PaymentsWebhookService);
@@ -134,5 +162,78 @@ describe('PaymentsWebhookService', () => {
     const res = await service.handleEvent(event);
     expect(res.action).toBe('no-payment-id');
     expect(prisma.payment.update).not.toHaveBeenCalled();
+  });
+
+  // PAY-2 — Email notification on payment_intent.succeeded.
+
+  it('payment_intent.succeeded sends email to buyer', async () => {
+    const event = {
+      id: 'evt_email_1',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_e1',
+          metadata: { payment_id: 'pay_e1' },
+          latest_charge: 'ch_e1',
+          amount: 10000,
+        },
+      },
+    };
+    await service.handleEvent(event);
+
+    expect(notifEmail.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'buyer@test.com',
+        templateId: 'payment-confirmed-to-buyer',
+        templateData: expect.objectContaining({
+          buyerDisplayName: 'Jean Dupont',
+          offerTitle: 'Vanille premium',
+        }),
+      }),
+    );
+  });
+
+  it('payment_intent.succeeded still succeeds if email send fails', async () => {
+    notifEmail.send.mockRejectedValueOnce(new Error('SMTP down'));
+
+    const event = {
+      id: 'evt_email_2',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_e2',
+          metadata: { payment_id: 'pay_e2' },
+          latest_charge: 'ch_e2',
+          amount: 5000,
+        },
+      },
+    };
+    const res = await service.handleEvent(event);
+
+    // Payment status update still succeeded.
+    expect(res.action).toBe('payment-succeeded');
+    expect(res.handled).toBe(true);
+    expect(prisma.payment.update).toHaveBeenCalled();
+  });
+
+  it('payment_intent.succeeded with no buyer email skips email', async () => {
+    prisma.user.findUnique.mockResolvedValueOnce(null);
+
+    const event = {
+      id: 'evt_email_3',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_e3',
+          metadata: { payment_id: 'pay_e3' },
+          latest_charge: 'ch_e3',
+          amount: 7500,
+        },
+      },
+    };
+    const res = await service.handleEvent(event);
+
+    expect(res.action).toBe('payment-succeeded');
+    expect(notifEmail.send).not.toHaveBeenCalled();
   });
 });

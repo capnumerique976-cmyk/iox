@@ -149,6 +149,8 @@ enum EntityType {
   MEDIA_ASSET
   QUOTE_REQUEST
   MARKETPLACE_REVIEW
+  PAYMENT
+  INVOICE
 }
 
 // ─── UTILISATEURS ─────────────────────────────────────────────────────────────
@@ -1563,4 +1565,32 @@ model Payment {
   @@index([buyerCompanyId, createdAt])
   @@index([quoteRequestId])
   @@map("payments")
+}
+
+// PAY-2 — Factures marketplace.
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELED
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  paymentId       String        @unique @map("payment_id")
+  sellerProfileId String        @map("seller_profile_id")
+  buyerCompanyId  String        @map("buyer_company_id")
+  invoiceNumber   String        @unique @map("invoice_number")
+  amountCents     Int           @map("amount_cents")
+  currency        String        @default("EUR")
+  status          InvoiceStatus @default(DRAFT)
+  pdfStorageKey   String?       @map("pdf_storage_key")
+  issuedAt        DateTime?     @map("issued_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([sellerProfileId, createdAt])
+  @@index([buyerCompanyId, createdAt])
+  @@map("invoices")
 }

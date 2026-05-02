@@ -1,0 +1,89 @@
+// PAY-2 — tests seller invoices page.
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { UserRole } from '@iox/shared';
+
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock('@/contexts/auth.context', () => ({
+  useAuth: () => ({
+    user: {
+      id: 's-1',
+      role: UserRole.MARKETPLACE_SELLER,
+      email: 'seller@ex.com',
+      firstName: 'Sam',
+      lastName: 'Seller',
+    },
+    token: 'tok',
+    isLoading: false,
+  }),
+}));
+
+const listMock = vi.fn();
+vi.mock('@/lib/invoices', () => ({
+  invoicesApi: {
+    list: (...args: unknown[]) => listMock(...args),
+  },
+}));
+
+import SellerInvoicesPage from './page';
+
+const sampleInvoice = (id: string, status: 'DRAFT' | 'ISSUED' | 'PAID' | 'CANCELED' = 'PAID') => ({
+  id,
+  paymentId: `pay-${id}`,
+  sellerProfileId: 'sp1',
+  buyerCompanyId: 'c1',
+  invoiceNumber: `INV-${id.toUpperCase()}`,
+  amountCents: 55000,
+  currency: 'EUR',
+  status,
+  pdfStorageKey: null,
+  issuedAt: '2026-05-01T10:00:00Z',
+  createdAt: '2026-05-01T09:00:00Z',
+  updatedAt: '2026-05-01T10:00:00Z',
+});
+
+describe('SellerInvoicesPage (PAY-2)', () => {
+  beforeEach(() => listMock.mockReset());
+  afterEach(() => vi.clearAllMocks());
+
+  it('renders invoice list with mock data', async () => {
+    listMock.mockResolvedValue({
+      data: [sampleInvoice('i1'), sampleInvoice('i2', 'DRAFT')],
+      meta: { total: 2, page: 1, limit: 20, totalPages: 1 },
+    });
+    render(<SellerInvoicesPage />);
+
+    expect(await screen.findByTestId('seller-invoices-page')).toBeInTheDocument();
+    expect(screen.getByTestId('invoices-table')).toBeInTheDocument();
+    expect(screen.getByTestId('invoice-row-i1')).toBeInTheDocument();
+    expect(screen.getByTestId('invoice-row-i2')).toBeInTheDocument();
+    expect(screen.getByText('INV-I1')).toBeInTheDocument();
+    expect(screen.getByTestId('invoice-status-i1')).toHaveTextContent('Payee');
+    expect(screen.getByTestId('invoice-status-i2')).toHaveTextContent('Brouillon');
+  });
+
+  it('shows empty state when no invoices', async () => {
+    listMock.mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 20, totalPages: 0 },
+    });
+    render(<SellerInvoicesPage />);
+
+    expect(await screen.findByTestId('invoices-empty')).toBeInTheDocument();
+    expect(screen.getByText(/Aucune facture/)).toBeInTheDocument();
+  });
+});

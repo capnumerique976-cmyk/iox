@@ -38,6 +38,8 @@ const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   [EntityType.MEDIA_ASSET]: 'Media',
   [EntityType.QUOTE_REQUEST]: 'Demande de devis',
   [EntityType.MARKETPLACE_REVIEW]: 'Avis marketplace',
+  [EntityType.PAYMENT]: 'Paiement',
+  [EntityType.INVOICE]: 'Facture',
 };
 
 /* ─── Entity-type badge color mapping ─────────────────────────────── */

@@ -18,6 +18,8 @@ import {
   HttpStatus,
   Inject,
   Logger,
+  Param,
+  ParseUUIDPipe,
   Post,
   Req,
   UseGuards,
@@ -30,7 +32,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Public, Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserRole, RequestUser } from '@iox/shared';
-import { CreateCheckoutSessionDto, GenerateOnboardingLinkDto } from './dto/payments.dto';
+import { CreateCheckoutSessionDto, GenerateOnboardingLinkDto, RefundPaymentDto } from './dto/payments.dto';
 import { PaymentsService } from './payments.service';
 import { PaymentsWebhookService } from './payments-webhook.service';
 import { StripeOnboardingService } from './stripe-onboarding.service';
@@ -110,6 +112,22 @@ export class PaymentsController {
       },
       actor,
     );
+  }
+
+  // ─── PAY-2 — Refund ──────────────────────────────────────────────────────
+
+  @Post(':id/refund')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR, UserRole.MARKETPLACE_SELLER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rembourser un paiement (total ou partiel)' })
+  async refund(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RefundPaymentDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.payments.refund(id, dto, actor);
   }
 
   @Get('connect/account-status')
