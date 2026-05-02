@@ -7,10 +7,35 @@ import type {
   ProductQualityAttribute,
   SeasonalityMonth,
 } from '@/lib/marketplace/types';
+import type { PublicCategoryNode } from '@/lib/marketplace/api';
 
 // I18N-8 — migré de useLang vers useTranslations('marketplace.catalog').
 // Quality attributes et months restent des constantes (valeurs enum),
 // les labels sont résolus via les clés i18n catalog.qualityLabels.* et catalog.months.*.
+
+// MP-CATEGORY-3 — flat category for the select dropdown.
+interface FlatCategory {
+  slug: string;
+  label: string;
+  productsCount: number;
+  depth: number;
+}
+
+function flattenCategories(nodes: PublicCategoryNode[], depth = 0): FlatCategory[] {
+  const result: FlatCategory[] = [];
+  for (const node of nodes) {
+    result.push({
+      slug: node.slug,
+      label: depth > 0 ? `${'— '.repeat(depth)}${node.nameFr}` : node.nameFr,
+      productsCount: node.productsCount,
+      depth,
+    });
+    if (node.children.length > 0) {
+      result.push(...flattenCategories(node.children, depth + 1));
+    }
+  }
+  return result;
+}
 
 const QUALITY_ATTR_VALUES: ProductQualityAttribute[] = [
   'NON_GMO', 'ORGANIC', 'HANDMADE', 'TRADITIONAL', 'HAND_HARVESTED',
@@ -71,6 +96,17 @@ export function CatalogFilters() {
   const [temperatureRequirements, setTemperatureRequirements] = useState(
     params.get('temperatureRequirements') ?? '',
   );
+
+  // MP-CATEGORY-3 — fetch categories tree for dropdown.
+  const [categories, setCategories] = useState<FlatCategory[]>([]);
+  useEffect(() => {
+    fetch('/api/v1/marketplace/catalog/categories')
+      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+      .then((body: { data: PublicCategoryNode[] }) =>
+        setCategories(flattenCategories(body.data ?? [])),
+      )
+      .catch(() => setCategories([]));
+  }, []);
 
   useEffect(() => {
     setQ(params.get('q') ?? '');
@@ -168,14 +204,22 @@ export function CatalogFilters() {
         <label className={labelCls} htmlFor="catalog-filter-category">
           {t('filters.category')}
         </label>
-        <input
+        <select
           id="catalog-filter-category"
           data-testid="catalog-filter-categorySlug"
           value={categorySlug}
-          onChange={(e) => setCategorySlug(e.target.value.toLowerCase())}
-          placeholder={t('filters.categoryPlaceholder')}
+          onChange={(e) => setCategorySlug(e.target.value)}
           className={fieldCls}
-        />
+        >
+          <option value="" className="bg-[#12161F] text-white">
+            {t('filters.categoryAll')}
+          </option>
+          {categories.map((cat) => (
+            <option key={cat.slug} value={cat.slug} className="bg-[#12161F] text-white">
+              {cat.label} ({cat.productsCount})
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
