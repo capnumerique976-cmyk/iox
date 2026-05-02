@@ -1,6 +1,8 @@
-// MP-S-INDEX — couverture du composant SellersFilters (URL-state).
+// MP-S-INDEX + I18N-8 — couverture du composant SellersFilters.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import path from 'path';
+import fs from 'fs';
 
 const pushMock = vi.fn();
 let searchParamsImpl = new URLSearchParams();
@@ -10,9 +12,34 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/marketplace/sellers',
 }));
 
+// I18N-8 — mock next-intl useTranslations avec fr.json réel.
+const frMessages = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../../../messages/fr.json'), 'utf-8'),
+);
+
+function resolveKey(obj: Record<string, unknown>, keyPath: string): string {
+  const parts = keyPath.split('.');
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current && typeof current === 'object' && part in (current as Record<string, unknown>)) {
+      current = (current as Record<string, unknown>)[part];
+    } else {
+      return keyPath;
+    }
+  }
+  return typeof current === 'string' ? current : keyPath;
+}
+
+vi.mock('next-intl', () => ({
+  useTranslations: (namespace: string) => {
+    const t = (key: string) => resolveKey(frMessages, `${namespace}.${key}`);
+    return t;
+  },
+}));
+
 import { SellersFilters } from './SellersFilters';
 
-describe('SellersFilters (MP-S-INDEX)', () => {
+describe('SellersFilters (MP-S-INDEX + I18N-8)', () => {
   beforeEach(() => {
     pushMock.mockReset();
     searchParamsImpl = new URLSearchParams();
@@ -45,7 +72,7 @@ describe('SellersFilters (MP-S-INDEX)', () => {
   it('reset vide les champs et navigue vers la pathname nue', () => {
     searchParamsImpl = new URLSearchParams('q=coop&featured=true');
     render(<SellersFilters />);
-    fireEvent.click(screen.getByText('Réinitialiser'));
+    fireEvent.click(screen.getByTestId('sellers-filters-reset'));
     expect(pushMock).toHaveBeenCalledWith('/marketplace/sellers');
   });
 });

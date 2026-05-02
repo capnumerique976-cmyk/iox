@@ -22,6 +22,7 @@
     },
     "language": {
       "label": "Langue",
+      "switcherAriaLabel": "Sélecteur de langue",
       "fr": "Français",
       "en": "English"
     },
@@ -34,6 +35,7 @@
     "sellers": "Producteurs",
     "favorites": "Favoris",
     "proArea": "Espace pro",
+    "categories": "Catégories",
     "marketplaceBadge": "Marketplace B2B",
     "homeAlt": "IOX Marketplace — Accueil"
   },
@@ -42,21 +44,36 @@
       "title": "Catalogue marketplace",
       "subtitle": "{count, plural, =0 {Aucune offre publiée} one {1 offre publiée} other {# offres publiées}}",
       "empty": "Aucune offre ne correspond à vos filtres.",
+      "emptyHint": "Essayez d'élargir vos filtres pour découvrir plus de produits.",
       "unavailable": "Le catalogue n'a pas pu être chargé. Rafraîchissez la page dans un instant ; si le problème persiste, nos équipes sont déjà alertées.",
       "heroBadge": "Produits de Mayotte sélectionnés",
       "heroTitleHighlight": "marketplace",
       "heroDescription": "Découvrez les offres d'export des entreprises engagées dans le programme MCH — traçabilité garantie, conformité validée.",
       "heroAvailable": "{count, plural, =0 {disponibles} other {disponibles}}",
       "filters": {
-        "search": "Rechercher",
-        "searchPlaceholder": "Nom de produit…",
-        "category": "Catégorie",
+        "search": "Recherche",
+        "searchPlaceholder": "Nom, producteur, variété…",
+        "category": "Catégorie (slug)",
         "country": "Pays d'origine",
+        "originRegion": "Région d'origine",
+        "originRegionPlaceholder": "Région, département…",
+        "categoryPlaceholder": "epices, cafe…",
+        "productionMethod": "Méthode de production",
+        "productionMethodPlaceholder": "biologique, raisonné…",
+        "qualityAttribute": "Qualité structurée",
+        "seasonalityMonth": "Disponible en",
+        "allYear": "Toute l'année",
+        "temperature": "Température",
+        "temperaturePlaceholder": "Frozen, ambiant…",
         "reset": "Réinitialiser",
+        "apply": "Filtrer",
         "all": "Tous",
-        "readiness": "Préparation export",
+        "readiness": "Readiness export",
         "priceMode": "Mode de prix",
-        "sort": "Tri"
+        "moqMax": "MOQ max",
+        "availableOnly": "Disponibles uniquement",
+        "hasPublicDocs": "Documents publics requis",
+        "sort": "Trier par"
       },
       "card": {
         "viewOffer": "Voir l'offre",
@@ -74,20 +91,73 @@
         "FROM_PRICE": "À partir de"
       },
       "readinessLabels": {
-        "EXPORT_READY": "Prêt à l'export",
-        "EXPORT_READY_WITH_CONDITIONS": "Prêt sous conditions",
-        "INTERNAL_ONLY": "Marché local uniquement"
+        "EXPORT_READY": "Export prêt",
+        "EXPORT_READY_WITH_CONDITIONS": "Export sous conditions",
+        "INTERNAL_ONLY": "Marché local",
+        "PENDING_DOCUMENTS": "Docs attendus",
+        "PENDING_QUALITY_REVIEW": "Revue qualité",
+        "NOT_ELIGIBLE": "Non éligible export"
+      },
+      "priceLabels": {
+        "FIXED": "Prix fixe",
+        "FROM_PRICE": "À partir de",
+        "QUOTE_ONLY": "Sur devis"
       },
       "sortLabels": {
         "featured": "Recommandés",
         "recent": "Plus récents",
         "nameAsc": "Nom A→Z",
         "priceAsc": "Prix croissant",
-        "priceDesc": "Prix décroissant"
+        "priceDesc": "Prix décroissant",
+        "readiness": "Readiness export"
+      },
+      "months": {
+        "JAN": "Janvier",
+        "FEB": "Février",
+        "MAR": "Mars",
+        "APR": "Avril",
+        "MAY": "Mai",
+        "JUN": "Juin",
+        "JUL": "Juillet",
+        "AUG": "Août",
+        "SEP": "Septembre",
+        "OCT": "Octobre",
+        "NOV": "Novembre",
+        "DEC": "Décembre"
+      },
+      "qualityLabels": {
+        "NON_GMO": "Sans OGM",
+        "ORGANIC": "Bio",
+        "HANDMADE": "Fait main",
+        "TRADITIONAL": "Traditionnel",
+        "HAND_HARVESTED": "Récolte manuelle",
+        "GLUTEN_FREE": "Sans gluten",
+        "LACTOSE_FREE": "Sans lactose",
+        "VEGAN": "Vegan",
+        "VEGETARIAN": "Végétarien",
+        "KOSHER": "Kasher",
+        "HALAL": "Halal",
+        "WILD_HARVESTED": "Cueillette sauvage",
+        "SMALL_BATCH": "Petites séries",
+        "COLD_PRESSED": "Pression à froid",
+        "RAW": "Cru",
+        "FAIR_TRADE": "Commerce équitable",
+        "ARTISANAL": "Artisanal",
+        "OTHER": "Autre"
       }
     },
     "product": {
+      "breadcrumbCatalog": "Catalogue",
       "sellerLabel": "Producteur",
+      "primaryOfferBadge": "Offre principale",
+      "requestQuote": "Demander un devis",
+      "loginRequired": "Connexion requise pour envoyer une demande",
+      "otherOffersTitle": "Autres offres publiées",
+      "volumesTitle": "Volumes et capacités",
+      "videoAriaLabel": "Vidéo {name}",
+      "seasonalityAriaLabel": "Saisonnalité de {name}",
+      "certificationsAriaLabel": "Certifications de {name}",
+      "leadTimeDaysSuffix": "{days, plural, one {1 j} other {# j}}",
       "sections": {
         "description": "Description",
         "characteristics": "Caractéristiques",
@@ -103,6 +173,8 @@
       "fields": {
         "moq": "MOQ",
         "leadTime": "Délai",
+        "incoterm": "Incoterm",
+        "departure": "Départ",
         "variety": "Variété",
         "production": "Production",
         "packaging": "Packaging",
@@ -123,7 +195,48 @@
         "restock": "Réapprovisionnement",
         "originCountry": "Pays d'origine",
         "originRegion": "Région"
+      },
+      "quality": {
+        "ORGANIC": "Bio",
+        "NON_GMO": "Non-OGM",
+        "HANDMADE": "Fait main",
+        "ARTISANAL": "Artisanal",
+        "TRADITIONAL": "Tradition",
+        "HAND_HARVESTED": "Récolte manuelle",
+        "WILD_HARVESTED": "Cueillette sauvage",
+        "SMALL_BATCH": "Petite série",
+        "COLD_PRESSED": "Pressé à froid",
+        "RAW": "Cru / non transformé",
+        "FAIR_TRADE": "Équitable",
+        "GLUTEN_FREE": "Sans gluten",
+        "LACTOSE_FREE": "Sans lactose",
+        "VEGAN": "Vegan",
+        "VEGETARIAN": "Végétarien",
+        "KOSHER": "Casher",
+        "HALAL": "Halal",
+        "OTHER": "Autre"
       }
+    },
+    "favorites": {
+      "title": "Mes favoris",
+      "subtitle": "Produits marqués sur cet appareil. Stockage local uniquement.",
+      "catalog": "Catalogue",
+      "loading": "Chargement…",
+      "empty": "Vous n'avez pas encore de favoris.",
+      "exploreCatalog": "Explorer le catalogue",
+      "addedOn": "Ajouté le {date}",
+      "open": "Ouvrir",
+      "removeAriaLabel": "Retirer {name} des favoris",
+      "remove": "Retirer"
+    },
+    "categories": {
+      "title": "Catégories",
+      "heroDescription": "Parcourez nos catégories de produits pour trouver ce que vous cherchez.",
+      "emptyTitle": "Aucune catégorie disponible",
+      "emptyHint": "Les catégories seront ajoutées prochainement.",
+      "productsCount": "{count, plural, =0 {Aucun produit} one {1 produit} other {# produits}}",
+      "browseCategory": "Voir les produits",
+      "subcategories": "{count, plural, one {1 sous-catégorie} other {# sous-catégories}}"
     },
     "sellers": {
       "title": "Nos producteurs",
@@ -144,7 +257,9 @@
         "country": "Pays",
         "region": "Région",
         "featuredOnly": "Vedettes uniquement",
-        "sort": "Tri"
+        "sort": "Tri",
+        "reset": "Réinitialiser",
+        "apply": "Appliquer"
       },
       "sortLabels": {
         "featured": "Vedettes d'abord",

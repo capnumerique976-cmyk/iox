@@ -553,6 +553,7 @@ export default function SellerDashboardPage() {
           <QuickLink href="/quote-requests" label="Demandes de devis" />
           <QuickLink href="/seller/documents" label="Documents marketplace" />
           <QuickLink href="/marketplace" label="Voir le catalogue public" />
+          <QuickLink href="/marketplace/categories" label="Catégories produits" />
         </div>
       </section>
     </div>
