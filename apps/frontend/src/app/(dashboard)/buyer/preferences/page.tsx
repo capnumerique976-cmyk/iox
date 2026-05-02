@@ -18,9 +18,10 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 
 interface TypeSpec {
-  type: EmailUnsubscribeType;
+  type: EmailUnsubscribeType | string;
   label: string;
   description: string;
+  upcoming?: boolean;
 }
 
 const TYPES: TypeSpec[] = [
@@ -41,6 +42,27 @@ const TYPES: TypeSpec[] = [
     label: 'Désinscription totale',
     description:
       'Désactive TOUS les emails marketplace. Override les autres préférences. Vous pourrez toujours vous reconnecter à votre compte.',
+  },
+  {
+    type: 'ORDER_SHIPPED',
+    label: 'Expéditions',
+    description:
+      'Notifications quand une commande est expédiée ou livrée.',
+    upcoming: true,
+  },
+  {
+    type: 'PRICE_CHANGE',
+    label: 'Changements de prix',
+    description:
+      'Alertes quand un produit favori change de prix ou de disponibilité.',
+    upcoming: true,
+  },
+  {
+    type: 'NEW_PRODUCTS',
+    label: 'Nouveaux produits',
+    description:
+      'Digest hebdomadaire des nouvelles offres publiées par vos producteurs suivis.',
+    upcoming: true,
   },
 ];
 
@@ -120,46 +142,57 @@ export default function BuyerPreferencesPage() {
         <section className="rounded-xl border border-gray-200 bg-white p-5">
           <ul className="flex flex-col divide-y divide-gray-100">
             {TYPES.map((t) => {
-              const isOptedOut = optedOut.has(t.type);
-              const subscribed = !isOptedOut;
+              const isUpcoming = !!t.upcoming;
+              const isOptedOut = !isUpcoming && optedOut.has(t.type as EmailUnsubscribeType);
+              const subscribed = isUpcoming ? false : !isOptedOut;
               return (
                 <li
                   key={t.type}
                   data-testid={`pref-row-${t.type}`}
-                  className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"
+                  className={`flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between${isUpcoming ? ' opacity-60' : ''}`}
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      {subscribed ? (
+                      {isUpcoming ? (
+                        <Bell className="h-4 w-4 text-gray-300" aria-hidden />
+                      ) : subscribed ? (
                         <Bell className="h-4 w-4 text-emerald-600" aria-hidden />
                       ) : (
                         <BellOff className="h-4 w-4 text-gray-400" aria-hidden />
                       )}
                       <h3 className="text-sm font-semibold text-gray-900">{t.label}</h3>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          subscribed
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {subscribed ? 'Inscrit' : 'Désinscrit'}
-                      </span>
+                      {isUpcoming ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                          (Bient&ocirc;t)
+                        </span>
+                      ) : (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                            subscribed
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {subscribed ? 'Inscrit' : 'Désinscrit'}
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1 text-xs text-gray-500">{t.description}</p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => toggle(t.type)}
-                    disabled={busy}
+                    onClick={() => !isUpcoming && toggle(t.type as EmailUnsubscribeType)}
+                    disabled={busy || isUpcoming}
                     data-testid={`btn-toggle-${t.type}`}
                     className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
-                      subscribed
-                        ? 'border border-red-200 bg-white text-red-700 hover:bg-red-50'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                      isUpcoming
+                        ? 'border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                        : subscribed
+                          ? 'border border-red-200 bg-white text-red-700 hover:bg-red-50'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                   >
-                    {subscribed ? 'Me désinscrire' : 'Me réinscrire'}
+                    {isUpcoming ? 'Bientôt disponible' : subscribed ? 'Me désinscrire' : 'Me réinscrire'}
                   </button>
                 </li>
               );

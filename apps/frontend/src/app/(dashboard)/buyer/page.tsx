@@ -11,6 +11,7 @@ import Link from 'next/link';
 import {
   Building2,
   Bell,
+  Package,
   ShoppingBag,
   Sparkles,
   ArrowRight,
@@ -110,7 +111,7 @@ export default function BuyerCockpitPage() {
         {loading ? (
           <div className="text-sm text-gray-500">Chargement…</div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {(
               [
                 QuoteRequestStatus.NEW,
@@ -131,6 +132,17 @@ export default function BuyerCockpitPage() {
                 <span className="text-2xl font-bold text-gray-900 tabular-nums">{counts[s]}</span>
               </Link>
             ))}
+            <Link
+              href="/buyer/orders"
+              data-testid="rfq-count-WON"
+              className="flex flex-col gap-1 rounded-lg border border-emerald-200 bg-emerald-50 p-3 hover:border-emerald-400 hover:bg-emerald-100"
+            >
+              <span className="flex items-center gap-1 text-xs uppercase tracking-wide text-emerald-700">
+                <Package className="h-3 w-3" aria-hidden />
+                Commandes
+              </span>
+              <span className="text-2xl font-bold text-emerald-900 tabular-nums">{counts.WON}</span>
+            </Link>
           </div>
         )}
         <div className="mt-4 flex justify-end">
@@ -145,7 +157,7 @@ export default function BuyerCockpitPage() {
       </section>
 
       {/* Raccourcis */}
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/marketplace"
           className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-5 hover:border-blue-300 hover:shadow-sm"
@@ -155,6 +167,19 @@ export default function BuyerCockpitPage() {
             <h3 className="text-sm font-semibold text-gray-900">Parcourir le catalogue</h3>
             <p className="mt-1 text-xs text-gray-600">
               Découvrez les offres marketplace publiées et envoyez vos demandes de devis.
+            </p>
+          </div>
+        </Link>
+        <Link
+          href="/buyer/orders"
+          data-testid="link-orders"
+          className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-5 hover:border-emerald-300 hover:shadow-sm"
+        >
+          <Package className="h-5 w-5 flex-shrink-0 text-emerald-600" aria-hidden />
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Mes commandes</h3>
+            <p className="mt-1 text-xs text-gray-600">
+              Suivez vos demandes de devis gagnées et confirmées.
             </p>
           </div>
         </Link>

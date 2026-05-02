@@ -30,6 +30,8 @@ interface FormState {
   country: string;
   vatNumber: string;
   website: string;
+  postalCode: string;
+  description: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -41,6 +43,8 @@ const EMPTY_FORM: FormState = {
   country: '',
   vatNumber: '',
   website: '',
+  postalCode: '',
+  description: '',
 };
 
 function fromCompany(c: CompanySummary): FormState {
@@ -53,6 +57,8 @@ function fromCompany(c: CompanySummary): FormState {
     country: c.country ?? '',
     vatNumber: c.vatNumber ?? '',
     website: c.website ?? '',
+    postalCode: c.postalCode ?? '',
+    description: c.description ?? '',
   };
 }
 
@@ -104,7 +110,7 @@ export default function BuyerProfileEditPage() {
     load();
   }, [load]);
 
-  const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
@@ -277,9 +283,28 @@ export default function BuyerProfileEditPage() {
               type="url"
               value={form.website}
               onChange={set('website')}
-              placeholder="https://…"
+              placeholder="https://..."
               className={inputCls}
               data-testid="field-website"
+            />
+          </Field>
+          <Field label="Code postal">
+            <input
+              type="text"
+              value={form.postalCode}
+              onChange={set('postalCode')}
+              className={inputCls}
+              data-testid="field-postalCode"
+            />
+          </Field>
+          <Field label="Pr&eacute;sentation" wide>
+            <textarea
+              value={form.description}
+              onChange={set('description')}
+              rows={4}
+              placeholder="D&eacute;crivez votre entreprise en quelques lignes..."
+              className={inputCls}
+              data-testid="field-description"
             />
           </Field>
         </div>

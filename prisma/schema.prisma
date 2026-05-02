@@ -331,6 +331,8 @@ model Company {
   country     String?
   vatNumber   String?     @map("vat_number")
   website     String?
+  postalCode  String?     @map("postal_code")
+  description String?     @db.Text
   notes       String?
   isActive    Boolean     @default(true) @map("is_active")
 
