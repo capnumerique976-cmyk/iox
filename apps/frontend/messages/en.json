@@ -46,6 +46,8 @@
       "subtitle": "{count, plural, =0 {No published offers} one {1 published offer} other {# published offers}}",
       "empty": "No offers match your filters.",
       "emptyHint": "Try broadening your filters to discover more products.",
+      "emptyClearFilters": "Reset filters",
+      "emptyBrowseSellers": "Browse sellers",
       "unavailable": "The catalog could not be loaded. Please refresh in a moment — our team is already alerted if the issue persists.",
       "heroBadge": "Curated products from Mayotte",
       "heroTitleHighlight": "marketplace",
@@ -252,6 +254,8 @@
       "empty": "No producer matches your filters.",
       "emptyTitle": "No producer found",
       "emptyHint": "Try broadening your filters to discover more profiles.",
+      "emptyClearFilters": "Reset filters",
+      "emptyBrowseCatalog": "View catalog",
       "unavailable": "Producer directory could not be loaded. Please refresh in a moment — our team is already alerted.",
       "filters": {
         "search": "Search",

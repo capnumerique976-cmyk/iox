@@ -1,4 +1,5 @@
-import { Sparkles, Package, Users, Globe } from 'lucide-react';
+import Link from 'next/link';
+import { Sparkles, Package, Users, Globe, RotateCcw, ArrowRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { fetchCatalog, fetchStats } from '@/lib/marketplace/api';
 import { ProductCard } from '@/components/marketplace/ProductCard';
@@ -94,13 +95,29 @@ export default async function CatalogPage({ searchParams }: PageProps) {
             </div>
           ) : res.data.length === 0 ? (
             <div className="iox-glass rounded-2xl p-12 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
-                <Package className="h-6 w-6 text-white/40" aria-hidden />
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#00D4FF]/10 to-[#7B61FF]/10 ring-1 ring-white/10">
+                <Package className="h-7 w-7 text-[#00D4FF]/60" aria-hidden />
               </div>
-              <h2 className="text-sm font-semibold text-white">{t('empty')}</h2>
-              <p className="mt-1 text-sm text-white/50">
+              <h2 className="text-base font-semibold text-white">{t('empty')}</h2>
+              <p className="mx-auto mt-2 max-w-xs text-sm text-white/50">
                 {t('emptyHint')}
               </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href="/marketplace"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-medium text-white/80 transition-all hover:border-[#00D4FF]/40 hover:bg-[#00D4FF]/10 hover:text-white"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                  {t('emptyClearFilters')}
+                </Link>
+                <Link
+                  href="/marketplace/sellers"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#00D4FF]/20 to-[#7B61FF]/20 px-3.5 py-2 text-xs font-medium text-white transition-all hover:from-[#00D4FF]/30 hover:to-[#7B61FF]/30"
+                >
+                  {t('emptyBrowseSellers')}
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              </div>
             </div>
           ) : (
             <>
