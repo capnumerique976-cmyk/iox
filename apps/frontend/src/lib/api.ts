@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { ApiResponse, ApiErrorResponse } from '@iox/shared';
 
 /** Même origine par défaut (voir rewrites dans next.config.mjs). Surcharge explicite si besoin. */
@@ -93,6 +94,16 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
   if (!response.ok) {
     const error = parsed as ApiErrorResponse;
+
+    // Rate-limit feedback: surface 429 to user via toast (client-only).
+    if (response.status === 429 && typeof window !== 'undefined') {
+      const retryAfter = response.headers.get('Retry-After');
+      const msg = retryAfter
+        ? `Trop de requêtes — réessayez dans ${retryAfter}s.`
+        : 'Trop de requêtes — patientez quelques instants.';
+      toast.warning(msg, { id: 'rate-limit-429', duration: 5000 });
+    }
+
     throw new ApiError(
       error.error?.code ?? 'UNKNOWN_ERROR',
       error.error?.message ?? 'Erreur inconnue',
