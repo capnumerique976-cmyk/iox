@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Sparkles, Package, Users, Globe, RotateCcw, ArrowRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
@@ -9,6 +10,25 @@ import { Pagination } from '@/components/marketplace/Pagination';
 import { SearchSuggest } from '@/components/marketplace/SearchSuggest';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Catalogue B2B — IOX Marketplace',
+  description:
+    'Explorez les offres export de producteurs certifiés de l\'océan Indien. Produits tracés, conformité validée, sourcing direct.',
+  openGraph: {
+    title: 'Catalogue B2B — IOX Marketplace',
+    description:
+      'Offres export de producteurs certifiés. Traçabilité garantie, conformité validée.',
+    type: 'website',
+    siteName: 'IOX Marketplace',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Catalogue B2B — IOX Marketplace',
+    description:
+      'Offres export de producteurs certifiés. Traçabilité garantie, conformité validée.',
+  },
+};
 
 interface PageProps {
   searchParams: Record<string, string | string[] | undefined>;

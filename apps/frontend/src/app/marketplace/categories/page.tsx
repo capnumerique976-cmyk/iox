@@ -1,9 +1,22 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { ChevronRight, FolderTree, Package } from 'lucide-react';
 import { fetchCategoriesTree, type PublicCategoryNode } from '@/lib/marketplace/api';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Catégories — IOX Marketplace',
+  description:
+    'Parcourez les catégories de produits disponibles sur IOX Marketplace : épices, vanille, fruits tropicaux et plus.',
+  openGraph: {
+    title: 'Catégories — IOX Marketplace',
+    description: 'Catégories de produits export — océan Indien.',
+    type: 'website',
+    siteName: 'IOX Marketplace',
+  },
+};
 
 /**
  * MP-CATEGORY-2 — page publique arborescence catégories marketplace.
