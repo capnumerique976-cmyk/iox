@@ -11,22 +11,28 @@ import { SearchSuggest } from '@/components/marketplace/SearchSuggest';
 
 export const dynamic = 'force-dynamic';
 
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://iox.mycloud.yt').replace(/\/$/, '');
+
 export const metadata: Metadata = {
   title: 'Catalogue B2B — IOX Marketplace',
   description:
     'Explorez les offres export de producteurs certifiés de l\'océan Indien. Produits tracés, conformité validée, sourcing direct.',
+  alternates: { canonical: `${siteUrl}/marketplace` },
   openGraph: {
     title: 'Catalogue B2B — IOX Marketplace',
     description:
       'Offres export de producteurs certifiés. Traçabilité garantie, conformité validée.',
     type: 'website',
     siteName: 'IOX Marketplace',
+    url: `${siteUrl}/marketplace`,
+    images: [{ url: `${siteUrl}/marketplace/og?title=Catalogue%20B2B&subtitle=Produits%20export%20certifi%C3%A9s%20%E2%80%94%20Oc%C3%A9an%20Indien&type=product`, width: 1200, height: 630 }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Catalogue B2B — IOX Marketplace',
     description:
       'Offres export de producteurs certifiés. Traçabilité garantie, conformité validée.',
+    images: [`${siteUrl}/marketplace/og?title=Catalogue%20B2B&subtitle=Produits%20export%20certifi%C3%A9s%20%E2%80%94%20Oc%C3%A9an%20Indien&type=product`],
   },
 };
 
