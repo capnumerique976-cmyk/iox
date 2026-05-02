@@ -10,6 +10,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { PaginationHeaderInterceptor } from './common/interceptors/pagination-header.interceptor';
+import { ETagInterceptor } from './common/interceptors/etag.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -117,10 +118,12 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Intercepteurs globaux : logging d'abord (pour voir les erreurs), puis formatage
+  // ETag doit être en dernier (innermost) pour voir le body final.
   app.useGlobalInterceptors(
     new LoggingInterceptor(),
     new ResponseInterceptor(),
     new PaginationHeaderInterceptor(),
+    new ETagInterceptor(),
   );
 
   // Swagger (désactivé en production)
