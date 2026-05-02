@@ -1,9 +1,12 @@
 import { Controller, Get, Query, Res } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ExportsService } from './exports.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@iox/shared';
 
+@ApiTags('exports')
+@ApiBearerAuth('access-token')
 @Controller('exports')
 @Roles(UserRole.ADMIN, UserRole.COORDINATOR, UserRole.AUDITOR)
 export class ExportsController {
@@ -13,6 +16,7 @@ export class ExportsController {
   /*  Product batches                                                     */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export product batches as CSV' })
   @Get('product-batches')
   async exportProductBatches(
     @Query('status') status?: string,
@@ -28,6 +32,7 @@ export class ExportsController {
   /*  Inbound batches                                                     */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export inbound batches as CSV' })
   @Get('inbound-batches')
   async exportInboundBatches(
     @Query('status') status?: string,
@@ -43,6 +48,7 @@ export class ExportsController {
   /*  Market release decisions                                            */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export market-release decisions as CSV' })
   @Get('market-decisions')
   async exportMarketDecisions(
     @Query('decision') decision?: string,
@@ -62,6 +68,7 @@ export class ExportsController {
   /*  Incidents                                                          */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export incidents as CSV' })
   @Get('incidents')
   async exportIncidents(
     @Query('status') status?: string,
@@ -78,6 +85,7 @@ export class ExportsController {
   /*  Bénéficiaires                                                       */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export beneficiaries as CSV' })
   @Get('beneficiaries')
   async exportBeneficiaries(
     @Query('status') status?: string,
@@ -92,6 +100,7 @@ export class ExportsController {
   /*  Entreprises                                                         */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export companies as CSV' })
   @Get('companies')
   async exportCompanies(
     @Query('type') type?: string,
@@ -106,6 +115,7 @@ export class ExportsController {
   /*  Produits                                                            */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export products as CSV' })
   @Get('products')
   async exportProducts(
     @Query('status') status?: string,
@@ -120,6 +130,7 @@ export class ExportsController {
   /*  Contrats d'approvisionnement                                        */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export supply contracts as CSV' })
   @Get('supply-contracts')
   async exportSupplyContracts(@Query('status') status?: string, @Res() res?: Response) {
     const csv = await this.exportsService.exportSupplyContractsCsv({ status });
@@ -130,6 +141,7 @@ export class ExportsController {
   /*  Distributions                                                       */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export distributions as CSV' })
   @Get('distributions')
   async exportDistributions(
     @Query('status') status?: string,
@@ -151,6 +163,7 @@ export class ExportsController {
   /*  Opérations de transformation                                        */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export transformation operations as CSV' })
   @Get('transformation-operations')
   async exportTransformationOperations(
     @Query('from') from?: string,
@@ -165,6 +178,7 @@ export class ExportsController {
   /*  Validations d'étiquetage                                            */
   /* ------------------------------------------------------------------ */
 
+  @ApiOperation({ summary: 'Export label validations as CSV' })
   @Get('label-validations')
   async exportLabelValidations(@Query('isValid') isValid?: string, @Res() res?: Response) {
     const csv = await this.exportsService.exportLabelValidationsCsv({ isValid });
