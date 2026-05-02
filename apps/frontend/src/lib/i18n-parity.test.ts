@@ -50,6 +50,29 @@ describe('i18n parity FR ↔ EN', () => {
     expect(frKeys.size).toBeGreaterThanOrEqual(120);
   });
 
+  // I18N-6 — extension sellers index + seller detail.
+  it('compte total ≥ 140 clés (I18N-6 — sellers index hero + seller detail)', () => {
+    expect(frKeys.size).toBeGreaterThanOrEqual(140);
+  });
+
+  it('namespaces I18N-6 présents : sellers.heroBadge / heroDescription / emptyTitle, seller.sections.about / publishedProducts', () => {
+    const requiredKeys = [
+      'marketplace.sellers.heroBadge',
+      'marketplace.sellers.heroDescription',
+      'marketplace.sellers.emptyTitle',
+      'marketplace.sellers.totalCount',
+      'marketplace.seller.sections.about',
+      'marketplace.seller.sections.publishedProducts',
+      'marketplace.seller.sections.exportCapabilities',
+      'marketplace.seller.fields.leadTimeShort',
+      'marketplace.seller.productsCount',
+    ];
+    for (const key of requiredKeys) {
+      expect(frKeys.has(key)).toBe(true);
+      expect(enKeys.has(key)).toBe(true);
+    }
+  });
+
   it('namespaces I18N-5 présents : marketplace.product.* et marketplace.seller.*', () => {
     const requiredKeys = [
       'marketplace.product.sellerLabel',

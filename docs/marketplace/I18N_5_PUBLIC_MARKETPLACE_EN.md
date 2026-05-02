@@ -89,3 +89,53 @@ Frontend tsc clean.
 - RTL support (arabe, hébreu) — V3+.
 - Locales ES / AR / ZH / JA — chantier dédié I18N-6+.
 - LocaleSwitcher dans header public marketplace.
+
+---
+
+## I18N-6 — extension sellers index + seller detail
+
+Suite I18N-5 LOT 2.x (page produit). Étend i18n EN aux pages :
+- `/marketplace/sellers` (annuaire) — hero badge + titre split + description + counts plurals + emptyTitle + emptyHint + unavailable.
+- `/marketplace/sellers/[slug]` (fiche seller) — breadcrumb + sections (about, story, exportCapabilities, publishedProducts) + fields (incoterms, destinations, leadTimeShort) + productsCount plural + certificationsAriaLabel.
+
+### Volume
+
+| Avant I18N-6 | Après I18N-6 |
+|---|---|
+| 122 clés (FR=EN) | 141 clés (FR=EN) |
+
++19 nouvelles clés (sellers hero+empty+totalCount, seller sections+fields+plurals).
+
+### Pattern next-intl ICU plurals
+
+```typescript
+"productsCount": "{count, plural, =0 {No products} one {1 product} other {# products}}"
+```
+
+Usage page : `t('productsCount', { count: seller.products.length })`. Sortie automatique `0 products` / `1 product` / `5 products`.
+
+### Test mock next-intl/server
+
+`apps/frontend/src/app/marketplace/sellers/page.test.tsx` mock `getTranslations` via `vi.mock('next-intl/server')` qui :
+- Charge `messages/fr.json` au mount.
+- Résout chaque clé via path traversal.
+- Substitue vars `{var}` + plurals `{count, plural, ...}` côté test.
+
+Nécessaire car next-intl/server fonctionne uniquement en RSC (Server Component context), pas en jsdom test env.
+
+### Tests
+
+```
+$ pnpm --filter @iox/frontend test -- --run
+Test Files  51 passed (51)
+Tests  323 passed (323)
+```
+
+Parity test étendu : threshold ≥ 140 + 9 namespaces I18N-6 critiques vérifiés.
+
+### TODO V2
+
+- Convertir `apps/frontend/src/components/marketplace/CatalogFilters.tsx:335` (literal "Documents publics requis") — petit.
+- Convertir composants partagés `Pagination`, `SellerCard`, `SellersFilters` (mostly aria-labels et placeholders).
+- Auth pages `/login`, `/signup`.
+- Buyer dashboard (V2).

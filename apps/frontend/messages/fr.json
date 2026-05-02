@@ -127,8 +127,17 @@
     },
     "sellers": {
       "title": "Nos producteurs",
+      "titleHighlight": "producteurs",
+      "titlePrefix": "Nos",
+      "heroBadge": "Producteurs MCH validés",
+      "heroDescription": "Découvrez les entreprises mahoraises engagées dans le programme Mayotte Cluster Hub — sourcing direct, savoir-faire local, prêtes à l'export.",
+      "totalCount": "{count, plural, =0 {0 producteur} one {1 producteur} other {# producteurs}}",
+      "totalCountSuffix": "référencés",
+      "loading": "Chargement…",
       "empty": "Aucun producteur ne correspond à vos filtres.",
-      "unavailable": "L'annuaire des producteurs n'a pas pu être chargé. Rafraîchissez la page dans un instant.",
+      "emptyTitle": "Aucun producteur trouvé",
+      "emptyHint": "Essayez d'élargir vos filtres pour découvrir plus de profils.",
+      "unavailable": "L'annuaire des producteurs n'a pas pu être chargé. Rafraîchissez la page dans un instant ; nos équipes sont déjà alertées.",
       "filters": {
         "search": "Rechercher",
         "searchPlaceholder": "Nom, ville…",
@@ -146,9 +155,12 @@
     "seller": {
       "sections": {
         "story": "Notre histoire",
+        "about": "À propos",
         "products": "Produits proposés",
+        "publishedProducts": "Produits publiés",
         "certifications": "Certifications",
         "logistics": "Logistique & livraison",
+        "exportCapabilities": "Capacités export",
         "contact": "Contact"
       },
       "fields": {
@@ -158,10 +170,17 @@
         "incoterms": "Incoterms supportés",
         "destinations": "Destinations servies",
         "leadTime": "Délai moyen",
+        "leadTimeShort": "Délai ~ {days} j",
         "languages": "Langues",
         "website": "Site web"
       },
-      "noProducts": "Aucun produit publié pour le moment."
+      "productsCount": "{count, plural, =0 {Aucun produit} one {1 produit} other {# produits}}",
+      "noProductsHero": "Producteurs MCH validés",
+      "sellersTitle": "Nos producteurs",
+      "noProductsTitle": "Aucun producteur trouvé",
+      "noProducts": "Aucun produit publié pour le moment.",
+      "noProductsCard": "Aucun produit publié pour l'instant.",
+      "certificationsAriaLabel": "Certifications de {name}"
     }
   },
   "footer": {

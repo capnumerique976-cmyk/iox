@@ -1,4 +1,5 @@
 import { Sparkles, Users } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { fetchSellers } from '@/lib/marketplace/api';
 import { SellerCard } from '@/components/marketplace/SellerCard';
 import { SellersFilters } from '@/components/marketplace/SellersFilters';
@@ -24,10 +25,11 @@ export default async function SellersPage({ searchParams }: PageProps) {
   }
   if (!params.has('limit')) params.set('limit', '24');
 
+  const t = await getTranslations('marketplace.sellers');
   const res = await fetchSellers(params).catch(() => null);
   const totalLabel = res
-    ? `${res.meta.total} producteur${res.meta.total > 1 ? 's' : ''}`
-    : 'Chargement…';
+    ? t('totalCount', { count: res.meta.total })
+    : t('loading');
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -44,18 +46,17 @@ export default async function SellersPage({ searchParams }: PageProps) {
         <div className="relative z-10 max-w-2xl">
           <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
             <Sparkles className="h-3 w-3 text-[#00D4FF]" aria-hidden />
-            Producteurs MCH validés
+            {t('heroBadge')}
           </div>
           <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-            Nos <span className="iox-text-gradient-neon">producteurs</span>
+            {t('titlePrefix')} <span className="iox-text-gradient-neon">{t('titleHighlight')}</span>
           </h1>
           <p className="mt-3 max-w-xl text-sm text-white/60 sm:text-base">
-            Découvrez les entreprises mahoraises engagées dans le programme Mayotte Cluster
-            Hub — sourcing direct, savoir-faire local, prêtes à l&apos;export.
+            {t('heroDescription')}
           </p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/85 backdrop-blur-sm">
             <Users className="h-4 w-4 text-[#00F5A0]" aria-hidden />
-            {totalLabel} référencés
+            {totalLabel} {t('totalCountSuffix')}
           </div>
         </div>
       </section>
@@ -74,8 +75,7 @@ export default async function SellersPage({ searchParams }: PageProps) {
               data-testid="sellers-error"
               className="iox-glass rounded-xl border border-[#ff4757]/40 bg-[#ff4757]/10 p-4 text-sm text-[#ffb4bb]"
             >
-              L&apos;annuaire des producteurs n&apos;a pas pu être chargé. Rafraîchissez la
-              page dans un instant ; nos équipes sont déjà alertées.
+              {t('unavailable')}
             </div>
           ) : res.data.length === 0 ? (
             <div
@@ -85,9 +85,9 @@ export default async function SellersPage({ searchParams }: PageProps) {
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
                 <Users className="h-6 w-6 text-white/40" aria-hidden />
               </div>
-              <h2 className="text-sm font-semibold text-white">Aucun producteur trouvé</h2>
+              <h2 className="text-sm font-semibold text-white">{t('emptyTitle')}</h2>
               <p className="mt-1 text-sm text-white/50">
-                Essayez d&apos;élargir vos filtres pour découvrir plus de profils.
+                {t('emptyHint')}
               </p>
             </div>
           ) : (
