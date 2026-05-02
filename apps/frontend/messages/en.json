@@ -28,6 +28,24 @@
     },
     "breadcrumb": {
       "label": "Breadcrumb"
+    },
+    "errors": {
+      "title": "An error occurred",
+      "description": "A technical issue prevented this page from loading.",
+      "persistHint": "If the error persists, contact your administrator.",
+      "retry": "Retry",
+      "refLabel": "Ref",
+      "rateLimited": "Too many requests — please wait a moment.",
+      "rateLimitedWithDelay": "Too many requests — try again in {seconds}s.",
+      "networkError": "Network error — check your connection.",
+      "notFound": "Page not found",
+      "forbidden": "Access denied"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} / {total}",
+      "items": "{count, plural, =0 {no items} one {1 item} other {# items}}"
     }
   },
   "nav": {
