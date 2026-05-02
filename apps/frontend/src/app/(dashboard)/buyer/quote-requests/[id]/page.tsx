@@ -10,6 +10,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { CheckCircle2, Circle, XCircle } from 'lucide-react';
 import { QuoteRequestStatus } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import {
@@ -161,6 +162,9 @@ export default function BuyerQuoteRequestDetailPage() {
         </div>
       </header>
 
+      {/* Status Timeline */}
+      <RfqTimeline status={rfq.status} />
+
       <section className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Votre demande</h2>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:grid-cols-4">
@@ -265,6 +269,95 @@ export default function BuyerQuoteRequestDetailPage() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── RFQ Status Timeline ──────────────────────────────────────────────────────
+
+const FUNNEL_STEPS: QuoteRequestStatus[] = [
+  QuoteRequestStatus.NEW,
+  QuoteRequestStatus.QUALIFIED,
+  QuoteRequestStatus.QUOTED,
+  QuoteRequestStatus.NEGOTIATING,
+  QuoteRequestStatus.WON,
+];
+
+const TERMINAL_NEGATIVE: QuoteRequestStatus[] = [
+  QuoteRequestStatus.LOST,
+  QuoteRequestStatus.CANCELLED,
+];
+
+function RfqTimeline({ status }: { status: QuoteRequestStatus }) {
+  const isTerminalNeg = TERMINAL_NEGATIVE.includes(status);
+  const currentIdx = FUNNEL_STEPS.indexOf(status);
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        Progression
+      </h2>
+      <div className="flex items-center gap-1">
+        {FUNNEL_STEPS.map((step, idx) => {
+          let state: 'done' | 'current' | 'future' | 'negative' = 'future';
+          if (isTerminalNeg) {
+            // All steps before current position are done, rest grayed
+            const lastGoodIdx = FUNNEL_STEPS.indexOf(
+              status === QuoteRequestStatus.CANCELLED
+                ? QuoteRequestStatus.NEW
+                : QuoteRequestStatus.QUOTED,
+            );
+            if (idx <= lastGoodIdx) state = 'done';
+          } else if (idx < currentIdx) {
+            state = 'done';
+          } else if (idx === currentIdx) {
+            state = 'current';
+          }
+
+          return (
+            <div key={step} className="flex items-center gap-1">
+              {idx > 0 && (
+                <div
+                  className={`h-0.5 w-6 sm:w-10 ${
+                    state === 'done' || state === 'current'
+                      ? 'bg-blue-500'
+                      : 'bg-gray-200'
+                  }`}
+                />
+              )}
+              <div className="flex flex-col items-center gap-0.5">
+                {state === 'done' ? (
+                  <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                ) : state === 'current' ? (
+                  <Circle className="h-5 w-5 fill-blue-500 text-blue-500" />
+                ) : (
+                  <Circle className="h-5 w-5 text-gray-300" />
+                )}
+                <span
+                  className={`text-[10px] leading-tight ${
+                    state === 'future' ? 'text-gray-400' : 'text-gray-700 font-medium'
+                  }`}
+                >
+                  {STATUS_LABELS[step]}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Terminal negative badge */}
+        {isTerminalNeg && (
+          <div className="ml-2 flex items-center gap-1">
+            <div className="h-0.5 w-6 bg-red-300" />
+            <div className="flex flex-col items-center gap-0.5">
+              <XCircle className="h-5 w-5 text-red-500" />
+              <span className="text-[10px] font-medium leading-tight text-red-600">
+                {STATUS_LABELS[status]}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
