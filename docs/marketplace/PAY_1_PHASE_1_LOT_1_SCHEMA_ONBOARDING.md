@@ -111,3 +111,17 @@ PENDING_ONBOARDING    ← défaut (compte pas démarré)
 - Application fee 5% gross via `application_fee_amount` + `transfer_data.destination`.
 - Page `/buyer/payments/checkout/[rfqId]` server component.
 - Email notification template `payment-confirmed-to-buyer`.
+
+---
+
+## Activation production
+
+Voir doc dédiée : [`docs/ops/STRIPE_PROD_ACTIVATION.md`](../ops/STRIPE_PROD_ACTIVATION.md).
+
+Scripts ops :
+- `deploy/scripts/activate-stripe.sh` — bascule env VPS (3 vars Stripe) + restart backend.
+- `deploy/scripts/smoke-stripe-onboarding.sh` — login smoke-seller + génère onboarding link + vérifie SellerStripeAccount créé.
+
+Smoke E2E test mode : `apps/frontend/e2e/payments-onboarding-smoke.spec.ts` (tag `@stripe-prod`, skippé sans `STRIPE_SECRET_KEY` env).
+
+Rollback : revert env vars Stripe + restart → factory `STRIPE_CLIENT.isConfigured()` retourne false → endpoints throw clair (mode dégradé V0).
