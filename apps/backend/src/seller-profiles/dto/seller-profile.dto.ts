@@ -8,6 +8,7 @@ import {
   IsUrl,
   IsUUID,
   IsArray,
+  ArrayMaxSize,
   MinLength,
   MaxLength,
   Matches,
@@ -48,6 +49,7 @@ export class CreateSellerProfileDto {
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @IsString({ each: true })
   languages?: string[];
 
@@ -58,12 +60,14 @@ export class CreateSellerProfileDto {
   @ApiPropertyOptional({ type: [String], example: ['FOB', 'CIF'] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(15)
   @IsString({ each: true })
   supportedIncoterms?: string[];
 
   @ApiPropertyOptional({ type: [String], example: ['FR', 'DE', 'RE'] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
   destinationsServed?: string[];
 
@@ -89,6 +93,7 @@ export class UpdateSellerProfileDto {
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @IsString({ each: true })
   languages?: string[];
 
@@ -99,12 +104,14 @@ export class UpdateSellerProfileDto {
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(15)
   @IsString({ each: true })
   supportedIncoterms?: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
   destinationsServed?: string[];
 
@@ -179,6 +186,7 @@ export class UpdateMySellerProfileDto {
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(20)
   @IsString({ each: true })
   @MaxLength(8, { each: true })
   languages?: string[];
@@ -204,6 +212,7 @@ export class UpdateMySellerProfileDto {
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(15)
   @IsString({ each: true })
   @MaxLength(8, { each: true })
   supportedIncoterms?: string[];
@@ -211,6 +220,7 @@ export class UpdateMySellerProfileDto {
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
   @MaxLength(3, { each: true })
   destinationsServed?: string[];
