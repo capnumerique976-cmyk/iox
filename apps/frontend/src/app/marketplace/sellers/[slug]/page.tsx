@@ -6,6 +6,7 @@ import { getTranslations } from 'next-intl/server';
 import { fetchSellerBySlug } from '@/lib/marketplace/api';
 import { ReadinessBadge } from '@/components/marketplace/ReadinessBadge';
 import { CertificationBadgeList } from '@/components/marketplace/CertificationBadgeList';
+import { ShareButton } from '@/components/marketplace/ShareButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,6 +146,10 @@ export default async function SellerPage({ params }: PageProps) {
                 <Package className="h-3 w-3" aria-hidden />
                 {t('productsCount', { count: seller.products.length })}
               </span>
+            </div>
+            {/* Share button */}
+            <div className="mt-3 sm:mt-0 sm:ml-auto sm:self-start">
+              <ShareButton title={seller.publicDisplayName} />
             </div>
           </div>
         </div>

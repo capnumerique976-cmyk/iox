@@ -1,4 +1,5 @@
-import { Sparkles, Users } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronRight, Sparkles, Users } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { fetchSellers } from '@/lib/marketplace/api';
 import { SellerCard } from '@/components/marketplace/SellerCard';
@@ -31,8 +32,20 @@ export default async function SellersPage({ searchParams }: PageProps) {
     ? t('totalCount', { count: res.meta.total })
     : t('loading');
 
+  const tNav = await getTranslations('nav');
+  const tCommon = await getTranslations('common');
+
   return (
     <div className="space-y-6 sm:space-y-8">
+      {/* Breadcrumb */}
+      <nav aria-label={tCommon('breadcrumb.label')} className="flex items-center gap-1.5 text-xs text-white/50">
+        <Link href="/marketplace" className="transition-colors hover:text-[#00D4FF]">
+          {tNav('catalog')}
+        </Link>
+        <ChevronRight className="h-3 w-3 text-white/20" aria-hidden />
+        <span className="font-medium text-white/80">{tNav('sellers')}</span>
+      </nav>
+
       {/* Hero — dark-premium neon, aligné avec /marketplace */}
       <section className="iox-glass-strong relative overflow-hidden rounded-2xl p-5 text-white sm:p-8">
         <div
