@@ -299,6 +299,35 @@
       "certificationsAriaLabel": "Certifications of {name}"
     }
   },
+  "howItWorks": {
+    "title": "How it works",
+    "subtitle": "IOX simplifies B2B connections between buyers and certified Indian Ocean producers.",
+    "steps": {
+      "discover": {
+        "title": "Discover",
+        "description": "Browse the catalogue of traceable and certified products. Filter by category, origin or seasonality."
+      },
+      "request": {
+        "title": "Request a quote",
+        "description": "Send a Request for Quotation (RFQ) directly to the producer. Specify volumes, timelines and conditions."
+      },
+      "negotiate": {
+        "title": "Negotiate",
+        "description": "Exchange with the producer via integrated messaging. Receive a detailed quote with export conditions."
+      },
+      "transact": {
+        "title": "Finalize",
+        "description": "Accept the quote and proceed with secure payment. Track your order until delivery."
+      }
+    },
+    "cta": "Explore the catalogue",
+    "trustTitle": "Why IOX?",
+    "trustItems": {
+      "traceability": "Full traceability from producer to export port",
+      "compliance": "Validated compliance — certifications, analyses and documents verified",
+      "support": "MCH support — field team and industry experts"
+    }
+  },
   "footer": {
     "tagline": "IOX — B2B Indian Ocean platform · traceability, compliance, market access."
   }

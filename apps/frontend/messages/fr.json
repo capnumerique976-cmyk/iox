@@ -299,6 +299,35 @@
       "certificationsAriaLabel": "Certifications de {name}"
     }
   },
+  "howItWorks": {
+    "title": "Comment ça marche",
+    "subtitle": "IOX simplifie la mise en relation entre acheteurs B2B et producteurs certifiés de l'océan Indien.",
+    "steps": {
+      "discover": {
+        "title": "Découvrez",
+        "description": "Parcourez le catalogue de produits traçables et certifiés. Filtrez par catégorie, origine ou saisonnalité."
+      },
+      "request": {
+        "title": "Demandez un devis",
+        "description": "Envoyez une demande de devis (RFQ) directement au producteur. Précisez vos volumes, délais et conditions."
+      },
+      "negotiate": {
+        "title": "Négociez",
+        "description": "Échangez avec le producteur via la messagerie intégrée. Recevez un devis détaillé avec conditions d'export."
+      },
+      "transact": {
+        "title": "Finalisez",
+        "description": "Acceptez le devis et procédez au paiement sécurisé. Suivez votre commande jusqu'à la livraison."
+      }
+    },
+    "cta": "Explorer le catalogue",
+    "trustTitle": "Pourquoi IOX ?",
+    "trustItems": {
+      "traceability": "Traçabilité complète du producteur au port d'export",
+      "compliance": "Conformité validée — certifications, analyses et documents vérifiés",
+      "support": "Accompagnement MCH — équipe terrain et experts filière"
+    }
+  },
   "footer": {
     "tagline": "IOX — Plateforme B2B océan Indien · traçabilité, conformité, mise en marché."
   }
