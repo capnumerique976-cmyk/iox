@@ -288,6 +288,13 @@ describe('MarketplaceCatalogService', () => {
       ]);
     });
 
+    it('categoryId → mpWhere.categoryId direct', async () => {
+      stubEligibleAndOffers();
+      await service.findCatalog({ categoryId: 'cat-uuid-123' });
+      const where = prisma.marketplaceOffer.findMany.mock.calls[0][0].where;
+      expect(where.marketplaceProduct.categoryId).toBe('cat-uuid-123');
+    });
+
     it('hasPublicDocs=true → intersection avec pré-requête doc IDs', async () => {
       // 1) findProductsWithPrimaryMedia → mp1 + mp2
       // 2) findProductsWithPublicDocuments → mp2 only
