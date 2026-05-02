@@ -247,6 +247,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
                 <Link
                   href={`/login?redirect=${encodeURIComponent(`/quote-requests/new?offerId=${primary.id}`)}`}
+                  data-testid="cta-request-quote"
                   className="group mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-iox-neon px-4 py-3 text-sm font-semibold text-white shadow-glow-cyan-sm transition-all duration-base ease-premium hover:brightness-110 hover:shadow-glow-cyan active:scale-[0.98]"
                 >
                   {t('requestQuote')}

@@ -347,8 +347,8 @@ test.describe('P13-C — Public SSR rendering respects approval gates', () => {
     await expect(page.getByAltText('Galerie (en attente)')).toHaveCount(0);
     await expect(page.getByAltText('Galerie (rejetée)')).toHaveCount(0);
 
-    // CTA devis présent et pointé sur l'offerId
-    const cta = page.getByRole('link', { name: /Demander un devis/i });
+    // CTA devis présent et pointé sur l'offerId (I18N-7 — data-testid stable)
+    const cta = page.getByTestId('cta-request-quote');
     await expect(cta).toBeVisible();
     // CTA non-authentifié pointe vers /login?redirect=<encodé> — on vérifie
     // que l'URL de redirection contient bien l'offerId pour que le flux RFQ
@@ -417,9 +417,9 @@ test.describe('P13-D — Buyer creates RFQ from public product page', () => {
       ],
     });
 
-    // Public page : récupère l'URL du CTA
+    // Public page : récupère l'URL du CTA (I18N-7 — data-testid stable)
     await page.goto(`/marketplace/products/${product.slug}`, { timeout: 60_000 });
-    const cta = page.getByRole('link', { name: /Demander un devis/i });
+    const cta = page.getByTestId('cta-request-quote');
     await expect(cta).toBeVisible({ timeout: 30_000 });
     const ctaHref = await cta.getAttribute('href');
     // href = /login?redirect=<URL-encodé contenant offerId>
