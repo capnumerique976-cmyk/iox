@@ -13,7 +13,7 @@
 // Toutes les erreurs métier sont retournées en `SendEmailResult` — le
 // service NE THROW PAS pour ne pas casser les services métier.
 
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailLogStatus, EmailUnsubscribeType, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
@@ -339,6 +339,54 @@ export class NotifEmailService {
       providerMessageId: r.providerMessageId ?? null,
       metadataJson: r.metadataJson ?? null,
       createdAt: r.createdAt.toISOString(),
+    };
+  }
+
+  /**
+   * MP-NOTIF-3 phase 7 — Replay un EmailLog FAILED (admin).
+   *
+   * Seuls les logs en status FAILED peuvent être rejoués. Le service
+   * reconstruit l'input depuis les champs persistés + metadataJson et
+   * appelle `send()`. Retourne l'id de l'original + le status du nouvel
+   * envoi.
+   */
+  async replayFailedLog(
+    id: string,
+    _actor?: unknown,
+  ): Promise<{ originalId: string; newLogId: string | null; status: string }> {
+    const log = await this.prisma.emailLog.findUnique({ where: { id } });
+    if (!log) {
+      throw new NotFoundException('EmailLog introuvable');
+    }
+    if (log.status !== 'FAILED') {
+      throw new BadRequestException('Only FAILED logs can be replayed');
+    }
+
+    const meta = (log.metadataJson as Record<string, unknown>) ?? {};
+    const sendInput: SendEmailInput = {
+      to: log.recipientEmail,
+      subject: log.subject,
+      templateId: log.templateId !== 'raw' ? log.templateId : undefined,
+      templateData: (meta.data as Record<string, unknown>) ?? {},
+      recipientUserId: log.recipientUserId ?? undefined,
+      metadata: {
+        ...meta,
+        replayedFrom: id,
+      },
+    };
+
+    // If original was raw (no template), include subject directly.
+    if (log.templateId === 'raw') {
+      sendInput.subject = log.subject;
+      sendInput.text = sendInput.subject; // minimal text fallback
+    }
+
+    const result = await this.send(sendInput);
+
+    return {
+      originalId: id,
+      newLogId: result.messageId || null,
+      status: result.success ? 'SENT' : (result.error ?? 'FAILED'),
     };
   }
 

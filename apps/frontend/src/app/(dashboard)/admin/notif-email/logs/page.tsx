@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Mail, AlertTriangle, CheckCircle2, MinusCircle } from 'lucide-react';
+import { Mail, AlertTriangle, CheckCircle2, MinusCircle, RotateCw } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 import { notifEmailApi, EmailLogItem, EmailLogListResponse } from '@/lib/notif-email';
 import { PageHeader } from '@/components/ui/page-header';
@@ -38,6 +38,9 @@ export default function AdminNotifEmailLogsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  const [replayingId, setReplayingId] = useState<string | null>(null);
+  const [replayMsg, setReplayMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<'' | EmailLogItem['status']>('');
   const [templateId, setTemplateId] = useState('');
@@ -69,6 +72,31 @@ export default function AdminNotifEmailLogsPage() {
       .catch((e: Error) => setErr(e.message))
       .finally(() => setLoading(false));
   }, [page, statusFilter, templateId, recipientEmail, createdAtAfter]);
+
+  const handleReplay = useCallback(
+    async (id: string) => {
+      const token = authStorage.getAccessToken();
+      if (!token) return;
+      setReplayingId(id);
+      setReplayMsg(null);
+      try {
+        const res = await notifEmailApi.replayLog(id, token);
+        setReplayMsg({
+          type: 'ok',
+          text: `Replay OK (status: ${res.status})`,
+        });
+        load(); // refresh list
+      } catch (e) {
+        setReplayMsg({
+          type: 'err',
+          text: e instanceof Error ? e.message : 'Replay echoue',
+        });
+      } finally {
+        setReplayingId(null);
+      }
+    },
+    [load],
+  );
 
   useEffect(() => {
     load();
@@ -212,6 +240,20 @@ export default function AdminNotifEmailLogsPage() {
         </div>
       )}
 
+      {replayMsg && (
+        <div
+          role="status"
+          data-testid="replay-toast"
+          className={`rounded-lg border p-3 text-sm ${
+            replayMsg.type === 'ok'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-800'
+          }`}
+        >
+          {replayMsg.text}
+        </div>
+      )}
+
       {loading ? (
         <div className="text-sm text-gray-500">Chargement…</div>
       ) : items.length === 0 ? (
@@ -261,13 +303,28 @@ export default function AdminNotifEmailLogsPage() {
                     )}
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <Link
-                      href={`/admin/notif-email/logs/${it.id}`}
-                      data-testid={`detail-${it.id}`}
-                      className="text-xs text-blue-700 hover:text-blue-800"
-                    >
-                      Détail →
-                    </Link>
+                    <div className="flex items-center justify-end gap-2">
+                      {it.status === 'FAILED' && (
+                        <button
+                          type="button"
+                          disabled={replayingId === it.id}
+                          data-testid={`replay-${it.id}`}
+                          onClick={() => handleReplay(it.id)}
+                          className="inline-flex items-center gap-1 rounded border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+                          title="Rejouer cet email"
+                        >
+                          <RotateCw className={`h-3 w-3 ${replayingId === it.id ? 'animate-spin' : ''}`} />
+                          Rejouer
+                        </button>
+                      )}
+                      <Link
+                        href={`/admin/notif-email/logs/${it.id}`}
+                        data-testid={`detail-${it.id}`}
+                        className="text-xs text-blue-700 hover:text-blue-800"
+                      >
+                        Détail →
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
