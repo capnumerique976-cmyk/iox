@@ -1,0 +1,71 @@
+# ─────────────────────────────────────────────────────────
+#  IOX — template docker-compose VPS production
+# ─────────────────────────────────────────────────────────
+#  Copy to VPS as docker-compose.vps.yml, fill .env beside it.
+#  deploy.sh reads VPS_COMPOSE=docker-compose.vps.yml by default.
+#
+#  Backend: builds from Dockerfile, connects to host Postgres via DATABASE_URL.
+#  Frontend: builds from Dockerfile, reaches backend via internal network.
+#  Both expose to 127.0.0.1 only — Nginx in front does TLS termination.
+# ─────────────────────────────────────────────────────────
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    image: iox-backend:local
+    container_name: iox_backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_PORT: '3001'
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL required}
+      FRONTEND_URLS: ${FRONTEND_URLS:-}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL required}
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-127.0.0.1}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?required}
+      MINIO_BUCKET: ${MINIO_BUCKET:-iox-prod}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    ports:
+      - '127.0.0.1:3001:3001'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3001/api/v1/health/live']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    image: iox-frontend:local
+    container_name: iox_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      PORT: '3000'
+      # ─── CRITICAL for SSR fetches (sitemap, RSC) ───
+      # Allows the frontend container to reach the backend via Docker network
+      # without going through the public reverse proxy.
+      BACKEND_INTERNAL_URL: http://backend:3001
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://iox.mycloud.yt/api/v1}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://iox.mycloud.yt}
+    ports:
+      - '127.0.0.1:3000:3000'
