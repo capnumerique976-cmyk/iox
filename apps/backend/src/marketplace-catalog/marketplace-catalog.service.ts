@@ -902,6 +902,45 @@ export class MarketplaceCatalogService {
    * Retourne max 8 suggestions groupées par type (product / seller).
    * Utilise un simple ILIKE (pas besoin de pg_trgm pour ce volume).
    */
+  /**
+   * CATALOG-STATS — compteurs publics pour le hero marketplace.
+   * Retourne le nombre de produits publiés, vendeurs APPROVED, et pays distincts.
+   */
+  async stats() {
+    const [productsCount, sellersCount, countriesRaw] = await Promise.all([
+      this.prisma.marketplaceProduct.count({
+        where: {
+          publicationStatus: {
+            in: [
+              MarketplacePublicationStatus.APPROVED,
+              MarketplacePublicationStatus.PUBLISHED,
+            ],
+          },
+          offers: {
+            some: {
+              publicationStatus: MarketplacePublicationStatus.PUBLISHED,
+              visibilityScope: { not: MarketplaceVisibilityScope.PRIVATE },
+            },
+          },
+        },
+      }),
+      this.prisma.sellerProfile.count({
+        where: { status: SellerProfileStatus.APPROVED },
+      }),
+      this.prisma.sellerProfile.findMany({
+        where: { status: SellerProfileStatus.APPROVED },
+        select: { country: true },
+        distinct: ['country'],
+      }),
+    ]);
+
+    return {
+      products: productsCount,
+      sellers: sellersCount,
+      countries: countriesRaw.length,
+    };
+  }
+
   async suggest(q: string) {
     const term = q.trim();
     if (!term || term.length < 2) {

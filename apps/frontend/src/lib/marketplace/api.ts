@@ -67,6 +67,17 @@ export function fetchSellers(search: URLSearchParams): Promise<SellersResult> {
   return publicGet<SellersResult>(`/marketplace/catalog/sellers${qs ? `?${qs}` : ''}`);
 }
 
+/** CATALOG-STATS — compteurs publics du catalogue (hero). */
+export interface CatalogStats {
+  products: number;
+  sellers: number;
+  countries: number;
+}
+
+export function fetchStats(): Promise<CatalogStats> {
+  return publicGet<CatalogStats>('/marketplace/catalog/stats');
+}
+
 /** MP-CATEGORY-2 — arborescence publique des catégories actives. */
 export interface PublicCategoryNode {
   id: string;

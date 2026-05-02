@@ -1,6 +1,6 @@
-import { Sparkles, Package } from 'lucide-react';
+import { Sparkles, Package, Users, Globe } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
-import { fetchCatalog } from '@/lib/marketplace/api';
+import { fetchCatalog, fetchStats } from '@/lib/marketplace/api';
 import { ProductCard } from '@/components/marketplace/ProductCard';
 import { CatalogFilters } from '@/components/marketplace/CatalogFilters';
 import { MobileFiltersTrigger } from '@/components/marketplace/MobileFiltersTrigger';
@@ -24,7 +24,10 @@ export default async function CatalogPage({ searchParams }: PageProps) {
   const t = await getTranslations('marketplace.catalog');
   const tCommon = await getTranslations('common.states');
 
-  const res = await fetchCatalog(params).catch(() => null);
+  const [res, stats] = await Promise.all([
+    fetchCatalog(params).catch(() => null),
+    fetchStats().catch(() => null),
+  ]);
   const totalLabel = res ? t('subtitle', { count: res.meta.total }) : tCommon('loading');
 
   return (
@@ -50,9 +53,23 @@ export default async function CatalogPage({ searchParams }: PageProps) {
           <p className="mt-3 max-w-xl text-sm text-white/60 sm:text-base">
             {t('heroDescription')}
           </p>
-          <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/85 backdrop-blur-sm">
-            <Package className="h-4 w-4 text-[#00F5A0]" aria-hidden />
-            {totalLabel}
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/85 backdrop-blur-sm">
+              <Package className="h-4 w-4 text-[#00F5A0]" aria-hidden />
+              {totalLabel}
+            </div>
+            {stats && (
+              <>
+                <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/85 backdrop-blur-sm">
+                  <Users className="h-4 w-4 text-[#00D4FF]" aria-hidden />
+                  {stats.sellers} producteurs
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/85 backdrop-blur-sm">
+                  <Globe className="h-4 w-4 text-[#7B61FF]" aria-hidden />
+                  {stats.countries} pays
+                </div>
+              </>
+            )}
           </div>
           {/* SEARCH-FULLTEXT — barre de recherche avec suggestions */}
           <SearchSuggest className="mt-5 max-w-md" />
