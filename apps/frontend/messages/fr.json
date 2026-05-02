@@ -28,6 +28,24 @@
     },
     "breadcrumb": {
       "label": "Fil d'Ariane"
+    },
+    "errors": {
+      "title": "Une erreur est survenue",
+      "description": "Un problème technique empêche l'affichage de cette page.",
+      "persistHint": "Si l'erreur persiste, contactez votre administrateur.",
+      "retry": "Réessayer",
+      "refLabel": "Réf",
+      "rateLimited": "Trop de requêtes — patientez quelques instants.",
+      "rateLimitedWithDelay": "Trop de requêtes — réessayez dans {seconds}s.",
+      "networkError": "Erreur réseau — vérifiez votre connexion.",
+      "notFound": "Page introuvable",
+      "forbidden": "Accès refusé"
+    },
+    "pagination": {
+      "previous": "Précédent",
+      "next": "Suivant",
+      "page": "Page {current} / {total}",
+      "items": "{count, plural, =0 {aucun élément} one {1 élément} other {# éléments}}"
     }
   },
   "nav": {
