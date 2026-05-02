@@ -587,6 +587,56 @@ export class QuoteRequestsService {
     return updated;
   }
 
+  // ─── Alerts ───────────────────────────────────────────────────────────────
+
+  /**
+   * ADMIN-STALE-RFQ — Retourne les RFQ ouvertes (NEW ou QUALIFIED) sans
+   * transition depuis plus de 7 jours. Destiné au dashboard admin/staff.
+   */
+  async findStaleAlerts() {
+    const STALE_DAYS = 7;
+    const threshold = new Date();
+    threshold.setDate(threshold.getDate() - STALE_DAYS);
+
+    const staleRfqs = await this.prisma.quoteRequest.findMany({
+      where: {
+        status: { in: [QuoteRequestStatus.NEW, QuoteRequestStatus.QUALIFIED] },
+        updatedAt: { lt: threshold },
+      },
+      include: {
+        marketplaceOffer: {
+          select: { id: true, title: true, sellerProfile: { select: { publicDisplayName: true } } },
+        },
+        buyerCompany: { select: { id: true, name: true } },
+        buyerUser: { select: { id: true, email: true, firstName: true, lastName: true } },
+        assignedToUser: { select: { id: true, email: true, firstName: true, lastName: true } },
+      },
+      orderBy: { updatedAt: 'asc' },
+    });
+
+    return {
+      count: staleRfqs.length,
+      threshold: `${STALE_DAYS}d`,
+      data: staleRfqs.map((rfq) => ({
+        id: rfq.id,
+        status: rfq.status,
+        offerTitle: rfq.marketplaceOffer?.title ?? null,
+        sellerName: rfq.marketplaceOffer?.sellerProfile?.publicDisplayName ?? null,
+        buyerCompany: rfq.buyerCompany?.name ?? null,
+        buyerEmail: rfq.buyerUser?.email ?? null,
+        assignedTo: rfq.assignedToUser
+          ? `${rfq.assignedToUser.firstName ?? ''} ${rfq.assignedToUser.lastName ?? ''}`.trim() ||
+            rfq.assignedToUser.email
+          : null,
+        daysStale: Math.floor(
+          (Date.now() - new Date(rfq.updatedAt).getTime()) / (1000 * 60 * 60 * 24),
+        ),
+        createdAt: rfq.createdAt,
+        updatedAt: rfq.updatedAt,
+      })),
+    };
+  }
+
   // ─── Messages ─────────────────────────────────────────────────────────────
 
   async findMessages(rfqId: string, actor: RequestUser) {

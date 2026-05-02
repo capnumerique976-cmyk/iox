@@ -90,6 +90,15 @@ export class QuoteRequestsController {
     return this.service.assign(id, dto, actor);
   }
 
+  // ─── Alerts (admin) ──────────────────────────────────────────────────────
+
+  @Get('alerts/stale')
+  @Roles(...RFQ_ASSIGN)
+  @ApiOperation({ summary: 'RFQ stagnantes (>7j sans transition) — admin/staff only' })
+  staleAlerts() {
+    return this.service.findStaleAlerts();
+  }
+
   // ─── Messages ────────────────────────────────────────────────────────────
 
   @Get(':id/messages')
