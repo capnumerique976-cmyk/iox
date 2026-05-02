@@ -580,6 +580,78 @@ describe('QuoteRequestsService', () => {
     });
   });
 
+  // ── findStaleAlerts ────────────────────────────────────────────────────────
+
+  describe('findStaleAlerts', () => {
+    it('returns RFQs with status NEW or QUALIFIED and updatedAt > 7 days ago', async () => {
+      const tenDaysAgo = new Date();
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+      const staleRfq = {
+        id: 'rfq-stale-1',
+        status: QuoteRequestStatus.NEW,
+        createdAt: tenDaysAgo,
+        updatedAt: tenDaysAgo,
+        marketplaceOffer: {
+          id: 'off-1',
+          title: 'Vanille 500g',
+          sellerProfile: { publicDisplayName: 'Coop Vanille' },
+        },
+        buyerCompany: { id: 'co-1', name: 'Acme Foods' },
+        buyerUser: { id: 'buyer-1', email: 'buyer@test.io', firstName: 'A', lastName: 'B' },
+        assignedToUser: null,
+      };
+
+      prisma.quoteRequest.findMany.mockResolvedValue([staleRfq]);
+
+      const result = await service.findStaleAlerts();
+
+      expect(result.count).toBe(1);
+      expect(result.threshold).toBe('7d');
+      expect(result.data[0].id).toBe('rfq-stale-1');
+      expect(result.data[0].offerTitle).toBe('Vanille 500g');
+      expect(result.data[0].sellerName).toBe('Coop Vanille');
+      expect(result.data[0].buyerCompany).toBe('Acme Foods');
+      expect(result.data[0].daysStale).toBeGreaterThanOrEqual(10);
+      expect(result.data[0].assignedTo).toBeNull();
+
+      // Verify query filter
+      const queryArg = prisma.quoteRequest.findMany.mock.calls[0][0];
+      expect(queryArg.where.status.in).toEqual([QuoteRequestStatus.NEW, QuoteRequestStatus.QUALIFIED]);
+      expect(queryArg.where.updatedAt.lt).toBeInstanceOf(Date);
+    });
+
+    it('returns empty list when no stale RFQs exist', async () => {
+      prisma.quoteRequest.findMany.mockResolvedValue([]);
+
+      const result = await service.findStaleAlerts();
+
+      expect(result.count).toBe(0);
+      expect(result.data).toEqual([]);
+    });
+
+    it('formats assignedTo name when present', async () => {
+      const tenDaysAgo = new Date();
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+      prisma.quoteRequest.findMany.mockResolvedValue([
+        {
+          id: 'rfq-stale-2',
+          status: QuoteRequestStatus.QUALIFIED,
+          createdAt: tenDaysAgo,
+          updatedAt: tenDaysAgo,
+          marketplaceOffer: { id: 'off-1', title: 'Ylang', sellerProfile: { publicDisplayName: 'Coop Y' } },
+          buyerCompany: { id: 'co-1', name: 'BuyerCo' },
+          buyerUser: { id: 'b1', email: 'b@x.io', firstName: 'B', lastName: 'U' },
+          assignedToUser: { id: 'staff-1', email: 'staff@iox.io', firstName: 'Jean', lastName: 'Dupont' },
+        },
+      ]);
+
+      const result = await service.findStaleAlerts();
+      expect(result.data[0].assignedTo).toBe('Jean Dupont');
+    });
+  });
+
   // ── messages ───────────────────────────────────────────────────────────────
 
   describe('messages', () => {
