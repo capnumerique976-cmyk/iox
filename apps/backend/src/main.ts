@@ -58,8 +58,32 @@ async function bootstrap() {
   );
   app.use(urlencoded({ extended: true, limit: bodyLimit }));
 
-  // Sécurité
-  app.use(helmet());
+  // Sécurité — Helmet avec CSP renforcée
+  app.use(
+    helmet({
+      contentSecurityPolicy: isProd
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'"],
+              styleSrc: ["'self'", "'unsafe-inline'"],
+              imgSrc: ["'self'", 'data:', 'https:'],
+              connectSrc: ["'self'", ...allowedOrigins],
+              fontSrc: ["'self'"],
+              objectSrc: ["'none'"],
+              frameSrc: ["'none'"],
+              baseUri: ["'self'"],
+              formAction: ["'self'"],
+            },
+          }
+        : false, // disable CSP in dev for hot-reload
+      crossOriginEmbedderPolicy: isProd,
+      crossOriginOpenerPolicy: isProd ? { policy: 'same-origin' } : false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
+    }),
+  );
   app.enableCors({
     origin: (origin, cb) => {
       // Autoriser les requêtes sans origin (curl, healthchecks, server-to-server)

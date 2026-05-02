@@ -14,6 +14,23 @@ const nextConfig = {
     },
   },
   /**
+   * PRODUCTION-HARDENING — Security headers appliqués à toutes les réponses Next.js.
+   */
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+    ];
+  },
+  /**
    * Le navigateur appelle /api/v1 sur le même hôte que le frontend (voir api.ts).
    * Next proxy vers le backend Nest — évite NEXT_PUBLIC_API_URL en prod et les soucis CORS.
    * Sur le VPS : BACKEND_INTERNAL_URL=http://127.0.0.1:3001 (ou le service Docker).
