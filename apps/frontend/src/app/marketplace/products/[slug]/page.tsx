@@ -36,27 +36,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const product = await fetchProductBySlug(params.slug).catch(() => null);
   if (!product) return { title: 'Produit introuvable — IOX Marketplace' };
 
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://iox.mycloud.yt').replace(/\/$/, '');
   const title = `${product.commercialName} — IOX Marketplace`;
   const description =
     product.descriptionShort ??
     `${product.commercialName} par ${product.seller.publicDisplayName} — ${product.originCountry}`;
   const imageUrl = product.primaryImage?.publicUrl ?? undefined;
+  const ogImageFallback = `${siteUrl}/marketplace/og?title=${encodeURIComponent(product.commercialName)}&subtitle=${encodeURIComponent(product.seller.publicDisplayName)}&type=product`;
+  const canonicalUrl = `${siteUrl}/marketplace/products/${product.slug}`;
 
   return {
     title,
     description,
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
       type: 'website',
       siteName: 'IOX Marketplace',
-      ...(imageUrl && { images: [{ url: imageUrl, alt: product.commercialName }] }),
+      url: canonicalUrl,
+      images: [{ url: imageUrl ?? ogImageFallback, alt: product.commercialName, width: 1200, height: 630 }],
     },
     twitter: {
-      card: imageUrl ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title,
       description,
-      ...(imageUrl && { images: [imageUrl] }),
+      images: [imageUrl ?? ogImageFallback],
     },
   };
 }
