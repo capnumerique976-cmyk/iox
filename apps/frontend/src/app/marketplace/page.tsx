@@ -5,6 +5,7 @@ import { ProductCard } from '@/components/marketplace/ProductCard';
 import { CatalogFilters } from '@/components/marketplace/CatalogFilters';
 import { MobileFiltersTrigger } from '@/components/marketplace/MobileFiltersTrigger';
 import { Pagination } from '@/components/marketplace/Pagination';
+import { SearchSuggest } from '@/components/marketplace/SearchSuggest';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,8 @@ export default async function CatalogPage({ searchParams }: PageProps) {
             <Package className="h-4 w-4 text-[#00F5A0]" aria-hidden />
             {totalLabel}
           </div>
+          {/* SEARCH-FULLTEXT — barre de recherche avec suggestions */}
+          <SearchSuggest className="mt-5 max-w-md" />
         </div>
       </section>
 
