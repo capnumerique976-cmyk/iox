@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { BarChart3, ArrowLeft, CheckCircle2, AlertTriangle, MinusCircle } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 import { notifEmailStatsApi, EmailLogsStats } from '@/lib/notif-email';
+import { auditApi, AuditLogItem } from '@/lib/audit';
 import { PageHeader } from '@/components/ui/page-header';
 
 const STATUS_LABEL: Record<'SENT' | 'FAILED' | 'SKIPPED', string> = {
@@ -36,6 +37,9 @@ export default function AdminNotifEmailStatsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
+  const [alerts, setAlerts] = useState<AuditLogItem[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+
   const load = useCallback(() => {
     const token = authStorage.getAccessToken();
     if (!token) return;
@@ -46,6 +50,15 @@ export default function AdminNotifEmailStatsPage() {
       .then(setStats)
       .catch((e: Error) => setErr(e.message))
       .finally(() => setLoading(false));
+
+    // MP-NOTIF-3 phase 8 — Fetch recent error rate alerts.
+    setAlertsLoading(true);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    auditApi
+      .list({ action: 'NOTIF_EMAIL_ERROR_RATE_HIGH', from: sevenDaysAgo, limit: 10 }, token)
+      .then((res) => setAlerts(res.data))
+      .catch(() => setAlerts([]))
+      .finally(() => setAlertsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -200,6 +213,36 @@ export default function AdminNotifEmailStatsPage() {
           </section>
         </>
       )}
+
+      {/* Section 4 — MP-NOTIF-3 phase 8 : Alertes récentes */}
+      <section data-testid="alerts-section" className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+          <AlertTriangle className="h-4 w-4 text-orange-500" aria-hidden />
+          Alertes récentes
+        </h2>
+        {alertsLoading ? (
+          <p className="text-sm text-gray-500">Chargement…</p>
+        ) : alerts.length === 0 ? (
+          <p className="text-sm text-gray-500">Aucune alerte récente</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {alerts.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-start gap-3 rounded-lg border border-orange-100 bg-orange-50 p-3"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" aria-hidden />
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-gray-500">
+                    {new Date(a.createdAt).toLocaleString('fr-FR')}
+                  </span>
+                  <span className="text-sm text-gray-800">{a.notes ?? a.action}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

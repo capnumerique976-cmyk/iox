@@ -34,10 +34,23 @@ vi.mock('@/lib/notif-email', async () => {
   };
 });
 
+const auditListMock = vi.fn();
+vi.mock('@/lib/audit', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/audit')>('@/lib/audit');
+  return {
+    ...actual,
+    auditApi: { list: (...args: unknown[]) => auditListMock(...args) },
+  };
+});
+
 import AdminNotifEmailStatsPage from './page';
 
 describe('AdminNotifEmailStatsPage (MP-NOTIF-3 phase 5)', () => {
-  beforeEach(() => getStatsMock.mockReset());
+  beforeEach(() => {
+    getStatsMock.mockReset();
+    auditListMock.mockReset();
+    auditListMock.mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } });
+  });
   afterEach(() => vi.clearAllMocks());
 
   it('rend les 3 cards status (SENT/FAILED/SKIPPED) avec compteurs', async () => {
@@ -105,5 +118,44 @@ describe('AdminNotifEmailStatsPage (MP-NOTIF-3 phase 5)', () => {
     );
     render(<AdminNotifEmailStatsPage />);
     expect(await screen.findByText('oops')).toBeInTheDocument();
+  });
+
+  // MP-NOTIF-3 phase 8 — Alertes récentes section
+  it('rend la section "Alertes récentes" avec empty state', async () => {
+    getStatsMock.mockResolvedValue({ byStatus: [], byTemplate: [], byDay: [] });
+    auditListMock.mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } });
+    render(<AdminNotifEmailStatsPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('alerts-section')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('Alertes récentes')).toBeInTheDocument();
+    expect(screen.getByText('Aucune alerte récente')).toBeInTheDocument();
+  });
+
+  it('rend les alertes récentes quand elles existent', async () => {
+    getStatsMock.mockResolvedValue({ byStatus: [], byTemplate: [], byDay: [] });
+    auditListMock.mockResolvedValue({
+      data: [
+        {
+          id: 'alert-1',
+          action: 'NOTIF_EMAIL_ERROR_RATE_HIGH',
+          entityType: 'USER',
+          entityId: '00000000-0000-0000-0000-000000000000',
+          previousData: null,
+          newData: null,
+          ipAddress: null,
+          userAgent: null,
+          notes: 'Error rate 50.0% — 5 failed / 10 total in last hour',
+          createdAt: '2026-04-30T14:00:00.000Z',
+          user: null,
+        },
+      ],
+      meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    });
+    render(<AdminNotifEmailStatsPage />);
+    await waitFor(() =>
+      expect(screen.getByText(/Error rate 50\.0%/)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText('Aucune alerte récente')).not.toBeInTheDocument();
   });
 });
