@@ -11,6 +11,7 @@ import {
   DefaultValuePipe,
   Request,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IncidentsService } from './incidents.service';
 import { CreateIncidentDto, UpdateIncidentDto, ChangeIncidentStatusDto } from './dto/incident.dto';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -33,6 +34,8 @@ const WRITE_ROLES = [
   UserRole.SUPPLY_MANAGER,
 ];
 
+@ApiTags('incidents')
+@ApiBearerAuth('access-token')
 @Controller('incidents')
 export class IncidentsController {
   constructor(private readonly incidentsService: IncidentsService) {}
@@ -43,6 +46,7 @@ export class IncidentsController {
 
   @Get('stats')
   @Roles(...READ_ROLES)
+  @ApiOperation({ summary: 'Statistiques des incidents (compteurs par statut/sévérité)' })
   getStats() {
     return this.incidentsService.getStats();
   }
@@ -53,6 +57,7 @@ export class IncidentsController {
 
   @Get()
   @Roles(...READ_ROLES)
+  @ApiOperation({ summary: 'Liste des incidents (filtres, pagination)' })
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
@@ -77,6 +82,7 @@ export class IncidentsController {
 
   @Get(':id')
   @Roles(...READ_ROLES)
+  @ApiOperation({ summary: 'Détail d\'un incident par id' })
   findOne(@Param('id') id: string) {
     return this.incidentsService.findOne(id);
   }
@@ -87,6 +93,7 @@ export class IncidentsController {
 
   @Post()
   @Roles(...WRITE_ROLES)
+  @ApiOperation({ summary: 'Créer un incident' })
   create(@Body() dto: CreateIncidentDto, @Request() req: any) {
     return this.incidentsService.create(dto, req.user.id);
   }
@@ -97,6 +104,7 @@ export class IncidentsController {
 
   @Patch(':id')
   @Roles(...WRITE_ROLES)
+  @ApiOperation({ summary: 'Modifier un incident' })
   update(@Param('id') id: string, @Body() dto: UpdateIncidentDto, @Request() req: any) {
     return this.incidentsService.update(id, dto, req.user.id);
   }
@@ -107,6 +115,7 @@ export class IncidentsController {
 
   @Patch(':id/status')
   @Roles(...WRITE_ROLES)
+  @ApiOperation({ summary: 'Changer le statut d\'un incident' })
   changeStatus(@Param('id') id: string, @Body() dto: ChangeIncidentStatusDto, @Request() req: any) {
     return this.incidentsService.changeStatus(id, dto, req.user.id);
   }
@@ -117,6 +126,7 @@ export class IncidentsController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Supprimer un incident (admin uniquement)' })
   remove(@Param('id') id: string, @Request() req: any) {
     return this.incidentsService.remove(id, req.user.id);
   }
