@@ -140,6 +140,12 @@ export default function BuyerProfilePage() {
                     />
                   )}
                 </dl>
+                {c.description && (
+                  <div className="mt-3">
+                    <h4 className="text-[10px] uppercase tracking-wide text-gray-500">Pr&eacute;sentation</h4>
+                    <p className="mt-1 whitespace-pre-line text-xs text-gray-800">{c.description}</p>
+                  </div>
+                )}
                 {c.types.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1">
                     {c.types.map((t) => (

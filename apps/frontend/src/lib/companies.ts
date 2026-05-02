@@ -19,6 +19,8 @@ export interface CompanySummary {
   country: string | null;
   vatNumber: string | null;
   website: string | null;
+  postalCode: string | null;
+  description: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -34,6 +36,8 @@ export interface UpdateMyCompanyInput {
   country?: string;
   vatNumber?: string;
   website?: string;
+  postalCode?: string;
+  description?: string;
 }
 
 export const companiesApi = {

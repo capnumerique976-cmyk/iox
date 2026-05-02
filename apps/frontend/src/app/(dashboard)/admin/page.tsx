@@ -10,6 +10,7 @@ import {
   FolderTree,
   Link2,
   RefreshCw,
+  Shield,
   ShieldAlert,
   ShoppingBag,
   Store,
@@ -515,9 +516,9 @@ export default function AdminDashboardPage() {
             icon={<FolderTree className="h-4 w-4" />}
           />
           <QuickLink
-            href="/audit-logs"
+            href="/admin/audit-logs"
             label="Journal d'audit"
-            icon={<BadgeCheck className="h-4 w-4" />}
+            icon={<Shield className="h-4 w-4" />}
           />
         </div>
       </section>
