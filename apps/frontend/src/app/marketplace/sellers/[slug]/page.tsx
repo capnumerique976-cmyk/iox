@@ -66,8 +66,33 @@ export default async function SellerPage({ params }: PageProps) {
   const location = [seller.country, seller.region, seller.cityOrZone].filter(Boolean).join(' · ');
   const initials = seller.publicDisplayName.slice(0, 2).toUpperCase();
 
+  // SEO — JSON-LD structured data (schema.org Organization).
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://iox.mycloud.yt').replace(/\/$/, '');
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: seller.publicDisplayName,
+    url: `${siteUrl}/marketplace/sellers/${seller.slug}`,
+    ...(seller.descriptionShort && { description: seller.descriptionShort }),
+    ...(seller.logo?.publicUrl && { logo: seller.logo.publicUrl }),
+    ...(seller.logo?.publicUrl && { image: seller.logo.publicUrl }),
+    ...(location && {
+      address: {
+        '@type': 'PostalAddress',
+        ...(seller.country && { addressCountry: seller.country }),
+        ...(seller.region && { addressRegion: seller.region }),
+        ...(seller.cityOrZone && { addressLocality: seller.cityOrZone }),
+      },
+    }),
+  };
+
   return (
     <article className="flex flex-col gap-8">
+      {/* JSON-LD structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Breadcrumb */}
       <nav aria-label={tCommon('breadcrumb.label')} className="flex items-center gap-1.5 text-xs text-white/50">
         <Link href="/marketplace" className="transition-colors hover:text-[#00D4FF]">
