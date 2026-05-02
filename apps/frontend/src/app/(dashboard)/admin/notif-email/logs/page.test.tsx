@@ -155,6 +155,18 @@ describe('AdminNotifEmailLogsPage (MP-NOTIF-3)', () => {
     expect(screen.queryByText('Rejouer')).not.toBeInTheDocument();
   });
 
+  // MP-NOTIF-3 phase 8 — CSV export button visibility
+  it('bouton "Export CSV" est visible dans le header', async () => {
+    listLogsMock.mockResolvedValue({
+      data: [baseRow],
+      meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+    });
+    render(<AdminNotifEmailLogsPage />);
+    await waitFor(() => expect(listLogsMock).toHaveBeenCalled());
+    expect(screen.getByTestId('btn-export-csv')).toBeInTheDocument();
+    expect(screen.getByTestId('btn-export-csv').textContent).toContain('Export CSV');
+  });
+
   it('clic Rejouer appelle POST /notif-email/logs/:id/replay', async () => {
     listLogsMock.mockResolvedValue({
       data: [
