@@ -38,6 +38,7 @@ import { MarketplaceDocumentsModule } from './marketplace-documents/marketplace-
 import { MarketplaceCertificationsModule } from './marketplace-certifications/marketplace-certifications.module';
 import { NotifEmailModule } from './notif-email/notif-email.module';
 import { PaymentsModule } from './payments/payments.module';
+import { MarketplaceCategoriesModule } from './marketplace-categories/marketplace-categories.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
@@ -123,6 +124,8 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
     NotifEmailModule,
     // PAY-1 phase 1 — Stripe Connect Express + Payments
     PaymentsModule,
+    // MP-CATEGORY-1 — CRUD admin catégories marketplace
+    MarketplaceCategoriesModule,
   ],
   providers: [
     // Rate limiting (doit être AVANT JwtAuthGuard pour protéger /auth/login)
