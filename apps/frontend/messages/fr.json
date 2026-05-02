@@ -46,6 +46,8 @@
       "subtitle": "{count, plural, =0 {Aucune offre publiée} one {1 offre publiée} other {# offres publiées}}",
       "empty": "Aucune offre ne correspond à vos filtres.",
       "emptyHint": "Essayez d'élargir vos filtres pour découvrir plus de produits.",
+      "emptyClearFilters": "Réinitialiser les filtres",
+      "emptyBrowseSellers": "Parcourir les producteurs",
       "unavailable": "Le catalogue n'a pas pu être chargé. Rafraîchissez la page dans un instant ; si le problème persiste, nos équipes sont déjà alertées.",
       "heroBadge": "Produits de Mayotte sélectionnés",
       "heroTitleHighlight": "marketplace",
@@ -252,6 +254,8 @@
       "empty": "Aucun producteur ne correspond à vos filtres.",
       "emptyTitle": "Aucun producteur trouvé",
       "emptyHint": "Essayez d'élargir vos filtres pour découvrir plus de profils.",
+      "emptyClearFilters": "Réinitialiser les filtres",
+      "emptyBrowseCatalog": "Voir le catalogue",
       "unavailable": "L'annuaire des producteurs n'a pas pu être chargé. Rafraîchissez la page dans un instant ; nos équipes sont déjà alertées.",
       "filters": {
         "search": "Rechercher",
