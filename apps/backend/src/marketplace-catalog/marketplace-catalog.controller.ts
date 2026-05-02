@@ -24,6 +24,14 @@ export class MarketplaceCatalogController {
     return this.service.findProductBySlug(slug);
   }
 
+  // CATALOG-STATS — compteurs publics (produits, sellers, pays) pour le hero.
+  @Public()
+  @Get('stats')
+  @ApiOperation({ summary: 'Statistiques publiques du catalogue (compteurs)' })
+  stats() {
+    return this.service.stats();
+  }
+
   // SEARCH-FULLTEXT — autocomplete/suggestions sur produits + vendeurs.
   @Public()
   @Get('suggest')
