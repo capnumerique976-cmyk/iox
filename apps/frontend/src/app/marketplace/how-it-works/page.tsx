@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Search, MessageSquare, Handshake, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, Search, MessageSquare, Handshake, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 
 export const metadata: Metadata = {
@@ -24,9 +24,20 @@ const STEP_COLORS = [
  */
 export default async function HowItWorksPage() {
   const t = await getTranslations('howItWorks');
+  const tNav = await getTranslations('nav');
+  const tCommon = await getTranslations('common');
 
   return (
     <div className="mx-auto max-w-4xl space-y-12 px-4 py-8">
+      {/* Breadcrumb */}
+      <nav aria-label={tCommon('breadcrumb.label')} className="flex items-center gap-1.5 text-xs text-white/50">
+        <Link href="/marketplace" className="transition-colors hover:text-[#00D4FF]">
+          {tNav('catalog')}
+        </Link>
+        <ChevronRight className="h-3 w-3 text-white/20" aria-hidden />
+        <span className="font-medium text-white/80">{tNav('howItWorks')}</span>
+      </nav>
+
       {/* Hero */}
       <header className="text-center">
         <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
