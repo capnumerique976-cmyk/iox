@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
+  ExternalLink,
   FileText,
   Package,
   RefreshCw,
@@ -248,12 +249,23 @@ export default function SellerDashboardPage() {
         title="Cockpit vendeur marketplace"
         subtitle="Synthèse de votre activité marketplace : publications, demandes de devis, conformité documentaire."
         actions={
-          <button
-            onClick={load}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
-          >
-            <RefreshCw className="h-4 w-4" /> Rafraîchir
-          </button>
+          <div className="flex items-center gap-2">
+            {profile.status === 'ok' && profile.value?.slug && (
+              <Link
+                href={`/marketplace/sellers/${profile.value.slug}`}
+                target="_blank"
+                className="inline-flex items-center gap-2 rounded-lg border border-premium-accent/40 bg-premium-accent/5 px-3 py-1.5 text-sm font-medium text-premium-accent shadow-premium-sm transition-all duration-base ease-premium hover:bg-premium-accent/10"
+              >
+                <ExternalLink className="h-4 w-4" /> Voir ma vitrine
+              </Link>
+            )}
+            <button
+              onClick={load}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-premium-sm transition-all duration-base ease-premium hover:border-premium-accent/40 hover:bg-premium-accent/5 hover:text-premium-accent"
+            >
+              <RefreshCw className="h-4 w-4" /> Rafraîchir
+            </button>
+          </div>
         }
       />
 
