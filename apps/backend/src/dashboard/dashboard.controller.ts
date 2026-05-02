@@ -49,4 +49,11 @@ export class DashboardController {
   getRecentActivity(@Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number) {
     return this.dashboardService.getRecentActivity(limit);
   }
+
+  // MARKETPLACE-ADMIN-STATS — KPIs marketplace (sellers, catalog, RFQ pipeline)
+  @Get('marketplace')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR, UserRole.QUALITY_MANAGER)
+  getMarketplaceStats() {
+    return this.dashboardService.getMarketplaceStats();
+  }
 }
