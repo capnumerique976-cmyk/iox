@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { SellerProfileStatus } from '@iox/shared';
 
 @Injectable()
 export class DashboardService {
@@ -292,6 +293,78 @@ export class DashboardService {
       expiredDocuments,
       expiringSoonDocuments,
       plannedDistributions,
+    };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  MARKETPLACE-ADMIN-STATS — KPIs marketplace pour staff              */
+  /* ------------------------------------------------------------------ */
+
+  async getMarketplaceStats() {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const [
+      sellersApproved,
+      sellersPending,
+      sellersSuspended,
+      productsPublished,
+      productsDraft,
+      offersPublished,
+      rfqByStatus,
+      rfqStale,
+      rfqCreatedLast7d,
+    ] = await Promise.all([
+      this.prisma.sellerProfile.count({ where: { status: SellerProfileStatus.APPROVED } }),
+      this.prisma.sellerProfile.count({ where: { status: SellerProfileStatus.PENDING_REVIEW } }),
+      this.prisma.sellerProfile.count({ where: { status: SellerProfileStatus.SUSPENDED } }),
+
+      this.prisma.marketplaceProduct.count({ where: { publicationStatus: 'PUBLISHED' } }),
+      this.prisma.marketplaceProduct.count({ where: { publicationStatus: 'DRAFT' } }),
+
+      this.prisma.marketplaceOffer.count({ where: { publicationStatus: 'PUBLISHED' } }),
+
+      this.prisma.quoteRequest.groupBy({ by: ['status'], _count: { id: true } }),
+
+      this.prisma.quoteRequest.count({
+        where: {
+          status: { in: ['NEW', 'QUALIFIED'] },
+          updatedAt: { lt: sevenDaysAgo },
+        },
+      }),
+
+      this.prisma.quoteRequest.count({
+        where: { createdAt: { gte: sevenDaysAgo } },
+      }),
+    ]);
+
+    const rfq = Object.fromEntries(rfqByStatus.map((r: any) => [r.status, r._count.id]));
+    const rfqTotal = rfqByStatus.reduce((s: number, r: any) => s + r._count.id, 0);
+
+    return {
+      sellers: {
+        approved: sellersApproved,
+        pending: sellersPending,
+        suspended: sellersSuspended,
+        total: sellersApproved + sellersPending + sellersSuspended,
+      },
+      catalog: {
+        productsPublished,
+        productsDraft,
+        offersPublished,
+      },
+      rfq: {
+        total: rfqTotal,
+        new: rfq['NEW'] ?? 0,
+        qualified: rfq['QUALIFIED'] ?? 0,
+        quoted: rfq['QUOTED'] ?? 0,
+        negotiating: rfq['NEGOTIATING'] ?? 0,
+        won: rfq['WON'] ?? 0,
+        lost: rfq['LOST'] ?? 0,
+        cancelled: rfq['CANCELLED'] ?? 0,
+        stale: rfqStale,
+        createdLast7d: rfqCreatedLast7d,
+      },
     };
   }
 }

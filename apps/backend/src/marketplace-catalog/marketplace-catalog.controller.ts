@@ -45,6 +45,7 @@ export class MarketplaceCatalogController {
   // CATALOG-STATS — compteurs publics (produits, sellers, pays) pour le hero.
   @Public()
   @Get('stats')
+  @Header('Cache-Control', CACHE_STATIC)
   @ApiOperation({ summary: 'Statistiques publiques du catalogue (compteurs)' })
   stats() {
     return this.service.stats();
