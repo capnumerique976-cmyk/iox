@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, MapPin, Clock, Globe2, Ship, Package } from 'lucide-react';
@@ -10,6 +11,38 @@ export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: { slug: string };
+}
+
+/**
+ * SEO-META — Open Graph + Twitter Card dynamiques pour la fiche vendeur.
+ */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const seller = await fetchSellerBySlug(params.slug).catch(() => null);
+  if (!seller) return { title: 'Vendeur introuvable — IOX Marketplace' };
+
+  const title = `${seller.publicDisplayName} — IOX Marketplace`;
+  const description =
+    seller.descriptionShort ??
+    `Vendeur ${seller.publicDisplayName} — ${[seller.country, seller.region].filter(Boolean).join(', ')}`;
+  const imageUrl = seller.logo?.publicUrl ?? seller.banner?.publicUrl ?? undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'profile',
+      siteName: 'IOX Marketplace',
+      ...(imageUrl && { images: [{ url: imageUrl, alt: seller.publicDisplayName }] }),
+    },
+    twitter: {
+      card: imageUrl ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
+  };
 }
 
 export default async function SellerPage({ params }: PageProps) {
