@@ -2,7 +2,7 @@
  * SEED-DEMO — runner idempotent du jeu de fixtures marketplace.
  *
  * Conçu pour la **pré-production uniquement** : peuple la base avec un
- * dataset cohérent (4 sellers APPROVED, 8 produits PUBLISHED, 8 offres,
+ * dataset cohérent (9 sellers APPROVED, 13 produits PUBLISHED, 13 offres,
  * certifs, 1 compte smoke-seller) afin de rendre la marketplace
  * démontrable / testable en black-box.
  *
