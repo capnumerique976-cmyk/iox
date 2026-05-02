@@ -25,7 +25,7 @@ describe('MarketplaceCatalogService', () => {
       count: jest.Mock;
       groupBy: jest.Mock;
     };
-    marketplaceProduct: { findFirst: jest.Mock; findMany: jest.Mock };
+    marketplaceProduct: { findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
     sellerProfile: { findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
     mediaAsset: { findMany: jest.Mock };
     marketplaceDocument: { findMany: jest.Mock };
@@ -41,7 +41,7 @@ describe('MarketplaceCatalogService', () => {
         count: jest.fn(),
         groupBy: jest.fn().mockResolvedValue([]),
       },
-      marketplaceProduct: { findFirst: jest.fn(), findMany: jest.fn() },
+      marketplaceProduct: { findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn() },
       sellerProfile: { findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn() },
       mediaAsset: { findMany: jest.fn() },
       marketplaceDocument: { findMany: jest.fn().mockResolvedValue([]) },
@@ -702,6 +702,35 @@ describe('MarketplaceCatalogService', () => {
       await service.findCategoriesTree();
       const call = prisma.marketplaceCategory.findMany.mock.calls[0][0];
       expect(call.where.isActive).toBe(true);
+    });
+  });
+
+  // ── stats ──────────────────────────────────────────────────────────────────
+
+  describe('stats', () => {
+    it('returns products, sellers, and countries counts', async () => {
+      prisma.marketplaceProduct.count.mockResolvedValue(13);
+      prisma.sellerProfile.count.mockResolvedValue(9);
+      prisma.sellerProfile.findMany.mockResolvedValue([
+        { country: 'YT' },
+        { country: 'RE' },
+        { country: 'MG' },
+      ]);
+
+      const result = await service.stats();
+      expect(result).toEqual({ products: 13, sellers: 9, countries: 3 });
+    });
+
+    it('counts only approved sellers and published products', async () => {
+      prisma.marketplaceProduct.count.mockResolvedValue(0);
+      prisma.sellerProfile.count.mockResolvedValue(0);
+      prisma.sellerProfile.findMany.mockResolvedValue([]);
+
+      await service.stats();
+      const productCountCall = prisma.marketplaceProduct.count.mock.calls[0][0];
+      expect(productCountCall.where.publicationStatus.in).toBeDefined();
+      const sellerCountCall = prisma.sellerProfile.count.mock.calls[0][0];
+      expect(sellerCountCall.where.status).toBe('APPROVED');
     });
   });
 
