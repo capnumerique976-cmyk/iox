@@ -170,6 +170,15 @@ class EnvSchema {
   @IsString()
   @IsOptional()
   STRIPE_PUBLISHABLE_KEY?: string;
+
+  // ── MEILISEARCH (optionnel — fallback Postgres si absent) ───────────────
+  @IsString()
+  @IsOptional()
+  MEILISEARCH_HOST?: string;
+
+  @IsString()
+  @IsOptional()
+  MEILISEARCH_API_KEY?: string;
 }
 
 function assertNoPlaceholder(env: EnvSchema) {
