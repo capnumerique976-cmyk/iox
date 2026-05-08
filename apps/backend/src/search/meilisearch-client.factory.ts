@@ -17,7 +17,7 @@ export interface MeiliSearchIndex {
     totalHits?: number;
     processingTimeMs?: number;
   }>;
-  addDocuments(documents: Record<string, unknown>[]): Promise<unknown>;
+  addDocuments(documents: Record<string, unknown>[], options?: { primaryKey?: string }): Promise<unknown>;
   updateSettings(settings: Record<string, unknown>): Promise<unknown>;
 }
 

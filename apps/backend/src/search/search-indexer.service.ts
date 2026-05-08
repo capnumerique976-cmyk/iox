@@ -174,7 +174,7 @@ export class SearchIndexerService {
     }
 
     const client = this.meiliWrapper.client();
-    await client.index(PRODUCTS_INDEX).addDocuments([doc] as unknown as Record<string, unknown>[]);
+    await client.index(PRODUCTS_INDEX).addDocuments([doc] as unknown as Record<string, unknown>[], { primaryKey: 'id' });
 
     await this.prisma.marketplaceProduct.update({
       where: { id: productId },
@@ -214,7 +214,7 @@ export class SearchIndexerService {
     }
 
     const client = this.meiliWrapper.client();
-    await client.index(SELLERS_INDEX).addDocuments([doc] as unknown as Record<string, unknown>[]);
+    await client.index(SELLERS_INDEX).addDocuments([doc] as unknown as Record<string, unknown>[], { primaryKey: 'id' });
 
     await this.prisma.sellerProfile.update({
       where: { id: sellerId },
