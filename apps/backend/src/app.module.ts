@@ -39,6 +39,7 @@ import { MarketplaceCertificationsModule } from './marketplace-certifications/ma
 import { NotifEmailModule } from './notif-email/notif-email.module';
 import { PaymentsModule } from './payments/payments.module';
 import { MarketplaceCategoriesModule } from './marketplace-categories/marketplace-categories.module';
+import { SearchModule } from './search/search.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
@@ -126,6 +127,8 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
     PaymentsModule,
     // MP-CATEGORY-1 — CRUD admin catégories marketplace
     MarketplaceCategoriesModule,
+    // MeiliSearch full-text search (products + sellers)
+    SearchModule,
   ],
   providers: [
     // Rate limiting (doit être AVANT JwtAuthGuard pour protéger /auth/login)

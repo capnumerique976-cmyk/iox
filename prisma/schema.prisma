@@ -950,6 +950,10 @@ model SellerProfile {
   approvedAt          DateTime?           @map("approved_at")
   suspendedAt         DateTime?           @map("suspended_at")
 
+  // MeiliSearch indexation tracking
+  searchIndexedAt     DateTime?           @map("search_indexed_at")
+  searchIndexHash     String?             @map("search_index_hash")
+
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
   createdById         String?             @map("created_by_user_id")
@@ -1072,6 +1076,10 @@ model MarketplaceProduct {
   submittedAt              DateTime?                    @map("submitted_at")
   approvedAt               DateTime?                    @map("approved_at")
   publishedAt              DateTime?                    @map("published_at")
+
+  // MeiliSearch indexation tracking
+  searchIndexedAt          DateTime?                    @map("search_indexed_at")
+  searchIndexHash          String?                      @map("search_index_hash")
 
   createdAt                DateTime                     @default(now()) @map("created_at")
   updatedAt                DateTime                     @updatedAt @map("updated_at")
