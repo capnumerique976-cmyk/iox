@@ -1,31 +1,31 @@
 'use client';
 
 // SEARCH-FULLTEXT — Composant d'autocomplétion pour le catalogue marketplace.
-// Appelle GET /marketplace/catalog/suggest?q=... avec debounce 300ms.
-// Supporte produits, vendeurs et catégories.
+// Appelle GET /marketplace/search/products + /marketplace/search/sellers
+// via MeiliSearch (with Postgres fallback). Debounce 300ms.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Package, Store, FolderTree } from 'lucide-react';
+import { Search, Package, Store } from 'lucide-react';
+import {
+  searchProducts,
+  searchSellers,
+  type SearchProductHit,
+  type SearchSellerHit,
+} from '@/lib/search';
 
 interface SuggestItem {
-  type: 'product' | 'seller' | 'category';
+  type: 'product' | 'seller';
   id: string;
   slug: string;
   label: string;
+  subtitle?: string;
 }
 
 const ICON_MAP = {
   product: { icon: Package, color: 'text-[#00D4FF]', label: 'Produit' },
   seller: { icon: Store, color: 'text-[#00F5A0]', label: 'Vendeur' },
-  category: { icon: FolderTree, color: 'text-[#7B61FF]', label: 'Catégorie' },
 } as const;
-
-function resolveApiBase(): string {
-  const publicOverride = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
-  if (publicOverride) return publicOverride;
-  return '/api/v1';
-}
 
 export function SearchSuggest({ className }: { className?: string }) {
   const router = useRouter();
@@ -46,15 +46,40 @@ export function SearchSuggest({ className }: { className?: string }) {
     }
     setLoading(true);
     try {
-      const base = resolveApiBase();
-      const res = await fetch(`${base}/marketplace/catalog/suggest?q=${encodeURIComponent(term)}`);
-      if (res.ok) {
-        const body = await res.json();
-        const data: SuggestItem[] = body?.data ?? body ?? [];
-        setResults(data);
-        setOpen(data.length > 0);
-        setActiveIndex(-1);
+      const [productsRes, sellersRes] = await Promise.allSettled([
+        searchProducts({ q: term, limit: 5 }),
+        searchSellers({ q: term, limit: 3 }),
+      ]);
+
+      const items: SuggestItem[] = [];
+
+      if (productsRes.status === 'fulfilled') {
+        for (const p of productsRes.value.data) {
+          items.push({
+            type: 'product',
+            id: p.id,
+            slug: p.slug,
+            label: p.commercialName,
+            subtitle: p.originCountry,
+          });
+        }
       }
+
+      if (sellersRes.status === 'fulfilled') {
+        for (const s of sellersRes.value.data) {
+          items.push({
+            type: 'seller',
+            id: s.id,
+            slug: s.slug,
+            label: s.publicDisplayName,
+            subtitle: s.country ?? undefined,
+          });
+        }
+      }
+
+      setResults(items);
+      setOpen(items.length > 0);
+      setActiveIndex(-1);
     } catch {
       // Silently ignore suggest errors
     } finally {
@@ -88,9 +113,6 @@ export function SearchSuggest({ className }: { className?: string }) {
         break;
       case 'seller':
         router.push(`/marketplace/sellers/${item.slug}`);
-        break;
-      case 'category':
-        router.push(`/marketplace?categorySlug=${item.slug}`);
         break;
     }
   };
@@ -170,7 +192,10 @@ export function SearchSuggest({ className }: { className?: string }) {
                   <Icon className={`h-4 w-4 flex-shrink-0 ${color}`} aria-hidden />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{item.label}</p>
-                    <p className="text-xs text-white/40">{label}</p>
+                    <p className="text-xs text-white/40">
+                      {label}
+                      {item.subtitle ? ` · ${item.subtitle}` : ''}
+                    </p>
                   </div>
                 </button>
               </li>
