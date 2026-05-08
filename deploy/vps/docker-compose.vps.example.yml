@@ -40,6 +40,9 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # MeiliSearch (optional — falls back to Postgres LIKE if absent)
+      MEILISEARCH_HOST: ${MEILISEARCH_HOST:-}
+      MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-}
     ports:
       - '127.0.0.1:3001:3001'
     healthcheck:
@@ -48,6 +51,25 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  # MeiliSearch (optional — remove this service to fall back to Postgres search)
+  meilisearch:
+    image: getmeili/meilisearch:v1.7
+    container_name: iox_meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY required}
+      MEILI_ENV: production
+      MEILI_DB_PATH: /meili_data
+      MEILI_LOG_LEVEL: WARN
+      MEILI_MAX_INDEXING_MEMORY: 256MiB
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://localhost:7700/health']
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build:

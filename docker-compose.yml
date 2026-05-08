@@ -52,6 +52,23 @@ services:
       timeout: 20s
       retries: 3
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.7
+    container_name: iox_meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: dev-meili-key-change-in-prod
+      MEILI_ENV: development
+    ports:
+      - '7700:7700'
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://localhost:7700/health']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
   mailhog:
     image: mailhog/mailhog:latest
     container_name: iox_mailhog
@@ -64,3 +81,4 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  meilisearch_data:
