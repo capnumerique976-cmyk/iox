@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { MarketplaceProductsService } from './marketplace-products.service';
 import {
@@ -93,6 +94,7 @@ export class MarketplaceProductsController {
 
   @Post()
   @Roles(...SELLER_EDIT)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Créer un produit marketplace (brouillon)' })
   create(@Body() dto: CreateMarketplaceProductDto, @CurrentUser() actor: RequestUser) {
     return this.service.create(dto, actor);

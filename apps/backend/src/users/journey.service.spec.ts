@@ -20,7 +20,11 @@ function makeActor(overrides: Partial<RequestUser> = {}): RequestUser {
 
 function makePrisma() {
   return {
-    sellerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+    sellerProfile: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    sellerStripeAccount: { findFirst: jest.fn().mockResolvedValue(null) },
     marketplaceProduct: { count: jest.fn().mockResolvedValue(0) },
     marketplaceDocument: { count: jest.fn().mockResolvedValue(0) },
     quoteRequest: { count: jest.fn().mockResolvedValue(0) },
@@ -131,6 +135,29 @@ describe('JourneyService', () => {
       expect(res.data.hasSellerProfile).toBe(false);
       // Prisma should NOT have been called for seller profile
       expect(prisma.sellerProfile.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('returns hasStripeAccount: true when seller has chargesEnabled account', async () => {
+      prisma.sellerProfile.findFirst.mockResolvedValue({ id: 'sp-1' });
+      prisma.sellerStripeAccount.findFirst.mockResolvedValue({ id: 'ssa-1' });
+
+      const res = await service.getJourney(actor);
+
+      expect(res.data.hasStripeAccount).toBe(true);
+      expect(prisma.sellerStripeAccount.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ sellerProfileId: 'sp-1', chargesEnabled: true }),
+        }),
+      );
+    });
+
+    it('returns hasStripeAccount: false when no chargesEnabled account', async () => {
+      prisma.sellerProfile.findFirst.mockResolvedValue({ id: 'sp-1' });
+      prisma.sellerStripeAccount.findFirst.mockResolvedValue(null);
+
+      const res = await service.getJourney(actor);
+
+      expect(res.data.hasStripeAccount).toBe(false);
     });
 
     it('sets current only on first incomplete step', async () => {

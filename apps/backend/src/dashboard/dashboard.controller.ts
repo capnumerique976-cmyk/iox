@@ -1,7 +1,8 @@
 import { Controller, Get, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@iox/shared';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { UserRole, RequestUser } from '@iox/shared';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -48,6 +49,12 @@ export class DashboardController {
   )
   getRecentActivity(@Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number) {
     return this.dashboardService.getRecentActivity(limit);
+  }
+
+  @Get('marketplace-alerts')
+  @Roles(UserRole.MARKETPLACE_SELLER, UserRole.MARKETPLACE_BUYER)
+  getMarketplaceAlerts(@CurrentUser() actor: RequestUser) {
+    return this.dashboardService.getMarketplaceAlerts(actor);
   }
 
   // MARKETPLACE-ADMIN-STATS — KPIs marketplace (sellers, catalog, RFQ pipeline)

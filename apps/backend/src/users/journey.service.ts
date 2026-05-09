@@ -188,6 +188,23 @@ export class JourneyService {
     const completedCount = steps.filter((s) => s.completed).length;
     const completionPercentage = Math.round((completedCount / steps.length) * 100);
 
+    // Check real Stripe account status
+    const sellerProfileForStripe = actor.companyIds?.[0]
+      ? await this.prisma.sellerProfile.findFirst({
+          where: { companyId: actor.companyIds[0] },
+          select: { id: true },
+        })
+      : null;
+
+    const stripeAccount = sellerProfileForStripe
+      ? await this.prisma.sellerStripeAccount.findFirst({
+          where: { sellerProfileId: sellerProfileForStripe.id, chargesEnabled: true },
+          select: { id: true },
+        })
+      : null;
+
+    const hasStripeAccount = !!stripeAccount;
+
     return {
       role: UserRole.MARKETPLACE_SELLER,
       completionPercentage,
@@ -208,7 +225,7 @@ export class JourneyService {
         hasPendingRfqs,
         rfqCount,
         hasInvoices,
-        hasStripeAccount: false, // TODO: check Stripe onboarding status
+        hasStripeAccount,
       },
     };
   }

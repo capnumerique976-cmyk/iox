@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../database/prisma.service';
+import { UserRole, RequestUser } from '@iox/shared';
 
 describe('DashboardService — getMarketplaceStats', () => {
   let service: DashboardService;
@@ -8,13 +9,14 @@ describe('DashboardService — getMarketplaceStats', () => {
 
   beforeEach(async () => {
     prisma = {
-      sellerProfile: { count: jest.fn().mockResolvedValue(0) },
+      sellerProfile: { count: jest.fn().mockResolvedValue(0), findFirst: jest.fn().mockResolvedValue(null) },
       marketplaceProduct: { count: jest.fn().mockResolvedValue(0) },
       marketplaceOffer: { count: jest.fn().mockResolvedValue(0) },
       quoteRequest: {
         groupBy: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
       },
+      payment: { findMany: jest.fn().mockResolvedValue([]) },
       // Required for other dashboard methods (not under test here)
       beneficiary: { count: jest.fn().mockResolvedValue(0) },
       inboundBatch: { groupBy: jest.fn().mockResolvedValue([]) },
@@ -79,5 +81,92 @@ describe('DashboardService — getMarketplaceStats', () => {
     expect(result.catalog.productsPublished).toBe(0);
     expect(result.rfq.total).toBe(0);
     expect(result.rfq.stale).toBe(0);
+  });
+});
+
+describe('DashboardService — getMarketplaceAlerts', () => {
+  let service: DashboardService;
+  let prisma: Record<string, any>;
+
+  function makeSellerActor(overrides: Partial<RequestUser> = {}): RequestUser {
+    return {
+      id: 'user-seller-1',
+      email: 'seller@test.yt',
+      role: UserRole.MARKETPLACE_SELLER,
+      sellerProfileIds: ['sp-1'],
+      companyIds: ['comp-1'],
+      preferredLocale: 'fr',
+      ...overrides,
+    };
+  }
+
+  function makeBuyerActor(overrides: Partial<RequestUser> = {}): RequestUser {
+    return {
+      id: 'user-buyer-1',
+      email: 'buyer@test.yt',
+      role: UserRole.MARKETPLACE_BUYER,
+      sellerProfileIds: [],
+      companyIds: ['comp-2'],
+      preferredLocale: 'fr',
+      ...overrides,
+    };
+  }
+
+  beforeEach(async () => {
+    prisma = {
+      sellerProfile: { count: jest.fn().mockResolvedValue(0), findFirst: jest.fn().mockResolvedValue(null) },
+      marketplaceProduct: { count: jest.fn().mockResolvedValue(0) },
+      marketplaceOffer: { count: jest.fn().mockResolvedValue(0) },
+      quoteRequest: {
+        groupBy: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      payment: { findMany: jest.fn().mockResolvedValue([]) },
+      beneficiary: { count: jest.fn().mockResolvedValue(0) },
+      inboundBatch: { groupBy: jest.fn().mockResolvedValue([]) },
+      productBatch: { count: jest.fn().mockResolvedValue(0), findMany: jest.fn().mockResolvedValue([]) },
+      marketReleaseDecision: { count: jest.fn().mockResolvedValue(0), findMany: jest.fn().mockResolvedValue([]) },
+      labelValidation: { count: jest.fn().mockResolvedValue(0) },
+      document: { count: jest.fn().mockResolvedValue(0) },
+      incident: { count: jest.fn().mockResolvedValue(0) },
+      product: { groupBy: jest.fn().mockResolvedValue([]) },
+      distribution: { groupBy: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
+      auditLog: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [DashboardService, { provide: PrismaService, useValue: prisma }],
+    }).compile();
+
+    service = module.get(DashboardService);
+  });
+
+  it('seller view: returns newRfqs=2, pendingActions=1, total=3', async () => {
+    prisma.quoteRequest.count
+      .mockResolvedValueOnce(2)  // newRfqs
+      .mockResolvedValueOnce(1); // pendingActions
+
+    const result = await service.getMarketplaceAlerts(makeSellerActor());
+
+    expect(result.newRfqs).toBe(2);
+    expect(result.pendingActions).toBe(1);
+    expect(result.newQuotes).toBe(0);
+    expect(result.pendingPayment).toBe(0);
+    expect(result.total).toBe(3);
+  });
+
+  it('buyer view: returns newQuotes=1, pendingPayment=2, total=3', async () => {
+    prisma.quoteRequest.count
+      .mockResolvedValueOnce(1)  // newQuotes
+      .mockResolvedValueOnce(2); // wonRfqs
+    prisma.payment.findMany.mockResolvedValue([]); // no paid rfqs
+
+    const result = await service.getMarketplaceAlerts(makeBuyerActor());
+
+    expect(result.newQuotes).toBe(1);
+    expect(result.pendingPayment).toBe(2);
+    expect(result.newRfqs).toBe(0);
+    expect(result.pendingActions).toBe(0);
+    expect(result.total).toBe(3);
   });
 });

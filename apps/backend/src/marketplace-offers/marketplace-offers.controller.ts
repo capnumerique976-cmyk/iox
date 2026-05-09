@@ -82,7 +82,7 @@ export class MarketplaceOffersController {
   }
 
   @Post()
-  @Throttle({ default: { limit: 15, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Roles(...SELLER_EDIT)
   @ApiOperation({ summary: 'Créer une offre marketplace (brouillon)' })
   create(@Body() dto: CreateMarketplaceOfferDto, @CurrentUser() actor: RequestUser) {
