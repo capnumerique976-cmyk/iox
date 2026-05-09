@@ -10,7 +10,8 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, Circle, Info, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { QuoteRequestStatus } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import {
@@ -18,33 +19,23 @@ import {
   QuoteRequestSummary,
   QuoteRequestMessage,
 } from '@/lib/quote-requests';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 const STATUS_LABELS: Record<QuoteRequestStatus, string> = {
-  NEW: 'En attente',
-  QUALIFIED: 'En cours',
-  QUOTED: 'Devis reçu',
+  NEW: 'Nouvelle',
+  QUALIFIED: 'Qualifiée',
+  QUOTED: 'Devisée',
   NEGOTIATING: 'Négociation',
-  WON: 'Acceptée',
-  LOST: 'Non retenue',
+  WON: 'Gagnée',
+  LOST: 'Perdue',
   CANCELLED: 'Annulée',
-};
-
-/** Message d'aide contextuel selon le statut de la demande */
-const STATUS_GUIDE: Partial<Record<QuoteRequestStatus, { text: string; cta?: string; ctaHref?: string }>> = {
-  NEW: { text: 'Votre demande a ete envoyee. Le vendeur va la traiter sous peu.' },
-  QUALIFIED: { text: 'Le vendeur a examine votre demande et prepare un devis.' },
-  QUOTED: {
-    text: 'Le vendeur vous a envoye un devis. Consultez les conditions et procedez au paiement.',
-    cta: 'Payer la commande',
-  },
-  NEGOTIATING: { text: 'Des echanges sont en cours. Utilisez la messagerie ci-dessous pour communiquer.' },
-  WON: {
-    text: 'Votre commande est confirmee. Retrouvez votre facture dans "Mes factures".',
-    cta: 'Voir mes factures',
-    ctaHref: '/buyer/invoices',
-  },
-  LOST: { text: 'Cette demande n\'a pas abouti.' },
-  CANCELLED: { text: 'Cette demande a ete annulee.' },
 };
 
 const STATUS_COLORS: Record<QuoteRequestStatus, string> = {
@@ -70,6 +61,7 @@ export default function BuyerQuoteRequestDetailPage() {
   const [newMsg, setNewMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -99,8 +91,11 @@ export default function BuyerQuoteRequestDetailPage() {
       const msg = await quoteRequestsApi.addMessage(rfq.id, token, newMsg.trim(), false);
       setMessages((prev) => [...prev, msg]);
       setNewMsg('');
+      toast.success('Message envoyé');
     } catch (e) {
-      setErr((e as Error).message);
+      const errMsg = e instanceof Error ? e.message : 'Erreur lors de l\'envoi';
+      setErr(errMsg);
+      toast.error(errMsg);
     } finally {
       setBusy(false);
     }
@@ -108,7 +103,12 @@ export default function BuyerQuoteRequestDetailPage() {
 
   const onCancel = async () => {
     if (!token || !rfq) return;
-    if (!window.confirm('Annuler définitivement cette demande de devis ?')) return;
+    setCancelDialogOpen(true);
+  };
+
+  const onCancelConfirm = async () => {
+    if (!token || !rfq) return;
+    setCancelDialogOpen(false);
     setBusy(true);
     setErr(null);
     try {
@@ -118,8 +118,11 @@ export default function BuyerQuoteRequestDetailPage() {
         token,
       );
       setRfq(updated);
+      toast.success('Demande annulée avec succès');
     } catch (e) {
-      setErr((e as Error).message);
+      const errMsg = e instanceof Error ? e.message : 'Erreur lors de l\'annulation';
+      setErr(errMsg);
+      toast.error(errMsg);
     } finally {
       setBusy(false);
     }
@@ -183,36 +186,6 @@ export default function BuyerQuoteRequestDetailPage() {
       {/* Status Timeline */}
       <RfqTimeline status={rfq.status} />
 
-      {/* Guide contextuel par statut */}
-      {STATUS_GUIDE[rfq.status] && (
-        <div className={`flex items-start gap-3 rounded-lg border p-4 text-sm ${
-          rfq.status === QuoteRequestStatus.QUOTED
-            ? 'border-blue-200 bg-blue-50 text-blue-900'
-            : rfq.status === QuoteRequestStatus.WON
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-              : rfq.status === QuoteRequestStatus.CANCELLED || rfq.status === QuoteRequestStatus.LOST
-                ? 'border-gray-200 bg-gray-50 text-gray-700'
-                : 'border-amber-200 bg-amber-50 text-amber-900'
-        }`}>
-          <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
-          <div className="flex-1">
-            <p>{STATUS_GUIDE[rfq.status]?.text}</p>
-            {STATUS_GUIDE[rfq.status]?.cta && (
-              <Link
-                href={
-                  STATUS_GUIDE[rfq.status]?.ctaHref ??
-                  `/buyer/payments/checkout/${rfq.id}`
-                }
-                className="mt-2 inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
-              >
-                {STATUS_GUIDE[rfq.status]?.cta}
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
-
       <section className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Votre demande</h2>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:grid-cols-4">
@@ -229,7 +202,7 @@ export default function BuyerQuoteRequestDetailPage() {
             <dd className="text-gray-800">{rfq.deliveryCountry ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Marche vise</dt>
+            <dt className="text-gray-500">Marché cible</dt>
             <dd className="text-gray-800">{rfq.targetMarket ?? '—'}</dd>
           </div>
           <div>
@@ -317,6 +290,33 @@ export default function BuyerQuoteRequestDetailPage() {
           </button>
         </div>
       )}
+
+      {/* Dialog de confirmation d'annulation */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Annuler la demande de devis ?</DialogTitle>
+            <DialogDescription>Cette action est irréversible.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setCancelDialogOpen(false)}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={onCancelConfirm}
+              disabled={busy}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              Confirmer
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

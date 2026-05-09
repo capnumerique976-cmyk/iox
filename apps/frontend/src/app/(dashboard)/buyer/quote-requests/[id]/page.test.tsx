@@ -112,9 +112,8 @@ describe('BuyerQuoteRequestDetailPage (BUYER-DASHBOARD-1)', () => {
     render(<BuyerQuoteRequestDetailPage />);
     await waitFor(() => expect(screen.getByText('Vanille Bourbon')).toBeInTheDocument());
     expect(screen.getByText(/Coop X/)).toBeInTheDocument();
-    // 'Nouvelle' renamed to 'En attente' in Phase 4 UX rewrite
-    // appears in both status badge and timeline step label
-    expect(screen.getAllByText('En attente')[0]).toBeInTheDocument();
+    // 'Nouvelle' appears multiple times (badge + timeline step) — check via badge class
+    expect(screen.getAllByText('Nouvelle').length).toBeGreaterThanOrEqual(1);
   });
 
   it('rend le thread vide + form actif', async () => {
@@ -147,17 +146,18 @@ describe('BuyerQuoteRequestDetailPage (BUYER-DASHBOARD-1)', () => {
     expect(addMessageMock).toHaveBeenCalledWith('q1', 'tok', 'Test reply', false);
   });
 
-  it('affiche bouton Annuler si status NEW et appelle updateStatus(CANCELLED)', async () => {
+  it('affiche bouton Annuler si status NEW et appelle updateStatus(CANCELLED) après confirmation dialog', async () => {
     getMock.mockResolvedValue(makeRfq(QuoteRequestStatus.NEW));
     messagesMock.mockResolvedValue([]);
     updateStatusMock.mockResolvedValue(makeRfq(QuoteRequestStatus.CANCELLED));
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<BuyerQuoteRequestDetailPage />);
     const btn = await screen.findByText(/Annuler la demande/);
     fireEvent.click(btn);
+    // Dialog s'ouvre — cliquer "Confirmer"
+    const confirmBtn = await screen.findByText('Confirmer');
+    fireEvent.click(confirmBtn);
     await waitFor(() => expect(updateStatusMock).toHaveBeenCalled());
     expect(updateStatusMock).toHaveBeenCalledWith('q1', QuoteRequestStatus.CANCELLED, 'tok');
-    confirmSpy.mockRestore();
   });
 
   it('cache le bouton Annuler si status QUOTED (non cancellable côté buyer)', async () => {

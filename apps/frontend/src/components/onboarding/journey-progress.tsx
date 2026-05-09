@@ -1,97 +1,72 @@
 'use client';
 
 /**
- * JourneyProgress — visual stepper showing the user's progression.
+ * IOX — JourneyProgress
  *
- * Shows each step as a dot+label with completed/current/upcoming states.
- * On mobile: vertical list. On desktop: horizontal bar.
- * Used in the GuidedDashboard header area.
+ * Indicateur de progression d'un parcours utilisateur (onboarding, commande…).
+ * Affiche une liste de étapes avec des dots reliés par des lignes de connexion.
+ *
+ * Usage :
+ *   const steps = [
+ *     { id: 'register', label: 'Inscription', status: 'done' },
+ *     { id: 'profile', label: 'Profil', status: 'current' },
+ *     { id: 'offer', label: 'Offre', status: 'future' },
+ *   ];
+ *   <JourneyProgress steps={steps} />
  */
 
-import Link from 'next/link';
-import { CheckCircle2, Circle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { JourneyStep } from '@/hooks/use-user-journey';
+
+export type StepStatus = 'done' | 'current' | 'future';
+
+export interface JourneyStep {
+  id: string;
+  label: string;
+  status: StepStatus;
+}
 
 interface JourneyProgressProps {
   steps: JourneyStep[];
-  completionPercentage: number;
+  className?: string;
 }
 
-export function JourneyProgress({ steps, completionPercentage }: JourneyProgressProps) {
+export function JourneyProgress({ steps, className }: JourneyProgressProps) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-      {/* Progress bar */}
-      <div className="mb-4 flex items-center justify-between">
-        <span className="text-sm font-medium text-white/80">
-          Votre progression
-        </span>
-        <span className="text-sm font-semibold text-[#00D4FF]">
-          {completionPercentage} %
-        </span>
-      </div>
-      <div className="mb-6 h-2 w-full overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-[#00D4FF] to-[#7B61FF] transition-all duration-700 ease-out"
-          style={{ width: `${completionPercentage}%` }}
-        />
-      </div>
+    <div className={cn('flex items-start', className)} role="list" aria-label="Étapes du parcours">
+      {steps.map((step, index) => (
+        <div key={step.id} className="relative flex flex-1 flex-col items-center" role="listitem">
+          {/* Connector line between steps */}
+          {index < steps.length - 1 && (
+            <div
+              aria-hidden
+              className={cn(
+                'absolute top-3 left-[calc(50%+12px)] right-0 h-0.5 -translate-y-0.5',
+                step.status === 'done' ? 'bg-blue-500' : 'bg-gray-200',
+              )}
+            />
+          )}
 
-      {/* Steps — vertical on mobile, horizontal on lg+ */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-0">
-        {steps.map((step, i) => (
-          <div key={step.id} className="flex items-start gap-3 lg:flex-1 lg:flex-col lg:items-center lg:text-center">
-            {/* Connector line (horizontal on lg) */}
-            {i > 0 && (
-              <div
-                className={cn(
-                  'hidden lg:block h-0.5 w-full -mt-[1px] absolute left-0',
-                  // TODO: position connector between dots — skip for now
-                )}
-                aria-hidden
-              />
+          {/* Dot */}
+          <div className="flex flex-col items-center gap-1">
+            {step.status === 'done' ? (
+              <CheckCircle2 className="h-6 w-6 text-blue-500" aria-hidden />
+            ) : step.status === 'current' ? (
+              <Circle className="h-6 w-6 fill-blue-500 text-blue-500" aria-hidden />
+            ) : (
+              <Circle className="h-6 w-6 text-gray-300" aria-hidden />
             )}
-
-            {/* Icon */}
-            <div className="flex-shrink-0">
-              {step.completed ? (
-                <CheckCircle2 className="h-6 w-6 text-emerald-400" aria-hidden />
-              ) : step.current ? (
-                <div className="relative">
-                  <Circle className="h-6 w-6 text-[#00D4FF]" aria-hidden />
-                  <span className="absolute inset-0 animate-ping rounded-full bg-[#00D4FF]/30" />
-                </div>
-              ) : (
-                <Circle className="h-6 w-6 text-white/20" aria-hidden />
+            <span
+              className={cn(
+                'text-xs leading-tight text-center',
+                step.status === 'future' ? 'text-gray-400' : 'font-medium text-gray-700',
               )}
-            </div>
-
-            {/* Label + action */}
-            <div className="min-w-0 flex-1 lg:flex-none">
-              {step.current ? (
-                <Link
-                  href={step.href}
-                  className="group flex items-center gap-1 text-sm font-medium text-[#00D4FF] hover:underline"
-                >
-                  {step.label}
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                </Link>
-              ) : (
-                <span
-                  className={cn(
-                    'text-sm',
-                    step.completed
-                      ? 'text-white/60 line-through decoration-white/20'
-                      : 'text-white/30',
-                  )}
-                >
-                  {step.label}
-                </span>
-              )}
-            </div>
+            >
+              {step.label}
+            </span>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
