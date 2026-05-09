@@ -74,9 +74,9 @@ describe('SellerMarketplaceOffersPage (MP-OFFER-VIEW)', () => {
     });
     render(<SellerMarketplaceOffersPage />);
     await waitFor(() => expect(screen.getByTestId('seller-offers-list')).toBeInTheDocument());
-    expect(screen.getByText('Vanille Bourbon — offre principale')).toBeInTheDocument();
-    const link = screen.getByTestId('seller-offer-detail-o1') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toBe('/seller/marketplace-offers/o1');
+    expect(screen.getAllByText('Vanille Bourbon — offre principale').length).toBeGreaterThanOrEqual(1);
+    const links = screen.getAllByTestId('seller-offer-detail-o1') as HTMLAnchorElement[];
+    expect(links[0].getAttribute('href')).toBe('/seller/marketplace-offers/o1');
     // bouton Nouvelle offre actif dans LOT 2 (était désactivé en LOT 1)
     const newLink = screen.getByTestId('link-new-offer') as HTMLAnchorElement;
     expect(newLink.getAttribute('href')).toBe('/seller/marketplace-offers/new');
@@ -88,6 +88,6 @@ describe('SellerMarketplaceOffersPage (MP-OFFER-VIEW)', () => {
       meta: { total: 0, page: 1, limit: 50, totalPages: 0 },
     });
     render(<SellerMarketplaceOffersPage />);
-    expect(await screen.findByText(/Aucune offre marketplace/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pas encore d'offre/i)).toBeInTheDocument();
   });
 });

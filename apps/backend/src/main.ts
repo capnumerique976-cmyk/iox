@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, RequestMethod } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -101,8 +101,10 @@ async function bootstrap() {
   // au SIGTERM/SIGINT, évite les connexions orphelines lors des rolling updates.
   app.enableShutdownHooks();
 
-  // Préfixe global API
-  app.setGlobalPrefix('api/v1');
+  // Préfixe global API — /admin/* exclus pour Bull Board (pas api/v1 devant).
+  app.setGlobalPrefix('api/v1', {
+    exclude: [{ path: 'admin/(.*)', method: RequestMethod.ALL }],
+  });
 
   // Validation globale des DTOs
   app.useGlobalPipes(

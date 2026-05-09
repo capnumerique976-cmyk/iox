@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -40,6 +41,7 @@ import { NotifEmailModule } from './notif-email/notif-email.module';
 import { PaymentsModule } from './payments/payments.module';
 import { MarketplaceCategoriesModule } from './marketplace-categories/marketplace-categories.module';
 import { SearchModule } from './search/search.module';
+import { QueueModule } from './queue/queue.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
@@ -54,6 +56,9 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
 
     // Rate limiting global : 100 req / 60s par IP
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+
+    // EventEmitter2 — decoupled domain events (search sync, notifications, …)
+    EventEmitterModule.forRoot(),
 
     DatabaseModule,
     CommonModule,
@@ -129,6 +134,8 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
     MarketplaceCategoriesModule,
     // MeiliSearch full-text search (products + sellers)
     SearchModule,
+    // Mandat 53 — BullMQ async job queues (email + search indexing)
+    QueueModule,
   ],
   providers: [
     // Rate limiting (doit être AVANT JwtAuthGuard pour protéger /auth/login)

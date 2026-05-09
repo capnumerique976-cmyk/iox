@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { authStorage, AuthUser, AuthTokens } from '@/lib/auth';
+import { UserRole } from '@iox/shared';
 import { api } from '@/lib/api';
 import { installApiClient } from '@/lib/api-client';
 import { installGlobalErrorHandler } from '@/lib/notify';
@@ -26,10 +27,16 @@ interface AuthContextValue {
  *  - elle ne doit PAS être `//` (protocol-relative) ni contenir `:` (URL absolue)
  *  - fallback : `/dashboard`
  */
-function safeRedirect(target: string | null | undefined): string {
-  if (!target) return '/dashboard';
-  if (!target.startsWith('/') || target.startsWith('//')) return '/dashboard';
+function safeRedirect(target: string | null | undefined, role?: UserRole): string {
+  if (!target) return defaultLandingForRole(role);
+  if (!target.startsWith('/') || target.startsWith('//')) return defaultLandingForRole(role);
   return target;
+}
+
+function defaultLandingForRole(role?: UserRole): string {
+  if (role === UserRole.MARKETPLACE_SELLER) return '/seller/dashboard';
+  if (role === UserRole.MARKETPLACE_BUYER) return '/buyer';
+  return '/dashboard';
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -80,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ) {
         document.cookie = `NEXT_LOCALE=${authUser.preferredLocale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
       }
-      router.push(safeRedirect(redirectTo));
+      router.push(safeRedirect(redirectTo, authUser.role));
     },
     [router],
   );

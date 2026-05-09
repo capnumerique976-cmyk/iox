@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertCircle, Award, Calendar, Loader2, Pencil, Plus } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Award, Calendar, Loader2, Package, Pencil, Plus } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
 import {
@@ -16,6 +16,7 @@ import {
   type SellerMarketplaceProduct,
 } from '@/lib/marketplace-products';
 import { PageHeader } from '@/components/ui/page-header';
+import { publicationStatusLabel } from '@/lib/status-labels';
 
 type LoadState =
   | { kind: 'loading' }
@@ -31,6 +32,7 @@ const STATUS_BADGE: Record<string, string> = {
   SUSPENDED: 'bg-orange-50 text-orange-800 border-orange-200',
   ARCHIVED: 'bg-gray-50 text-gray-500 border-gray-200',
 };
+
 
 export default function SellerMarketplaceProductsPage() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
@@ -59,7 +61,7 @@ export default function SellerMarketplaceProductsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Mes produits marketplace"
+        title="Mes produits"
         subtitle="Édition saisonnalité et contenu vitrine"
         actions={
           <div className="flex items-center gap-2">
@@ -74,7 +76,7 @@ export default function SellerMarketplaceProductsPage() {
               href="/seller/dashboard"
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
             >
-              <ArrowLeft className="h-3 w-3" /> Cockpit vendeur
+              <ArrowLeft className="h-3 w-3" /> Mon espace vendeur
             </Link>
           </div>
         }
@@ -97,73 +99,138 @@ export default function SellerMarketplaceProductsPage() {
       )}
 
       {state.kind === 'ready' && state.rows.length === 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">
-          Aucun produit marketplace pour l’instant. Contactez l’équipe IOX pour démarrer
-          votre catalogue.
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+          <Package className="mx-auto h-10 w-10 text-gray-300" aria-hidden />
+          <p className="mt-3 text-sm font-medium text-gray-700">
+            Vous n&apos;avez pas encore de produit
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            Commencez par ajouter votre premier produit pour apparaitre dans le catalogue.
+          </p>
+          <Link
+            href="/seller/marketplace-products/new"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-premium-accent px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-premium-accent/90 transition-colors"
+          >
+            Ajouter un produit
+          </Link>
         </div>
       )}
 
       {state.kind === 'ready' && state.rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-premium-sm">
-          <table className="w-full text-sm" data-testid="seller-mp-list">
-            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-              <tr>
-                <th className="px-4 py-2 text-left">Produit</th>
-                <th className="px-4 py-2 text-left">Origine</th>
-                <th className="px-4 py-2 text-left">Statut</th>
-                <th className="px-4 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {state.rows.map((p) => (
-                <tr key={p.id} data-testid={`seller-mp-row-${p.id}`}>
-                  <td className="px-4 py-2">
-                    <div className="font-medium text-gray-900">{p.commercialName}</div>
-                    <div className="text-[11px] text-gray-400">{p.slug}</div>
-                  </td>
-                  <td className="px-4 py-2 text-gray-700">
-                    {p.originCountry}
-                    {p.originRegion ? ` · ${p.originRegion}` : ''}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                        STATUS_BADGE[p.publicationStatus] ?? STATUS_BADGE.DRAFT
-                      }`}
-                    >
-                      {p.publicationStatus}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <Link
-                        href={`/seller/marketplace-products/${p.id}`}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                        data-testid={`seller-mp-detail-${p.id}`}
-                      >
-                        <Pencil className="h-3 w-3" /> Détails
-                      </Link>
-                      <Link
-                        href={`/seller/marketplace-products/${p.id}/seasonality`}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                        data-testid={`seller-mp-seasonality-${p.id}`}
-                      >
-                        <Calendar className="h-3 w-3" /> Saisonnalité
-                      </Link>
-                      <Link
-                        href={`/seller/marketplace-products/${p.id}/certifications`}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                        data-testid={`seller-mp-certifications-${p.id}`}
-                      >
-                        <Award className="h-3 w-3" /> Certifications
-                      </Link>
-                    </div>
-                  </td>
+        <>
+          {/* Mobile: cards */}
+          <div className="space-y-3 md:hidden" data-testid="seller-mp-list">
+            {state.rows.map((p) => (
+              <div
+                key={p.id}
+                data-testid={`seller-mp-row-${p.id}`}
+                className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900">{p.commercialName}</p>
+                    <p className="text-xs text-gray-400">
+                      {p.originCountry}
+                      {p.originRegion ? ` · ${p.originRegion}` : ''}
+                    </p>
+                  </div>
+                  <span
+                    className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                      STATUS_BADGE[p.publicationStatus] ?? STATUS_BADGE.DRAFT
+                    }`}
+                  >
+                    {publicationStatusLabel(p.publicationStatus)}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link
+                    href={`/seller/marketplace-products/${p.id}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                    data-testid={`seller-mp-detail-${p.id}`}
+                  >
+                    <Pencil className="h-3 w-3" /> Détails
+                  </Link>
+                  <Link
+                    href={`/seller/marketplace-products/${p.id}/seasonality`}
+                    className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                    data-testid={`seller-mp-seasonality-${p.id}`}
+                  >
+                    <Calendar className="h-3 w-3" /> Saisonnalité
+                  </Link>
+                  <Link
+                    href={`/seller/marketplace-products/${p.id}/certifications`}
+                    className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                    data-testid={`seller-mp-certifications-${p.id}`}
+                  >
+                    <Award className="h-3 w-3" /> Certifications
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-premium-sm md:block">
+            <table className="w-full text-sm" data-testid="seller-mp-list-table">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Produit</th>
+                  <th className="px-4 py-2 text-left">Origine</th>
+                  <th className="px-4 py-2 text-left">Statut</th>
+                  <th className="px-4 py-2 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {state.rows.map((p) => (
+                  <tr key={p.id} data-testid={`seller-mp-row-${p.id}`}>
+                    <td className="px-4 py-2">
+                      <div className="font-medium text-gray-900">{p.commercialName}</div>
+                      <div className="text-[11px] text-gray-400" title={`Adresse catalogue : /marketplace/products/${p.slug}`}>/{p.slug}</div>
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">
+                      {p.originCountry}
+                      {p.originRegion ? ` · ${p.originRegion}` : ''}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                          STATUS_BADGE[p.publicationStatus] ?? STATUS_BADGE.DRAFT
+                        }`}
+                      >
+                        {publicationStatusLabel(p.publicationStatus)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <Link
+                          href={`/seller/marketplace-products/${p.id}`}
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                          data-testid={`seller-mp-detail-${p.id}`}
+                        >
+                          <Pencil className="h-3 w-3" /> Détails
+                        </Link>
+                        <Link
+                          href={`/seller/marketplace-products/${p.id}/seasonality`}
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                          data-testid={`seller-mp-seasonality-${p.id}`}
+                        >
+                          <Calendar className="h-3 w-3" /> Saisonnalité
+                        </Link>
+                        <Link
+                          href={`/seller/marketplace-products/${p.id}/certifications`}
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                          data-testid={`seller-mp-certifications-${p.id}`}
+                        >
+                          <Award className="h-3 w-3" /> Certifications
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

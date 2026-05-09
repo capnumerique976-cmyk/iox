@@ -20,9 +20,8 @@ import { UserRole } from '@iox/shared';
 import { cn } from '@/lib/utils';
 import {
   HOME_SECTION,
-  SECTIONS,
   getActiveSection,
-  type NavSection,
+  getVisibleSections,
   type NavItem,
 } from './nav-config';
 
@@ -36,11 +35,6 @@ export function MobileSidebar() {
   const close = () => setOpen(false);
   const active = getActiveSection(pathname);
 
-  const canSeeSection = (section: NavSection) =>
-    section.permission === '*' ||
-    user.role === UserRole.ADMIN ||
-    hasPermission(user.role, section.permission);
-
   const canSeeItem = (item: NavItem) =>
     item.permission === '*' ||
     user.role === UserRole.ADMIN ||
@@ -50,7 +44,7 @@ export function MobileSidebar() {
   const isItemActive = (href: string) =>
     EXACT_MATCH_ROUTES.has(href) ? pathname === href : pathname.startsWith(href);
 
-  const visibleSections = [HOME_SECTION, ...SECTIONS].filter(canSeeSection);
+  const visibleSections = [HOME_SECTION, ...getVisibleSections(user.role)];
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

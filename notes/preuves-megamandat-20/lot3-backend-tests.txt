@@ -1,0 +1,6 @@
+
+Test Suites: 1 passed, 1 total
+Tests:       43 passed, 43 total
+Snapshots:   0 total
+Time:        1.897 s, estimated 3 s
+Ran all test suites matching /marketplace-offers/i.

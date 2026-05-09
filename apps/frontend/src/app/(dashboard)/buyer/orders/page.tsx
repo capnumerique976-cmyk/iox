@@ -85,51 +85,85 @@ export default function BuyerOrdersPage() {
       ) : items.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="iox-table-wrap" data-testid="orders-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Offre</th>
-                <th>Vendeur</th>
-                <th>Quantit&eacute;</th>
-                <th>Date de cl&ocirc;ture</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((q) => (
-                <tr key={q.id} data-testid={`order-row-${q.id}`} className="hover:bg-gray-50">
-                  <td className="px-4 py-2">
-                    <div className="font-medium text-gray-900">{q.marketplaceOffer.title}</div>
-                    {q.marketplaceOffer.marketplaceProduct && (
-                      <div className="text-xs text-gray-500">
-                        {q.marketplaceOffer.marketplaceProduct.commercialName}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-gray-700">
-                    {q.marketplaceOffer.sellerProfile?.publicDisplayName ?? '—'}
-                  </td>
-                  <td className="px-4 py-2 text-gray-700">
-                    {q.requestedQuantity
-                      ? `${q.requestedQuantity}${q.requestedUnit ? ` ${q.requestedUnit}` : ''}`
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">{formatDate(q.updatedAt)}</td>
-                  <td className="px-4 py-2 text-right">
-                    <Link
-                      href={`/buyer/quote-requests/${q.id}`}
-                      className="text-emerald-700 hover:text-emerald-800"
-                      data-testid={`order-link-${q.id}`}
-                    >
-                      Voir &rarr;
-                    </Link>
-                  </td>
+        <>
+          {/* Mobile: cards */}
+          <div className="flex flex-col gap-3 md:hidden" data-testid="orders-table">
+            {items.map((q) => (
+              <div
+                key={q.id}
+                data-testid={`order-row-${q.id}`}
+                className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-sm"
+              >
+                <p className="font-medium text-gray-900">{q.marketplaceOffer.title}</p>
+                {q.marketplaceOffer.marketplaceProduct && (
+                  <p className="text-xs text-gray-500">
+                    {q.marketplaceOffer.marketplaceProduct.commercialName}
+                  </p>
+                )}
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {q.marketplaceOffer.sellerProfile?.publicDisplayName ?? ''}
+                </p>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-xs text-gray-400">{formatDate(q.updatedAt)}</span>
+                  <Link
+                    href={`/buyer/quote-requests/${q.id}`}
+                    className="text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                    data-testid={`order-link-${q.id}`}
+                  >
+                    Voir la commande →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block" data-testid="orders-table-desktop">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Offre</th>
+                  <th className="px-4 py-2 text-left">Vendeur</th>
+                  <th className="px-4 py-2 text-left">Quantite</th>
+                  <th className="px-4 py-2 text-left">Date</th>
+                  <th className="px-4 py-2"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {items.map((q) => (
+                  <tr key={q.id} data-testid={`order-row-${q.id}`} className="hover:bg-gray-50">
+                    <td className="px-4 py-2">
+                      <div className="font-medium text-gray-900">{q.marketplaceOffer.title}</div>
+                      {q.marketplaceOffer.marketplaceProduct && (
+                        <div className="text-xs text-gray-500">
+                          {q.marketplaceOffer.marketplaceProduct.commercialName}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">
+                      {q.marketplaceOffer.sellerProfile?.publicDisplayName ?? '—'}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">
+                      {q.requestedQuantity
+                        ? `${q.requestedQuantity}${q.requestedUnit ? ` ${q.requestedUnit}` : ''}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2 text-gray-500">{formatDate(q.updatedAt)}</td>
+                    <td className="px-4 py-2 text-right">
+                      <Link
+                        href={`/buyer/quote-requests/${q.id}`}
+                        className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
+                        data-testid={`order-link-${q.id}`}
+                      >
+                        Voir →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Pagination */}

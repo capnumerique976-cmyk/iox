@@ -70,13 +70,14 @@ describe('BuyerInvoicesPage (PAY-2)', () => {
 
     expect(await screen.findByTestId('buyer-invoices-page')).toBeInTheDocument();
     expect(screen.getByTestId('invoices-table')).toBeInTheDocument();
-    expect(screen.getByTestId('invoice-row-i1')).toBeInTheDocument();
-    expect(screen.getByTestId('invoice-row-i2')).toBeInTheDocument();
-    expect(screen.getByText('INV-I1')).toBeInTheDocument();
-    expect(screen.getByText('420.00 €')).toBeInTheDocument();
-    expect(screen.getByText('150.50 €')).toBeInTheDocument();
-    expect(screen.getByTestId('invoice-status-i1')).toHaveTextContent('Payee');
-    expect(screen.getByTestId('invoice-status-i2')).toHaveTextContent('Emise');
+    // dual layout: mobile card + desktop table both render in jsdom
+    expect(screen.getAllByTestId('invoice-row-i1')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('invoice-row-i2')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('INV-I1')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('420.00 €')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('150.50 €')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('invoice-status-i1')[0]).toHaveTextContent('Payee');
+    expect(screen.getAllByTestId('invoice-status-i2')[0]).toHaveTextContent('Emise');
   });
 
   it('shows empty state when no invoices', async () => {

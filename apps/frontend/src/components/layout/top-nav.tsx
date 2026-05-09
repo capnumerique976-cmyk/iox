@@ -13,10 +13,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth.context';
-import { hasPermission } from '@/lib/auth';
-import { UserRole } from '@iox/shared';
 import { cn } from '@/lib/utils';
-import { HOME_SECTION, SECTIONS, getActiveSection, type NavSection } from './nav-config';
+import { HOME_SECTION, getActiveSection, getVisibleSections } from './nav-config';
 
 export function TopNav() {
   const { user } = useAuth();
@@ -26,12 +24,7 @@ export function TopNav() {
 
   const active = getActiveSection(pathname);
 
-  const canSee = (section: NavSection) =>
-    section.permission === '*' ||
-    user.role === UserRole.ADMIN ||
-    hasPermission(user.role, section.permission);
-
-  const visible = [HOME_SECTION, ...SECTIONS].filter(canSee);
+  const visible = [HOME_SECTION, ...getVisibleSections(user.role)];
 
   return (
     <nav

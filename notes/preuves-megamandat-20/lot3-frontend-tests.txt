@@ -1,0 +1,8 @@
+ ✓ src/app/(dashboard)/seller/marketplace-offers/new/page.test.tsx (4 tests) 78ms
+ ✓ src/app/(dashboard)/seller/marketplace-offers/[id]/page.test.tsx (19 tests) 281ms
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  21:26:44
+   Duration  1.25s (transform 218ms, setup 563ms, collect 513ms, tests 408ms, environment 1.29s, prepare 157ms)
+

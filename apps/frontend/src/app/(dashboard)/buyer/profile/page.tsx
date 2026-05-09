@@ -54,12 +54,8 @@ export default function BuyerProfilePage() {
             <dd className="text-gray-900">{user?.email ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-gray-500">Rôle</dt>
-            <dd className="text-gray-900">{user?.role ?? '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-gray-500">ID utilisateur</dt>
-            <dd className="font-mono text-xs text-gray-700">{user?.id ?? '—'}</dd>
+            <dt className="text-xs uppercase tracking-wide text-gray-500">Profil</dt>
+            <dd className="text-gray-900">Acheteur</dd>
           </div>
         </dl>
       </section>

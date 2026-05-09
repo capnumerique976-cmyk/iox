@@ -56,6 +56,7 @@ import {
   MediaAssetType as MediaAssetTypeEnum,
   MarketplaceRelatedEntityType,
 } from '@iox/shared';
+import { publicationStatusLabel } from '@/lib/status-labels';
 
 type LoadState =
   | { kind: 'loading' }
@@ -365,7 +366,7 @@ function validateClient(form: FormState): string | null {
   if (form.regulatoryName.length > 255)
     return 'Le nom réglementaire est limité à 255 caractères.';
   if (form.subtitle.length > 255) return 'Le sous-titre est limité à 255 caractères.';
-  if (form.originCountry.trim().length === 0) return 'Le pays d’origine est requis.';
+  if (form.originCountry.trim().length === 0) return "Le pays d'origine est requis.";
   if (form.originCountry.length > 100)
     return 'Le code pays est limité à 100 caractères.';
   if (form.originRegion.length > 100)
@@ -376,7 +377,7 @@ function validateClient(form: FormState): string | null {
   if (form.altitudeMeters.trim() !== '') {
     const n = Number.parseInt(form.altitudeMeters, 10);
     if (!Number.isFinite(n) || n < 0 || n > 9000)
-      return 'L’altitude doit être un entier entre 0 et 9000 m.';
+      return "L'altitude doit etre un entier entre 0 et 9000 m.";
   }
 
   const latStr = form.gpsLat.trim();
@@ -425,9 +426,9 @@ function validateClient(form: FormState): string | null {
       return `${label} doit être un nombre ≥ 0 et ≤ 1 000 000 000.`;
   }
   if (form.capacityUnit.length > 20)
-    return 'L’unité de capacité est limitée à 20 caractères.';
+    return "L'unite de capacite est limitee a 20 caracteres.";
   if (form.availableQuantityUnit.length > 20)
-    return 'L’unité de quantité disponible est limitée à 20 caractères.';
+    return "L'unite de quantite disponible est limitee a 20 caracteres.";
   if (form.restockFrequency.length > 30)
     return 'La fréquence de réapprovisionnement est limitée à 30 caractères.';
   // FP-7 — qualité structurée
@@ -556,7 +557,7 @@ export default function SellerMarketplaceProductDetailPage() {
             ? err.message
             : err instanceof Error
               ? err.message
-              : 'Échec de la liaison de l’image au produit';
+              : "Echec de la liaison de l'image au produit";
         setSubmitError(message);
         throw err;
       }
@@ -617,7 +618,7 @@ export default function SellerMarketplaceProductDetailPage() {
     const ok = await confirm({
       title: 'Soumettre à la revue qualité ?',
       description:
-        'Le produit passera en statut IN_REVIEW. Vous ne pourrez plus le modifier tant que la revue n’est pas terminée.',
+        "Le produit sera soumis a la revue qualite. Vous ne pourrez plus le modifier tant que la revue n'est pas terminee.",
       confirmLabel: 'Soumettre',
       cancelLabel: 'Annuler',
       tone: 'warning',
@@ -647,7 +648,7 @@ export default function SellerMarketplaceProductDetailPage() {
     const ok = await confirm({
       title: 'Archiver ce produit ?',
       description:
-        'Le produit sera retiré de votre tableau de bord et n’apparaîtra plus dans la marketplace. Cette action est destructive.',
+        'Le produit sera retire de votre espace et ne sera plus visible par les acheteurs. Cette action est irreversible.',
       confirmLabel: 'Archiver',
       cancelLabel: 'Annuler',
       tone: 'danger',
@@ -661,7 +662,7 @@ export default function SellerMarketplaceProductDetailPage() {
       await marketplaceProductsApi.archive(id, token);
       router.push('/seller/marketplace-products');
     } catch (err) {
-      setWorkflowError(pickErrorMessage(err, 'Échec de l’archivage'));
+      setWorkflowError(pickErrorMessage(err, "Echec de l'archivage"));
       setWorkflowBusy(null);
     }
   }
@@ -677,7 +678,7 @@ export default function SellerMarketplaceProductDetailPage() {
   if (state.kind === 'error') {
     return (
       <div className="space-y-3">
-        <PageHeader title="Détail produit marketplace" />
+        <PageHeader title="Detail produit" />
         <div
           role="alert"
           className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
@@ -687,7 +688,7 @@ export default function SellerMarketplaceProductDetailPage() {
             <p className="font-medium">{state.message}</p>
             {state.status === 403 && (
               <p className="mt-1 text-xs" data-testid="hint-403">
-                Ce produit n’est pas rattaché à votre profil vendeur.
+                Ce produit n'est pas rattaché à votre profil vendeur.
               </p>
             )}
             {state.status === 404 && (
@@ -786,10 +787,10 @@ export default function SellerMarketplaceProductDetailPage() {
             STATUS_BADGE[product.publicationStatus] ?? STATUS_BADGE.DRAFT
           }`}
         >
-          {product.publicationStatus}
+          {publicationStatusLabel(product.publicationStatus)}
         </span>
         <span className="text-gray-400">·</span>
-        <span className="text-gray-400">Slug : {product.slug}</span>
+        <span className="text-gray-400">Adresse : {product.slug}</span>
       </div>
 
       {workflowError && (
@@ -819,7 +820,7 @@ export default function SellerMarketplaceProductDetailPage() {
         >
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <p>
-            Ce produit est <strong>{product.publicationStatus}</strong>. Modifier ce
+            Ce produit est <strong>{publicationStatusLabel(product.publicationStatus)}</strong>. Modifier ce
             produit déclenchera une nouvelle <strong>revue qualité</strong> — la
             publication peut être suspendue le temps de la revue.
           </p>
@@ -867,7 +868,7 @@ export default function SellerMarketplaceProductDetailPage() {
         <Section title="Image principale (MP-EDIT-PRODUCT.3-light)">
           <div data-testid="section-main-media" className="space-y-3">
             <p className="text-xs text-gray-500">
-              L’image téléversée arrive en{' '}
+              L'image téléversée arrive en{' '}
               <strong>modération en attente</strong>. Le produit peut
               temporairement disparaître du catalog public le temps que le
               staff approuve la nouvelle image (comportement attendu).
@@ -922,7 +923,7 @@ export default function SellerMarketplaceProductDetailPage() {
 
         <Section title="Origine">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <Field label="Pays" required hint="Code ISO recommandé (YT, FR, …)">
+            <Field label="Pays" required hint="Ex : Mayotte, France, Madagascar">
               <input
                 type="text"
                 value={form.originCountry}
@@ -1036,7 +1037,7 @@ export default function SellerMarketplaceProductDetailPage() {
               data-testid="field-descriptionLong"
             />
           </Field>
-          <Field label="Conseils d’usage">
+          <Field label="Conseils d'usage">
             <textarea
               value={form.usageTips}
               onChange={set('usageTips')}
@@ -1067,7 +1068,7 @@ export default function SellerMarketplaceProductDetailPage() {
                 data-testid="field-storageConditions"
               />
             </Field>
-            <Field label="Durée de conservation (DLUO/DLC)">
+            <Field label="Duree de conservation" hint="Combien de temps le produit se conserve apres production ?">
               <textarea
                 value={form.shelfLifeInfo}
                 onChange={set('shelfLifeInfo')}
@@ -1223,7 +1224,7 @@ export default function SellerMarketplaceProductDetailPage() {
         <Section title="Qualité structurée (FP-7)">
           <p className="text-xs text-gray-500" data-testid="quality-help">
             Sélectionnez les attributs qualité qui caractérisent ce produit (max 10).
-            Ils s’afficheront comme badges sur la fiche publique.
+            Ils s'afficheront comme badges sur la fiche publique.
           </p>
           <div
             className="flex flex-wrap gap-2"
@@ -1268,13 +1269,13 @@ export default function SellerMarketplaceProductDetailPage() {
           </p>
         </Section>
 
-        <Section title="Lecture seule (édition réservée à d’autres écrans)">
+        <Section title="Lecture seule (édition réservée à d'autres écrans)">
           <div className="grid grid-cols-1 gap-3 text-xs text-gray-600 md:grid-cols-2">
             <div>
               <span className="block font-medium text-gray-700">Saisonnalité</span>
               <span data-testid="readonly-seasonality">
                 {product.isYearRound
-                  ? 'Toute l’année'
+                  ? "Toute l'annee"
                   : `Récolte : ${(product.harvestMonths ?? []).join(', ') || '—'} · Disponibilité : ${
                       (product.availabilityMonths ?? []).join(', ') || '—'
                     }`}
@@ -1287,7 +1288,7 @@ export default function SellerMarketplaceProductDetailPage() {
               </Link>
             </div>
             <div>
-              <span className="block font-medium text-gray-700">MOQ / unité</span>
+              <span className="block font-medium text-gray-700">Commande minimum</span>
               <span data-testid="readonly-moq">
                 {product.minimumOrderQuantity != null
                   ? `${product.minimumOrderQuantity} ${product.defaultUnit ?? ''}`.trim()

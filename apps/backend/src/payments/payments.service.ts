@@ -23,6 +23,7 @@ import {
 } from '@iox/shared';
 import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
 import type { RefundPaymentDto } from './dto/payments.dto';
+import { QuoteRequestFsm } from '../quote-requests/quote-request-fsm';
 
 /**
  * Commission IOX V1 : 5% du montant brut.
@@ -88,11 +89,8 @@ export class PaymentsService {
     });
     if (!rfq) throw new NotFoundException('RFQ introuvable');
 
-    if (rfq.status !== QuoteRequestStatus.WON) {
-      throw new BadRequestException(
-        `RFQ non payable : statut ${rfq.status} (requis: WON)`,
-      );
-    }
+    // Mandat 53: centralized FSM guard — only WON status is payable.
+    QuoteRequestFsm.assertPayable(rfq.status as QuoteRequestStatus);
 
     // Buyer ownership : seul le buyerUser peut payer sa propre RFQ.
     if (actor.id !== rfq.buyerUserId) {

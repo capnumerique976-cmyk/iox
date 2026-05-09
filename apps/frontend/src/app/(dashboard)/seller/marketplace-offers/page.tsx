@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertCircle, Eye, Loader2, Plus } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Eye, Loader2, Plus, Tag } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { authStorage } from '@/lib/auth';
 import {
@@ -18,6 +18,7 @@ import {
   type MarketplaceOfferDetail,
 } from '@/lib/marketplace-offers';
 import { PageHeader } from '@/components/ui/page-header';
+import { publicationStatusLabel } from '@/lib/status-labels';
 
 type LoadState =
   | { kind: 'loading' }
@@ -71,7 +72,7 @@ export default function SellerMarketplaceOffersPage() {
     <div className="space-y-5">
       <PageHeader
         title="Mes offres"
-        subtitle="Lecture seule — édition à venir"
+        subtitle="Gérez vos offres commerciales et leurs conditions de vente"
         actions={
           <div className="flex items-center gap-2">
             <Link
@@ -85,7 +86,7 @@ export default function SellerMarketplaceOffersPage() {
               href="/seller/dashboard"
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
             >
-              <ArrowLeft className="h-3 w-3" /> Cockpit vendeur
+              <ArrowLeft className="h-3 w-3" /> Mon espace vendeur
             </Link>
           </div>
         }
@@ -108,63 +109,118 @@ export default function SellerMarketplaceOffersPage() {
       )}
 
       {state.kind === 'ready' && state.rows.length === 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">
-          Aucune offre marketplace pour l’instant. La création d’offres sera
-          disponible au prochain lot — en attendant, vos offres seedées
-          apparaîtront ici dès leur attachement.
+        <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
+            <Tag className="h-7 w-7 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-700">
+              Vous n'avez pas encore d'offre
+            </p>
+            <p className="mt-1 max-w-sm text-xs text-gray-500">
+              Créez une offre pour définir le prix et les conditions de vente de vos produits.
+            </p>
+          </div>
+          <Link
+            href="/seller/marketplace-offers/new"
+            className="inline-flex items-center gap-2 rounded-md bg-premium-accent px-4 py-2 text-sm font-semibold text-white shadow-premium-sm hover:bg-premium-primary"
+          >
+            <Plus className="h-4 w-4" />
+            Créer une offre
+          </Link>
         </div>
       )}
 
       {state.kind === 'ready' && state.rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-premium-sm">
-          <table className="w-full text-sm" data-testid="seller-offers-list">
-            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-              <tr>
-                <th className="px-4 py-2 text-left">Offre</th>
-                <th className="px-4 py-2 text-left">Produit</th>
-                <th className="px-4 py-2 text-left">Prix</th>
-                <th className="px-4 py-2 text-left">Statut</th>
-                <th className="px-4 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {state.rows.map((o) => (
-                <tr key={o.id} data-testid={`seller-offer-row-${o.id}`}>
-                  <td className="px-4 py-2">
-                    <div className="font-medium text-gray-900">{o.title}</div>
-                    {o.shortDescription ? (
-                      <div className="line-clamp-1 text-[11px] text-gray-400">
-                        {o.shortDescription}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2 text-gray-700">
-                    {o.marketplaceProduct?.commercialName ?? o.marketplaceProductId}
-                  </td>
-                  <td className="px-4 py-2 text-gray-700">{formatPrice(o)}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                        STATUS_BADGE[o.publicationStatus] ?? STATUS_BADGE.DRAFT
-                      }`}
-                    >
-                      {o.publicationStatus}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <Link
-                      href={`/seller/marketplace-offers/${o.id}`}
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
-                      data-testid={`seller-offer-detail-${o.id}`}
-                    >
-                      <Eye className="h-3 w-3" /> Détails
-                    </Link>
-                  </td>
+        <>
+          {/* Mobile: cards */}
+          <div className="space-y-3 md:hidden" data-testid="seller-offers-list">
+            {state.rows.map((o) => (
+              <div
+                key={o.id}
+                data-testid={`seller-offer-row-${o.id}`}
+                className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-premium-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900">{o.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {o.marketplaceProduct?.commercialName ?? o.marketplaceProductId}
+                    </p>
+                  </div>
+                  <span
+                    className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                      STATUS_BADGE[o.publicationStatus] ?? STATUS_BADGE.DRAFT
+                    }`}
+                  >
+                    {publicationStatusLabel(o.publicationStatus)}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm font-medium text-gray-700">{formatPrice(o)}</p>
+                <div className="mt-3">
+                  <Link
+                    href={`/seller/marketplace-offers/${o.id}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                    data-testid={`seller-offer-detail-${o.id}`}
+                  >
+                    <Eye className="h-3 w-3" /> Voir les détails
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-premium-sm md:block">
+            <table className="w-full text-sm" data-testid="seller-offers-list-table">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Offre</th>
+                  <th className="px-4 py-2 text-left">Produit</th>
+                  <th className="px-4 py-2 text-left">Prix</th>
+                  <th className="px-4 py-2 text-left">Statut</th>
+                  <th className="px-4 py-2 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {state.rows.map((o) => (
+                  <tr key={o.id} data-testid={`seller-offer-row-${o.id}`}>
+                    <td className="px-4 py-2">
+                      <div className="font-medium text-gray-900">{o.title}</div>
+                      {o.shortDescription ? (
+                        <div className="line-clamp-1 text-[11px] text-gray-400">
+                          {o.shortDescription}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">
+                      {o.marketplaceProduct?.commercialName ?? o.marketplaceProductId}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">{formatPrice(o)}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                          STATUS_BADGE[o.publicationStatus] ?? STATUS_BADGE.DRAFT
+                        }`}
+                      >
+                        {publicationStatusLabel(o.publicationStatus)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <Link
+                        href={`/seller/marketplace-offers/${o.id}`}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                        data-testid={`seller-offer-detail-${o.id}`}
+                      >
+                        <Eye className="h-3 w-3" /> Détails
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

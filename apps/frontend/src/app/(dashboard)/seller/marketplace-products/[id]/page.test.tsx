@@ -133,7 +133,7 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
     );
     const submit = screen.getByTestId('submit-product') as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
-    expect(screen.getByTestId('status-badge')).toHaveTextContent('DRAFT');
+    expect(screen.getByTestId('status-badge')).toHaveTextContent('Brouillon');
   });
 
   it('envoie un PATCH diff minimal — uniquement les champs modifiés', async () => {
@@ -479,7 +479,7 @@ describe('SellerMarketplaceProductDetailPage (MP-EDIT-PRODUCT.1)', () => {
     expect(idArg).toBe('mp1');
     expect(token).toBe('tok');
     await waitFor(() =>
-      expect(screen.getByTestId('status-badge')).toHaveTextContent('IN_REVIEW'),
+      expect(screen.getByTestId('status-badge')).toHaveTextContent('En revue'),
     );
     expect(screen.getByTestId('workflow-success')).toHaveTextContent(/soumis/i);
   });

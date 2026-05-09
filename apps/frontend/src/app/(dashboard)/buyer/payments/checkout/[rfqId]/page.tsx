@@ -35,7 +35,7 @@ export default function BuyerCheckoutPage() {
       return;
     }
     if (!offerId) {
-      setError('Offer ID manquant');
+      setError("Identifiant de l'offre manquant");
       return;
     }
     setLoading(true);
@@ -63,11 +63,11 @@ export default function BuyerCheckoutPage() {
   return (
     <div className="space-y-6 p-6" data-testid="buyer-checkout-page">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Paiement de votre commande</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Payer votre commande</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Vous serez redirigé vers Stripe pour saisir votre carte bancaire.
+          Vous serez redirige vers notre plateforme de paiement securisee pour finaliser votre achat.
         </p>
-        <p className="mt-1 text-xs text-gray-500">RFQ : {rfqId}</p>
+        <p className="mt-1 text-xs text-gray-500">N° demande : {rfqId}</p>
       </div>
 
       {error && (
@@ -84,15 +84,16 @@ export default function BuyerCheckoutPage() {
       <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-5">
         <div>
           <label className="block text-xs font-medium text-gray-700">
-            Offer ID
+            Identifiant de l&apos;offre
+            <span className="ml-1 font-normal text-gray-500">(fourni par IOX)</span>
           </label>
           <input
             type="text"
             value={offerId}
             onChange={(e) => setOfferId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono"
             data-testid="buyer-checkout-offer-id"
-            placeholder="uuid-offer"
+            placeholder="Identifiant de l'offre"
           />
         </div>
         <div>

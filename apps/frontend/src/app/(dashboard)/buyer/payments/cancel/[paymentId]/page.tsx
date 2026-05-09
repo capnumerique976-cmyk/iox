@@ -16,16 +16,25 @@ export default function BuyerCheckoutCancelPage() {
           Paiement annulé
         </h1>
         <p className="mt-2 text-sm text-yellow-700">
-          Vous avez annulé le paiement. Vous pouvez retenter à tout moment.
+          Le paiement a ete annule. Votre commande reste en attente — vous pouvez repayer
+          a tout moment.
         </p>
-        <p className="mt-1 text-xs text-yellow-600">Réf. RFQ : {params.paymentId}</p>
+        <p className="mt-1 text-xs text-yellow-600">N° demande : {params.paymentId}</p>
       </div>
-      <Link
-        href={`/buyer/payments/checkout/${params.paymentId}`}
-        className="inline-block text-sm text-blue-600 hover:underline"
-      >
-        Réessayer le paiement →
-      </Link>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Link
+          href={`/buyer/payments/checkout/${params.paymentId}`}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          Reessayer le paiement
+        </Link>
+        <Link
+          href="/buyer"
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Mon espace acheteur
+        </Link>
+      </div>
     </div>
   );
 }

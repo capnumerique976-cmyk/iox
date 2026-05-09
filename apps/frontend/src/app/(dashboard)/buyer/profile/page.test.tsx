@@ -73,7 +73,8 @@ describe('BuyerProfilePage (BUYER-DASHBOARD-2)', () => {
     expect(await screen.findByText('Bob Buyer')).toBeInTheDocument();
     // buyer@ex.com apparaît dans subtitle PageHeader + dl email du compte
     expect(screen.getAllByText('buyer@ex.com').length).toBeGreaterThan(0);
-    expect(screen.getByText('MARKETPLACE_BUYER')).toBeInTheDocument();
+    // role display changed to human-readable 'Acheteur' in Phase 4
+    expect(screen.getByText('Acheteur')).toBeInTheDocument();
   });
 
   it('rend la company avec coordonnées', async () => {

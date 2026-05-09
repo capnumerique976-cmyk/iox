@@ -10,7 +10,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Circle, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Circle, Info, XCircle } from 'lucide-react';
 import { QuoteRequestStatus } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import {
@@ -20,13 +20,31 @@ import {
 } from '@/lib/quote-requests';
 
 const STATUS_LABELS: Record<QuoteRequestStatus, string> = {
-  NEW: 'Nouvelle',
-  QUALIFIED: 'Qualifiée',
-  QUOTED: 'Devisée',
+  NEW: 'En attente',
+  QUALIFIED: 'En cours',
+  QUOTED: 'Devis reçu',
   NEGOTIATING: 'Négociation',
-  WON: 'Gagnée',
-  LOST: 'Perdue',
+  WON: 'Acceptée',
+  LOST: 'Non retenue',
   CANCELLED: 'Annulée',
+};
+
+/** Message d'aide contextuel selon le statut de la demande */
+const STATUS_GUIDE: Partial<Record<QuoteRequestStatus, { text: string; cta?: string; ctaHref?: string }>> = {
+  NEW: { text: 'Votre demande a ete envoyee. Le vendeur va la traiter sous peu.' },
+  QUALIFIED: { text: 'Le vendeur a examine votre demande et prepare un devis.' },
+  QUOTED: {
+    text: 'Le vendeur vous a envoye un devis. Consultez les conditions et procedez au paiement.',
+    cta: 'Payer la commande',
+  },
+  NEGOTIATING: { text: 'Des echanges sont en cours. Utilisez la messagerie ci-dessous pour communiquer.' },
+  WON: {
+    text: 'Votre commande est confirmee. Retrouvez votre facture dans "Mes factures".',
+    cta: 'Voir mes factures',
+    ctaHref: '/buyer/invoices',
+  },
+  LOST: { text: 'Cette demande n\'a pas abouti.' },
+  CANCELLED: { text: 'Cette demande a ete annulee.' },
 };
 
 const STATUS_COLORS: Record<QuoteRequestStatus, string> = {
@@ -165,6 +183,36 @@ export default function BuyerQuoteRequestDetailPage() {
       {/* Status Timeline */}
       <RfqTimeline status={rfq.status} />
 
+      {/* Guide contextuel par statut */}
+      {STATUS_GUIDE[rfq.status] && (
+        <div className={`flex items-start gap-3 rounded-lg border p-4 text-sm ${
+          rfq.status === QuoteRequestStatus.QUOTED
+            ? 'border-blue-200 bg-blue-50 text-blue-900'
+            : rfq.status === QuoteRequestStatus.WON
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : rfq.status === QuoteRequestStatus.CANCELLED || rfq.status === QuoteRequestStatus.LOST
+                ? 'border-gray-200 bg-gray-50 text-gray-700'
+                : 'border-amber-200 bg-amber-50 text-amber-900'
+        }`}>
+          <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <div className="flex-1">
+            <p>{STATUS_GUIDE[rfq.status]?.text}</p>
+            {STATUS_GUIDE[rfq.status]?.cta && (
+              <Link
+                href={
+                  STATUS_GUIDE[rfq.status]?.ctaHref ??
+                  `/buyer/payments/checkout/${rfq.id}`
+                }
+                className="mt-2 inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                {STATUS_GUIDE[rfq.status]?.cta}
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
       <section className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Votre demande</h2>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:grid-cols-4">
@@ -181,7 +229,7 @@ export default function BuyerQuoteRequestDetailPage() {
             <dd className="text-gray-800">{rfq.deliveryCountry ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Marché cible</dt>
+            <dt className="text-gray-500">Marche vise</dt>
             <dd className="text-gray-800">{rfq.targetMarket ?? '—'}</dd>
           </div>
           <div>

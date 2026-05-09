@@ -1,0 +1,10 @@
+ RUN  v2.1.9 /Users/ahmedabdoullahi/Documents/Claude/Projects/MMD/iox/apps/frontend
+
+ ✓ src/app/(dashboard)/buyer/quote-requests/[id]/page.test.tsx (7 tests) 75ms
+ ✓ src/app/(dashboard)/buyer/quote-requests/page.test.tsx (4 tests) 81ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  21:11:40
+   Duration  979ms (transform 151ms, setup 302ms, collect 206ms, tests 156ms, environment 821ms, prepare 131ms)
+

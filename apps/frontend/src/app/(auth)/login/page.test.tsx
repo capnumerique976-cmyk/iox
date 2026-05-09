@@ -148,6 +148,7 @@ describe('LoginPage', () => {
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'b@x.fr');
     await userEvent.type(screen.getByLabelText('Mot de passe'), 'secret');
     await userEvent.click(screen.getByRole('button', { name: /Se connecter/i }));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
+    // MARKETPLACE_BUYER → role-based default landing
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/buyer'));
   });
 });

@@ -268,12 +268,13 @@ export default function BuyerProfileEditPage() {
               data-testid="field-city"
             />
           </Field>
-          <Field label="Pays (ISO)">
+          <Field label="Pays">
             <input
               type="text"
               value={form.country}
               onChange={set('country')}
               maxLength={2}
+              placeholder="FR, MG, YT…"
               className={inputCls}
               data-testid="field-country"
             />

@@ -49,9 +49,9 @@ const EMPTY: FormState = {
 };
 
 function validateClient(form: FormState): string | null {
-  if (!form.marketplaceProductId) return 'Sélectionnez un produit marketplace.';
+  if (!form.marketplaceProductId) return 'Choisissez le produit que vous souhaitez vendre.';
   if (form.title.trim().length < 2)
-    return 'Le titre de l’offre doit contenir au moins 2 caractères.';
+    return "Le titre de l'offre doit contenir au moins 2 caractères.";
   if (form.title.length > 255)
     return 'Le titre est limité à 255 caractères.';
   if (form.priceMode !== 'QUOTE_ONLY' && form.unitPrice) {
@@ -60,7 +60,7 @@ function validateClient(form: FormState): string | null {
   }
   if (form.moq) {
     const n = Number(form.moq);
-    if (Number.isNaN(n) || n < 0) return 'Le MOQ doit être un nombre positif.';
+    if (Number.isNaN(n) || n < 0) return 'La commande minimum doit être un nombre positif.';
   }
   if (form.availableQuantity) {
     const n = Number(form.availableQuantity);
@@ -189,8 +189,8 @@ export default function SellerMarketplaceOfferNewPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Nouvelle offre marketplace"
-        subtitle="Création d'un brouillon — vous compléterez le détail à l'étape suivante"
+        title="Nouvelle offre"
+        subtitle="Remplissez les informations de base pour creer votre offre"
         actions={
           <Link
             href="/seller/marketplace-offers"
@@ -211,7 +211,7 @@ export default function SellerMarketplaceOfferNewPage() {
           <div>
             <p className="font-medium">{state.message}</p>
             <p className="mt-1 text-xs">
-              Aucun profil vendeur n’est rattaché à votre compte. Contactez l’équipe IOX
+              Aucun profil vendeur n'est rattaché à votre compte. Contactez l'équipe IOX
               pour finaliser votre onboarding avant de créer une offre.
             </p>
           </div>
@@ -220,8 +220,12 @@ export default function SellerMarketplaceOfferNewPage() {
 
       {isReady && (
         <form onSubmit={onSubmit} className="space-y-5" noValidate>
-          <Section title="Identité">
-            <Field label="Produit marketplace" required>
+          <Section title="Quel produit vendez-vous ?">
+            <Field
+              label="Produit"
+              required
+              hint="Choisissez le produit que vous souhaitez mettre en vente."
+            >
               <select
                 value={form.marketplaceProductId}
                 onChange={set('marketplaceProductId')}
@@ -229,16 +233,20 @@ export default function SellerMarketplaceOfferNewPage() {
                 className={selectCls}
                 data-testid="field-marketplaceProductId"
               >
-                <option value="">— sélectionner —</option>
+                <option value="">— Choisir un produit —</option>
                 {state.products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.commercialName} ({p.slug})
+                    {p.commercialName}
                   </option>
                 ))}
               </select>
             </Field>
 
-            <Field label="Titre de l’offre" required>
+            <Field
+              label="Titre de l'offre"
+              required
+              hint="Ex : Vanille bourbon 1kg — récolte 2026. Ce titre sera visible par les acheteurs."
+            >
               <input
                 type="text"
                 value={form.title}
@@ -248,12 +256,17 @@ export default function SellerMarketplaceOfferNewPage() {
                 required
                 className={inputCls}
                 data-testid="field-title"
+                placeholder="Donnez un titre clair à votre offre"
               />
             </Field>
           </Section>
 
-          <Section title="Prix">
-            <Field label="Mode tarifaire" required>
+          <Section title="Conditions de vente">
+            <Field
+              label="Type de prix"
+              required
+              hint="Prix fixe = même prix pour tous. Sur devis = l'acheteur demande un prix personnalisé."
+            >
               <select
                 value={form.priceMode}
                 onChange={set('priceMode')}
@@ -268,7 +281,10 @@ export default function SellerMarketplaceOfferNewPage() {
             </Field>
 
             {form.priceMode !== 'QUOTE_ONLY' && (
-              <Field label="Prix unitaire (optionnel à la création)">
+              <Field
+                label="Prix unitaire"
+                hint="Vous pourrez le modifier plus tard. Laissez vide si vous ne le connaissez pas encore."
+              >
                 <input
                   type="number"
                   step="0.01"
@@ -277,11 +293,12 @@ export default function SellerMarketplaceOfferNewPage() {
                   onChange={set('unitPrice')}
                   className={inputCls}
                   data-testid="field-unitPrice"
+                  placeholder="0.00"
                 />
               </Field>
             )}
 
-            <Field label="Devise">
+            <Field label="Devise" hint="EUR par défaut. Modifiez si vous vendez dans une autre devise.">
               <input
                 type="text"
                 value={form.currency}
@@ -292,7 +309,10 @@ export default function SellerMarketplaceOfferNewPage() {
               />
             </Field>
 
-            <Field label="MOQ (optionnel)">
+            <Field
+              label="Commande minimum"
+              hint="Quantité minimale que l'acheteur doit commander. Laissez vide si pas de minimum."
+            >
               <input
                 type="number"
                 step="0.001"
@@ -301,10 +321,14 @@ export default function SellerMarketplaceOfferNewPage() {
                 onChange={set('moq')}
                 className={inputCls}
                 data-testid="field-moq"
+                placeholder="Ex : 10"
               />
             </Field>
 
-            <Field label="Quantité disponible (optionnel)">
+            <Field
+              label="Quantité disponible"
+              hint="Stock actuellement disponible. Laissez vide si vous produisez à la demande."
+            >
               <input
                 type="number"
                 step="0.001"
@@ -313,6 +337,7 @@ export default function SellerMarketplaceOfferNewPage() {
                 onChange={set('availableQuantity')}
                 className={inputCls}
                 data-testid="field-availableQuantity"
+                placeholder="Ex : 500"
               />
             </Field>
           </Section>

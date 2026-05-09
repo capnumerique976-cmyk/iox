@@ -4,7 +4,7 @@
 //  - GET    /invoices         (ADMIN, COORDINATOR, MARKETPLACE_BUYER, MARKETPLACE_SELLER)
 //  - GET    /invoices/:id     (same roles)
 //  - POST   /invoices         (ADMIN, COORDINATOR) — body: { paymentId }
-//  - GET    /invoices/:id/pdf (same roles) — 501 stub
+//  - GET    /invoices/:id/pdf (same roles) — PDF download
 
 import {
   Body,
@@ -17,9 +17,11 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -128,8 +130,24 @@ export class InvoicesController {
     UserRole.MARKETPLACE_BUYER,
     UserRole.MARKETPLACE_SELLER,
   )
-  @ApiOperation({ summary: 'Télécharger le PDF d\'une facture (stub V1 — 501)' })
-  async downloadPdf(@Param('id', ParseUUIDPipe) id: string) {
-    return this.invoices.generatePdf(id);
+  @ApiOperation({ summary: 'Télécharger le PDF d\'une facture' })
+  @ApiProduces('application/pdf')
+  async downloadPdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: RequestUser,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.invoices.generatePdf(id, actor);
+
+    // Fetch invoice number for filename
+    const invoice = await this.invoices.findById(id, actor);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="facture-${invoice.invoiceNumber}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+      'Cache-Control': 'private, no-cache',
+    });
+    res.end(pdfBuffer);
   }
 }

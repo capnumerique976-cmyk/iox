@@ -1,7 +1,7 @@
 // PAY-2 — Spec InvoicesService.
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotImplementedException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
@@ -22,6 +22,8 @@ describe('InvoicesService', () => {
       create: jest.Mock;
     };
     payment: { findUnique: jest.Mock };
+    sellerProfile: { findUnique: jest.Mock };
+    company: { findUnique: jest.Mock };
     $transaction: jest.Mock;
   };
   const ownershipMock = {
@@ -66,6 +68,8 @@ describe('InvoicesService', () => {
         create: jest.fn(),
       },
       payment: { findUnique: jest.fn() },
+      sellerProfile: { findUnique: jest.fn() },
+      company: { findUnique: jest.fn() },
       $transaction: jest.fn(),
     };
     prisma.$transaction.mockImplementation(async (arr: unknown[]) =>
@@ -148,9 +152,113 @@ describe('InvoicesService', () => {
   });
 
   describe('generatePdf', () => {
-    it('returns 501 Not Implemented', async () => {
-      await expect(service.generatePdf('inv-1')).rejects.toThrow(
-        NotImplementedException,
+    const invoiceRow = {
+      id: 'inv-1',
+      invoiceNumber: 'IOX-2026-000001',
+      paymentId: 'pay1',
+      sellerProfileId: 'sp1',
+      buyerCompanyId: 'co-buyer',
+      amountCents: 15000,
+      currency: 'EUR',
+      status: 'DRAFT',
+      issuedAt: new Date('2026-01-15'),
+      createdAt: new Date('2026-01-15'),
+    };
+    const paymentRow = {
+      amountCents: 15000,
+      currency: 'EUR',
+      applicationFeeCents: 750,
+    };
+    const sellerProfileRow = {
+      publicDisplayName: 'Ferme Tropicale',
+      legalName: 'Ferme Tropicale SARL',
+      country: 'Madagascar',
+      region: 'Analamanga',
+      salesEmail: 'vente@ferme-tropicale.mg',
+      salesPhone: '+261 34 00 00 00',
+      company: {
+        name: 'Ferme Tropicale SARL',
+        address: '12 rue des Épices',
+        city: 'Antananarivo',
+        country: 'Madagascar',
+        postalCode: '101',
+        vatNumber: 'MG-12345',
+        email: 'contact@ferme-tropicale.mg',
+        phone: '+261 34 00 00 00',
+      },
+    };
+    const buyerCompanyRow = {
+      name: 'Épicerie Fine Paris',
+      address: '45 avenue des Champs-Élysées',
+      city: 'Paris',
+      country: 'France',
+      postalCode: '75008',
+      vatNumber: 'FR-98765432',
+      email: 'achat@epicerie-fine.fr',
+      phone: '+33 1 00 00 00 00',
+    };
+
+    function setupPdfMocks() {
+      prisma.invoice.findUnique.mockResolvedValue(invoiceRow);
+      prisma.payment.findUnique.mockResolvedValue(paymentRow);
+      prisma.sellerProfile.findUnique.mockResolvedValue(sellerProfileRow);
+      prisma.company.findUnique.mockResolvedValue(buyerCompanyRow);
+    }
+
+    it('generates PDF buffer for admin', async () => {
+      setupPdfMocks();
+      ownershipMock.isStaff.mockReturnValue(true);
+
+      const result = await service.generatePdf('inv-1', admin);
+
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result.length).toBeGreaterThan(100);
+      // PDF magic bytes: %PDF
+      expect(result.subarray(0, 4).toString()).toBe('%PDF');
+    });
+
+    it('generates PDF buffer for buyer with ownership', async () => {
+      setupPdfMocks();
+      ownershipMock.isStaff.mockReturnValue(false);
+
+      const result = await service.generatePdf('inv-1', buyer);
+
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result.subarray(0, 4).toString()).toBe('%PDF');
+    });
+
+    it('generates PDF buffer for seller with ownership', async () => {
+      setupPdfMocks();
+      ownershipMock.isStaff.mockReturnValue(false);
+
+      const result = await service.generatePdf('inv-1', seller);
+
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result.subarray(0, 4).toString()).toBe('%PDF');
+    });
+
+    it('throws NotFoundException when invoice not found', async () => {
+      prisma.invoice.findUnique.mockResolvedValue(null);
+
+      await expect(service.generatePdf('inv-999', admin)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFoundException when buyer has no ownership', async () => {
+      prisma.invoice.findUnique.mockResolvedValue(invoiceRow);
+      ownershipMock.isStaff.mockReturnValue(false);
+
+      const otherBuyer: RequestUser = {
+        id: 'u-other',
+        email: 'other@iox.co',
+        role: UserRole.MARKETPLACE_BUYER,
+        sellerProfileIds: [],
+        companyIds: ['co-other'],
+      };
+
+      await expect(service.generatePdf('inv-1', otherBuyer)).rejects.toThrow(
+        NotFoundException,
       );
     });
   });

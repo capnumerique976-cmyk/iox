@@ -12,6 +12,7 @@
  * Détection de la section active = plus long préfixe `pathPrefixes` matchant
  * le pathname courant. Voir `getActiveSection()`.
  */
+import { UserRole } from '@iox/shared';
 import {
   Home,
   LayoutDashboard,
@@ -71,6 +72,11 @@ export interface NavSection {
   description: string;
   /** Permission gate de la section entière. */
   permission: string;
+  /**
+   * Rôles autorisés à voir cette section. `undefined` = tous les rôles.
+   * Les ADMIN voient toujours tout indépendamment de ce champ.
+   */
+  roles?: UserRole[];
   /** Préfixes URL appartenant à cette section (pour détection active). */
   pathPrefixes: string[];
   /** Items affichés dans la sidebar contextuelle ET dans la dashboard de rubrique. */
@@ -108,6 +114,24 @@ export const HOME_SECTION: NavSection = {
 };
 
 /* ------------------------------------------------------------------ */
+/*  Rôles opérationnels (staff interne — pas marketplace)               */
+/* ------------------------------------------------------------------ */
+
+const STAFF_ROLES: UserRole[] = [
+  UserRole.ADMIN,
+  UserRole.COORDINATOR,
+  UserRole.BENEFICIARY_MANAGER,
+  UserRole.SUPPLY_MANAGER,
+  UserRole.QUALITY_MANAGER,
+  UserRole.MARKET_VALIDATOR,
+  UserRole.LOGISTICS_MANAGER,
+  UserRole.COMMERCIAL_MANAGER,
+  UserRole.BENEFICIARY,
+  UserRole.FUNDER,
+  UserRole.AUDITOR,
+];
+
+/* ------------------------------------------------------------------ */
 /*  Sections principales                                                */
 /* ------------------------------------------------------------------ */
 
@@ -119,6 +143,7 @@ export const SECTIONS: NavSection[] = [
     icon: Database,
     description: 'Données métier de référence : bénéficiaires, produits, entreprises, contrats.',
     permission: '*',
+    roles: STAFF_ROLES,
     pathPrefixes: [
       '/referentiel',
       '/beneficiaries',
@@ -172,6 +197,7 @@ export const SECTIONS: NavSection[] = [
     icon: Factory,
     description: "Chaîne de production : entrants, transformations, lots finis, traçabilité.",
     permission: '*',
+    roles: STAFF_ROLES,
     pathPrefixes: [
       '/production',
       '/inbound-batches',
@@ -241,10 +267,11 @@ export const SECTIONS: NavSection[] = [
     icon: ShoppingCart,
     description: 'Espace acheteur : commandes, factures, préférences.',
     permission: '*',
+    roles: [...STAFF_ROLES, UserRole.MARKETPLACE_BUYER],
     pathPrefixes: ['/buyer'],
     items: [
       {
-        label: 'Cockpit acheteur',
+        label: 'Mon espace acheteur',
         href: '/buyer',
         permission: '*',
         icon: LayoutDashboard,
@@ -290,15 +317,16 @@ export const SECTIONS: NavSection[] = [
   },
   {
     id: 'marketplace',
-    label: 'Marketplace',
+    label: 'Catalogue',
     href: '/marketplace-hub',
     icon: ShoppingBag,
-    description: "Cockpit vendeur, demandes de devis, documents marketplace.",
+    description: "Espace vendeur, demandes de devis, documents.",
     permission: '*',
+    roles: [...STAFF_ROLES, UserRole.MARKETPLACE_SELLER],
     pathPrefixes: ['/marketplace-hub', '/seller', '/quote-requests'],
     items: [
       {
-        label: 'Tableau Marketplace',
+        label: 'Vue d\'ensemble',
         href: '/marketplace-hub',
         permission: '*',
         icon: LayoutDashboard,
@@ -306,7 +334,7 @@ export const SECTIONS: NavSection[] = [
         hideOnDashboard: true,
       },
       {
-        label: 'Cockpit vendeur',
+        label: 'Mon espace vendeur',
         href: '/seller/dashboard',
         permission: '*',
         icon: Store,
@@ -327,11 +355,39 @@ export const SECTIONS: NavSection[] = [
         description: 'Performance et conversion des ventes',
       },
       {
-        label: 'Documents marketplace',
+        label: 'Mes produits',
+        href: '/seller/marketplace-products',
+        permission: '*',
+        icon: Package,
+        description: 'Gérer vos produits en vente',
+      },
+      {
+        label: 'Mes offres',
+        href: '/seller/marketplace-offers',
+        permission: '*',
+        icon: Tag,
+        description: 'Offres commerciales publiées',
+      },
+      {
+        label: 'Mes documents',
         href: '/seller/documents',
         permission: '*',
         icon: FolderLock,
         description: 'Pièces justificatives et contrats',
+      },
+      {
+        label: 'Paiements',
+        href: '/seller/payments',
+        permission: '*',
+        icon: CreditCard,
+        description: 'Configuration des encaissements',
+      },
+      {
+        label: 'Mes factures',
+        href: '/seller/invoices',
+        permission: '*',
+        icon: Receipt,
+        description: 'Historique des factures émises',
       },
     ],
   },
@@ -342,6 +398,7 @@ export const SECTIONS: NavSection[] = [
     icon: Truck,
     description: 'Distributions terrain, incidents, documents associés.',
     permission: '*',
+    roles: STAFF_ROLES,
     pathPrefixes: ['/distribution', '/distributions', '/incidents', '/documents'],
     items: [
       {
@@ -483,4 +540,24 @@ export function getActiveSection(pathname: string): NavSection {
     }
   }
   return best;
+}
+
+/**
+ * Sections visibles pour un rôle donné.
+ * ADMIN voit tout. Les autres ne voient que les sections dont `roles`
+ * inclut leur rôle (ou `roles` est undefined = visible par tous).
+ */
+export function getVisibleSections(role: UserRole): NavSection[] {
+  if (role === UserRole.ADMIN) return SECTIONS;
+  return SECTIONS.filter((s) => !s.roles || s.roles.includes(role));
+}
+
+/**
+ * Retourne la landing page par défaut selon le rôle.
+ * Sellers → cockpit vendeur, buyers → cockpit acheteur, staff → dashboard général.
+ */
+export function getDefaultLanding(role: UserRole): string {
+  if (role === UserRole.MARKETPLACE_SELLER) return '/seller/dashboard';
+  if (role === UserRole.MARKETPLACE_BUYER) return '/buyer';
+  return '/dashboard';
 }

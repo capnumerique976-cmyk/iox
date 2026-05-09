@@ -84,6 +84,6 @@ describe('SellerInvoicesPage (PAY-2)', () => {
     render(<SellerInvoicesPage />);
 
     expect(await screen.findByTestId('invoices-empty')).toBeInTheDocument();
-    expect(screen.getByText(/Aucune facture/)).toBeInTheDocument();
+    expect(screen.getByText(/pas encore de facture/)).toBeInTheDocument();
   });
 });

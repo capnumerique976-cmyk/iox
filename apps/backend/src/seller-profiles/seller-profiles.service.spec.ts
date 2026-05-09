@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SellerProfilesService } from './seller-profiles.service';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -71,6 +72,7 @@ describe('SellerProfilesService', () => {
         { provide: AuditService, useValue: audit },
         { provide: MarketplaceReviewService, useValue: reviewQueue },
         { provide: SellerOwnershipService, useValue: ownershipMock },
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 

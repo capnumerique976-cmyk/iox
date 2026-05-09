@@ -37,6 +37,7 @@ import {
 } from '@/lib/marketplace-offers';
 import { PageHeader } from '@/components/ui/page-header';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { publicationStatusLabel } from '@/lib/status-labels';
 
 type LoadState =
   | { kind: 'loading' }
@@ -172,7 +173,7 @@ function validateClient(form: FormState): string | null {
   if (form.title.trim().length < 2) return 'Le titre doit contenir au moins 2 caractères.';
   if (form.unitPrice && Number.isNaN(Number(form.unitPrice)))
     return 'Le prix unitaire doit être numérique.';
-  if (form.moq && Number.isNaN(Number(form.moq))) return 'Le MOQ doit être numérique.';
+  if (form.moq && Number.isNaN(Number(form.moq))) return 'La commande minimum doit etre numerique.';
   if (form.availableQuantity && Number.isNaN(Number(form.availableQuantity)))
     return 'La quantité disponible doit être numérique.';
   if (form.leadTimeDays && Number.isNaN(Number(form.leadTimeDays)))
@@ -405,7 +406,7 @@ export default function SellerMarketplaceOfferDetailPage() {
     return (
       <div className="space-y-4">
         <PageHeader
-          title="Offre marketplace"
+          title="Detail offre"
           actions={
             <Link
               href="/seller/marketplace-offers"
@@ -450,7 +451,7 @@ export default function SellerMarketplaceOfferDetailPage() {
         subtitle={
           o.marketplaceProduct?.commercialName
             ? `Offre rattachée à ${o.marketplaceProduct.commercialName}`
-            : 'Offre marketplace'
+            : 'Detail de votre offre'
         }
         actions={
           <div className="flex items-center gap-2">
@@ -539,7 +540,7 @@ export default function SellerMarketplaceOfferDetailPage() {
           <p>
             Cette offre est <strong>{statusLabel}</strong> — la sauvegarde
             déclenchera une nouvelle revue staff (passage en{' '}
-            <strong>IN_REVIEW</strong>).
+            <strong>En revue</strong>).
           </p>
         </div>
       )}
@@ -583,7 +584,7 @@ export default function SellerMarketplaceOfferDetailPage() {
       >
         <dl>
           <Row
-            label="Produit marketplace"
+            label="Produit"
             value={
               o.marketplaceProduct ? (
                 <Link
@@ -597,8 +598,8 @@ export default function SellerMarketplaceOfferDetailPage() {
               )
             }
           />
-          <Row label="Slug produit" value={o.marketplaceProduct?.slug ?? '—'} />
-          <Row label="Statut produit" value={o.marketplaceProduct?.publicationStatus ?? '—'} />
+          <Row label="Adresse produit" value={o.marketplaceProduct?.slug ?? '—'} />
+          <Row label="Statut produit" value={o.marketplaceProduct?.publicationStatus ? publicationStatusLabel(o.marketplaceProduct.publicationStatus) : '—'} />
         </dl>
       </Section>
 
@@ -638,7 +639,7 @@ export default function SellerMarketplaceOfferDetailPage() {
                 data-testid="field-unitPrice"
               />
             </Field>
-            <Field label="MOQ">
+            <Field label="Commande minimum">
               <input
                 type="number"
                 step="0.001"
@@ -666,7 +667,7 @@ export default function SellerMarketplaceOfferDetailPage() {
             <Row label="Mode" value={o.priceMode} />
             <Row label="Prix unitaire" value={`${fmtNum(o.unitPrice)} ${o.currency ?? ''}`.trim()} />
             <Row label="Devise" value={o.currency ?? '—'} />
-            <Row label="MOQ" value={fmtNum(o.moq)} />
+            <Row label="Commande minimum" value={fmtNum(o.moq)} />
             <Row label="Quantité disponible" value={fmtNum(o.availableQuantity)} />
           </dl>
         )}
@@ -720,7 +721,7 @@ export default function SellerMarketplaceOfferDetailPage() {
       >
         {editing ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Incoterm">
+            <Field label="Conditions de livraison">
               <input
                 type="text"
                 value={form.incoterm}
@@ -742,7 +743,7 @@ export default function SellerMarketplaceOfferDetailPage() {
           </div>
         ) : (
           <dl>
-            <Row label="Incoterm" value={o.incoterm ?? '—'} />
+            <Row label="Conditions de livraison" value={o.incoterm ?? '—'} />
             <Row label="Lieu de départ" value={o.departureLocation ?? '—'} />
             <Row label="Marchés destination" value={fmtDestinations(o.destinationMarketsJson)} />
           </dl>
@@ -787,9 +788,9 @@ export default function SellerMarketplaceOfferDetailPage() {
 
       <Section title="Workflow" testid="offer-section-workflow">
         <dl>
-          <Row label="Statut publication" value={o.publicationStatus} />
-          <Row label="Statut export readiness" value={o.exportReadinessStatus} />
-          <Row label="Featured rank" value={o.featuredRank ?? '—'} />
+          <Row label="Statut publication" value={publicationStatusLabel(o.publicationStatus)} />
+          <Row label="Prêt à l'export" value={o.exportReadinessStatus} />
+          <Row label="Rang de mise en avant" value={o.featuredRank ?? '—'} />
           <Row label="Soumis à revue" value={fmtDate(o.submittedAt)} />
           <Row label="Approuvée" value={fmtDate(o.approvedAt)} />
           <Row label="Publiée" value={fmtDate(o.publishedAt)} />
