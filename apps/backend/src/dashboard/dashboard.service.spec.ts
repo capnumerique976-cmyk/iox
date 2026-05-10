@@ -121,6 +121,7 @@ describe('DashboardService — getMarketplaceAlerts', () => {
         groupBy: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
       },
+      quoteRequestMessage: { count: jest.fn().mockResolvedValue(0) },
       payment: { findMany: jest.fn().mockResolvedValue([]) },
       beneficiary: { count: jest.fn().mockResolvedValue(0) },
       inboundBatch: { groupBy: jest.fn().mockResolvedValue([]) },
@@ -168,5 +169,36 @@ describe('DashboardService — getMarketplaceAlerts', () => {
     expect(result.newRfqs).toBe(0);
     expect(result.pendingActions).toBe(0);
     expect(result.total).toBe(3);
+  });
+
+  it('M58 — seller view: newMessages=2 counted from others, included in total', async () => {
+    prisma.quoteRequest.count
+      .mockResolvedValueOnce(1)  // newRfqs
+      .mockResolvedValueOnce(0); // pendingActions
+    prisma.quoteRequestMessage.count.mockResolvedValueOnce(2); // newMessages
+
+    const result = await service.getMarketplaceAlerts(makeSellerActor());
+
+    expect(result.newMessages).toBe(2);
+    expect(result.total).toBe(3); // 1 + 0 + 2
+  });
+
+  it('M58 — buyer view: newMessages=1 counted from others, included in total', async () => {
+    prisma.quoteRequest.count
+      .mockResolvedValueOnce(0)  // newQuotes
+      .mockResolvedValueOnce(0); // wonRfqs
+    prisma.payment.findMany.mockResolvedValue([]);
+    prisma.quoteRequestMessage.count.mockResolvedValueOnce(1); // newMessages
+
+    const result = await service.getMarketplaceAlerts(makeBuyerActor());
+
+    expect(result.newMessages).toBe(1);
+    expect(result.total).toBe(1);
+  });
+
+  it('M58 — seller sans sellerProfileId → newMessages=0', async () => {
+    const result = await service.getMarketplaceAlerts(makeSellerActor({ sellerProfileIds: [] }));
+    expect(result.newMessages).toBe(0);
+    expect(result.total).toBe(0);
   });
 });

@@ -24,6 +24,8 @@ import {
   BeneficiaryStatus,
   DocumentStatus,
   EntityType,
+  InvoiceStatus,
+  PaymentStatus,
   ProductStatus,
   QuoteRequestStatus,
   SellerProfileStatus,
@@ -70,6 +72,9 @@ export interface RunnerOptions {
     | 'marketplaceDocument'
     | 'quoteRequest'
     | 'quoteRequestMessage'
+    // M62-DEMO
+    | 'payment'
+    | 'invoice'
   >;
   env: RunnerEnv;
   log?: (msg: string) => void;
@@ -88,6 +93,10 @@ export interface RunnerSummary {
   quoteRequests: number;
   quoteRequestMessages: number;
   smokeBuyer: string | null;
+  // M62-DEMO
+  payments: number;
+  invoices: number;
+  sellerComplianceDocs: number;
 }
 
 const SMOKE_SELLER_DEFAULT_PASSWORD = 'IoxSmoke2026!';
@@ -126,6 +135,9 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     quoteRequests: 0,
     quoteRequestMessages: 0,
     smokeBuyer: null,
+    payments: 0,
+    invoices: 0,
+    sellerComplianceDocs: 0,
   };
 
   if (!shouldRun(opts.env)) {
@@ -668,6 +680,8 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
   // comme tag interne — pas affiché côté UI).
   let rfqCount = 0;
   let rfqMessagesCount = 0;
+  let paymentsCount = 0;
+  let invoicesCount = 0;
   if (smokeBuyerUserId) {
     const buyerCompany = await prisma.company.findUnique({
       where: { code: SMOKE_BUYER_COMPANY_CODE },
@@ -688,10 +702,12 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
       });
       if (!targetOffer) continue;
 
+      // Idempotence key = targetMarket (seedKey). Do NOT include marketplaceOfferId here
+      // — if the product assignment changes between seed runs, the offer changes but the
+      // seedKey remains the same and the RFQ should be updated, not duplicated.
       const existingRfq = await prisma.quoteRequest.findFirst({
         where: {
           buyerCompanyId: buyerCompany.id,
-          marketplaceOfferId: targetOffer.id,
           targetMarket: rfqDef.seedKey,
         },
         select: { id: true },
@@ -707,7 +723,11 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
 
       let rfqId: string;
       if (existingRfq) {
-        await prisma.quoteRequest.update({ where: { id: existingRfq.id }, data: rfqData });
+        // Also update marketplaceOfferId in case the product assignment changed across seed runs.
+        await prisma.quoteRequest.update({
+          where: { id: existingRfq.id },
+          data: { ...rfqData, marketplaceOfferId: targetOffer.id },
+        });
         rfqId = existingRfq.id;
       } else {
         const created = await prisma.quoteRequest.create({
@@ -722,6 +742,92 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
         rfqId = created.id;
       }
       rfqCount++;
+
+      // ── M62-DEMO : Payment SUCCEEDED + Invoice ISSUED pour les RFQ WON ──
+      // Idempotence : lookup sur quoteRequestId (Payment) puis paymentId (Invoice).
+      if (rfqDef.status === 'WON' && rfqDef.paymentAmountCents) {
+        const productDef = DEMO_DATASET.products.find(p => p.slug === rfqDef.productSlug);
+        const sellerProfileId = productDef ? sellerProfileIdBySlug.get(productDef.sellerSlug) : undefined;
+
+        if (sellerProfileId) {
+          const fakeIntentId = `pi_demo_${rfqDef.seedKey}`;
+          const appFee = Math.floor(rfqDef.paymentAmountCents * 0.05);
+
+          const existingPayment = await prisma.payment.findFirst({
+            where: { quoteRequestId: rfqId },
+            select: { id: true },
+          });
+
+          let paymentId: string;
+          if (existingPayment) {
+            await prisma.payment.update({
+              where: { id: existingPayment.id },
+              data: {
+                status: PaymentStatus.SUCCEEDED,
+                amountCents: rfqDef.paymentAmountCents,
+                currency: rfqDef.paymentCurrency ?? 'EUR',
+                applicationFeeCents: appFee,
+                // Propagate correct sellerProfileId/offerId so seller-scoped queries work.
+                sellerProfileId,
+                marketplaceOfferId: targetOffer.id,
+              },
+            });
+            paymentId = existingPayment.id;
+          } else {
+            const created = await prisma.payment.create({
+              data: {
+                quoteRequestId: rfqId,
+                marketplaceOfferId: targetOffer.id,
+                sellerProfileId,
+                buyerCompanyId: buyerCompany.id,
+                buyerUserId: smokeBuyerUserId,
+                amountCents: rfqDef.paymentAmountCents,
+                currency: rfqDef.paymentCurrency ?? 'EUR',
+                applicationFeeCents: appFee,
+                status: PaymentStatus.SUCCEEDED,
+                stripePaymentIntentId: fakeIntentId,
+              },
+              select: { id: true },
+            });
+            paymentId = created.id;
+          }
+          paymentsCount++;
+
+          // Invoice ISSUED associée au Payment.
+          const invoiceNumber = `INV-DEMO-${rfqDef.seedKey.toUpperCase().replace(/-/g, '').slice(0, 12)}`;
+          const existingInvoice = await prisma.invoice.findFirst({
+            where: { paymentId },
+            select: { id: true },
+          });
+          if (existingInvoice) {
+            // Propagate corrected sellerProfileId in case product changed across seed runs.
+            await prisma.invoice.update({
+              where: { id: existingInvoice.id },
+              data: {
+                sellerProfileId,
+                buyerCompanyId: buyerCompany.id,
+                amountCents: rfqDef.paymentAmountCents,
+                currency: rfqDef.paymentCurrency ?? 'EUR',
+                status: InvoiceStatus.ISSUED,
+              },
+            });
+          } else {
+            await prisma.invoice.create({
+              data: {
+                paymentId,
+                sellerProfileId,
+                buyerCompanyId: buyerCompany.id,
+                invoiceNumber,
+                amountCents: rfqDef.paymentAmountCents,
+                currency: rfqDef.paymentCurrency ?? 'EUR',
+                status: InvoiceStatus.ISSUED,
+                issuedAt: new Date(),
+              },
+            });
+            invoicesCount++;
+          }
+        }
+      }
 
       // 2 messages par RFQ : init buyer + reply seller. Auteurs :
       // smokeBuyerUserId pour init, smoke-seller pour la reply (déjà créé
@@ -756,8 +862,110 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     }
   }
 
+  // ─── M62-DEMO — Compliance MarketplaceDocument pour smoke-seller ─────────
+  //
+  // 3 documents de conformité (VERIFIED / PENDING / REJECTED) rattachés au
+  // SellerProfile du smoke-seller. Ils alimentent la vue compliance dashboard
+  // et le module de conformité vendeur lors de la démo investisseur.
+  let sellerComplianceDocsCount = 0;
+  const smokeSellerProfile = DEMO_DATASET.sellers[0];
+  const smokeSellerProfileId = smokeSellerProfile
+    ? sellerProfileIdBySlug.get(smokeSellerProfile.slug)
+    : undefined;
+
+  if (uploaderUserId && smokeSellerProfileId) {
+    const complianceDocs: Array<{
+      storageKey: string;
+      documentName: string;
+      documentType: string;
+      title: string;
+      verificationStatus: MarketplaceVerificationStatus;
+    }> = [
+      {
+        storageKey: 'demo/compliance/smoke-seller/phytosanitary-cert.pdf',
+        documentName: 'Certificat phytosanitaire 2026',
+        documentType: 'PHYTOSANITARY_CERTIFICATE',
+        title: 'Certificat phytosanitaire — Coopérative Vanille de Mayotte',
+        verificationStatus: MarketplaceVerificationStatus.VERIFIED,
+      },
+      {
+        storageKey: 'demo/compliance/smoke-seller/organic-cert.pdf',
+        documentName: 'Demande certification bio AB 2026',
+        documentType: 'ORGANIC_CERTIFICATE',
+        title: 'Certification biologique AB (en cours de validation)',
+        verificationStatus: MarketplaceVerificationStatus.PENDING,
+      },
+      {
+        storageKey: 'demo/compliance/smoke-seller/export-license.pdf',
+        documentName: 'Licence export — demande initiale (rejetée)',
+        documentType: 'EXPORT_LICENSE',
+        title: 'Licence export — dossier incomplet (rejeté)',
+        verificationStatus: MarketplaceVerificationStatus.REJECTED,
+      },
+    ];
+
+    for (const cd of complianceDocs) {
+      // Document MCH — idempotence via storageKey.
+      const existingDoc = await prisma.document.findFirst({
+        where: { storageKey: cd.storageKey },
+        select: { id: true },
+      });
+      const mchDoc = existingDoc
+        ? await prisma.document.update({
+            where: { id: existingDoc.id },
+            data: { name: cd.documentName, status: DocumentStatus.ACTIVE },
+          })
+        : await prisma.document.create({
+            data: {
+              name: cd.documentName,
+              originalFilename: cd.documentName,
+              mimeType: 'application/pdf',
+              storageKey: cd.storageKey,
+              sizeBytes: 0,
+              status: DocumentStatus.ACTIVE,
+              linkedEntityType: EntityType.SELLER_PROFILE,
+              linkedEntityId: smokeSellerProfileId,
+            },
+          });
+
+      // MarketplaceDocument PRIVATE rattaché au SellerProfile.
+      const existing = await prisma.marketplaceDocument.findFirst({
+        where: {
+          relatedType: MarketplaceRelatedEntityType.SELLER_PROFILE,
+          relatedId: smokeSellerProfileId,
+          documentId: mchDoc.id,
+        },
+        select: { id: true },
+      });
+      const mdData = {
+        title: cd.title,
+        documentType: cd.documentType,
+        visibility: MarketplaceDocumentVisibility.PRIVATE,
+        verificationStatus: cd.verificationStatus,
+        validFrom: SEED_VALID_FROM,
+        validUntil: SEED_VALID_UNTIL,
+      } as const;
+      if (existing) {
+        await prisma.marketplaceDocument.update({ where: { id: existing.id }, data: mdData });
+      } else {
+        await prisma.marketplaceDocument.create({
+          data: {
+            ...mdData,
+            relatedType: MarketplaceRelatedEntityType.SELLER_PROFILE,
+            relatedId: smokeSellerProfileId,
+            documentId: mchDoc.id,
+            createdById: uploaderUserId,
+          },
+        });
+      }
+      sellerComplianceDocsCount++;
+    }
+  } else {
+    log('⚠️ Demo seed: skip compliance docs (no uploader or no smoke-seller profile).');
+  }
+
   log(
-    `✅ Demo seed done — sellers: ${sellersCount}, products: ${productsCount}, offers: ${offersCount}, certifications: ${certsCount}, mediaAssets: ${mediaAssetsCount}, publicDocs: ${publicDocsCount}, quoteRequests: ${rfqCount}, quoteRequestMessages: ${rfqMessagesCount}, smokeSeller: ${smokeSellerCreated ?? 'n/a'}, smokeBuyer: ${smokeBuyerCreated ?? 'n/a'}`,
+    `✅ Demo seed done — sellers: ${sellersCount}, products: ${productsCount}, offers: ${offersCount}, certifications: ${certsCount}, mediaAssets: ${mediaAssetsCount}, publicDocs: ${publicDocsCount}, quoteRequests: ${rfqCount}, rfqMessages: ${rfqMessagesCount}, payments: ${paymentsCount}, invoices: ${invoicesCount}, sellerComplianceDocs: ${sellerComplianceDocsCount}, smokeSeller: ${smokeSellerCreated ?? 'n/a'}, smokeBuyer: ${smokeBuyerCreated ?? 'n/a'}`,
   );
 
   return {
@@ -772,5 +980,8 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
     quoteRequests: rfqCount,
     quoteRequestMessages: rfqMessagesCount,
     smokeBuyer: smokeBuyerCreated,
+    payments: paymentsCount,
+    invoices: invoicesCount,
+    sellerComplianceDocs: sellerComplianceDocsCount,
   };
 }

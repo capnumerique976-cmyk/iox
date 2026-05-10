@@ -312,10 +312,10 @@ export class DashboardService {
       const sellerProfileId = actor.sellerProfileIds?.[0];
 
       if (!sellerProfileId) {
-        return { total: 0, newRfqs: 0, newQuotes: 0, pendingPayment: 0, pendingActions: 0 };
+        return { total: 0, newRfqs: 0, newQuotes: 0, pendingPayment: 0, pendingActions: 0, newMessages: 0 };
       }
 
-      const [newRfqs, pendingActions] = await Promise.all([
+      const [newRfqs, pendingActions, newMessages] = await Promise.all([
         this.prisma.quoteRequest.count({
           where: {
             marketplaceOffer: { sellerProfileId },
@@ -329,14 +329,22 @@ export class DashboardService {
             updatedAt: { lt: since3d },
           },
         }),
+        this.prisma.quoteRequestMessage.count({
+          where: {
+            quoteRequest: { marketplaceOffer: { sellerProfileId } },
+            authorUserId: { not: actor.id },
+            isInternalNote: false,
+            createdAt: { gte: since24h },
+          },
+        }),
       ]);
 
-      const total = newRfqs + pendingActions;
-      return { total, newRfqs, newQuotes: 0, pendingPayment: 0, pendingActions };
+      const total = newRfqs + pendingActions + newMessages;
+      return { total, newRfqs, newQuotes: 0, pendingPayment: 0, pendingActions, newMessages };
     }
 
     // MARKETPLACE_BUYER
-    const [newQuotes, wonRfqs, paidRfqIds] = await Promise.all([
+    const [newQuotes, wonRfqs, paidRfqIds, newMessages] = await Promise.all([
       this.prisma.quoteRequest.count({
         where: {
           buyerUserId: actor.id,
@@ -360,11 +368,19 @@ export class DashboardService {
           select: { quoteRequestId: true },
         })
         .then((rows) => new Set(rows.map((r) => r.quoteRequestId))),
+      this.prisma.quoteRequestMessage.count({
+        where: {
+          quoteRequest: { buyerUserId: actor.id },
+          authorUserId: { not: actor.id },
+          isInternalNote: false,
+          createdAt: { gte: since24h },
+        },
+      }),
     ]);
 
     const pendingPayment = Math.max(0, wonRfqs - paidRfqIds.size);
-    const total = newQuotes + pendingPayment;
-    return { total, newRfqs: 0, newQuotes, pendingPayment, pendingActions: 0 };
+    const total = newQuotes + pendingPayment + newMessages;
+    return { total, newRfqs: 0, newQuotes, pendingPayment, pendingActions: 0, newMessages };
   }
 
   /* ------------------------------------------------------------------ */

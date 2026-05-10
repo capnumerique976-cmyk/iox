@@ -126,10 +126,16 @@ interface DemoQuoteRequest {
   requestedQuantity: string;
   requestedUnit: string;
   deliveryCountry: string;
-  status: 'NEW' | 'QUALIFIED' | 'QUOTED';
+  status: 'NEW' | 'QUALIFIED' | 'QUOTED' | 'NEGOTIATING' | 'WON';
   initialMessage: string;
   /** Réplique du seller (ajoutée comme `QuoteRequestMessage`). */
   sellerReply: string;
+  /**
+   * Renseigner pour les RFQ WON : déclenche la création d'un Payment SUCCEEDED
+   * et d'une Invoice ISSUED dans le seed.
+   */
+  paymentAmountCents?: number;
+  paymentCurrency?: 'EUR' | 'USD';
 }
 
 const D = (v: string) => new Prisma.Decimal(v);
@@ -1160,6 +1166,24 @@ export const DEMO_DATASET: {
       status: 'QUOTED',
       initialMessage: 'Demande de devis pour 500 kg, livraison Marseille fin mai.',
       sellerReply: 'Devis 1850 EUR/tonne CIF Marseille, MOQ 500kg respecté. Validité 30j.',
+    },
+    // M62-DEMO — RFQ WON avec paiement SUCCEEDED + facture ISSUED pour démo investisseur.
+    // Produit demo-vanille-bourbon-grade-a (smoke-seller = demo-coop-vanille) pour que
+    // le seller demo voie la facture dans son espace.
+    {
+      seedKey: 'rfq-ylang-extra-won',
+      buyerEmail: 'smoke-buyer@iox.mch',
+      productSlug: 'demo-vanille-bourbon-grade-a',
+      requestedQuantity: '2',
+      requestedUnit: 'kg',
+      deliveryCountry: 'FR',
+      status: 'WON',
+      initialMessage:
+        "Bonjour, nous souhaitons commander 2 kg de vanille Bourbon Grand Cru pour notre gamme de pâtisserie haut de gamme.",
+      sellerReply:
+        "Parfait, voici notre proposition : 2 400 EUR pour 2 kg Grand Cru premium, départ Mamoudzou. Délai 21 jours. Facture jointe à confirmation.",
+      paymentAmountCents: 240000, // 2 400,00 EUR (1 200 EUR/kg)
+      paymentCurrency: 'EUR',
     },
   ],
 };
