@@ -14,16 +14,31 @@ export const metadata: Metadata = {
     template: '%s · IOX',
   },
   description:
-    'Plateforme B2B de structuration, conformité, traçabilité, logistique et mise en marché — océan Indien.',
-  icons: {
-    // SVG favicon (supporté Chrome/Firefox/Safari 16+). L'emblème seul est plus
-    // lisible en 16×16 que le lockup horizontal.
-    icon: [{ url: '/brand/iox-emblem.svg', type: 'image/svg+xml' }],
-    shortcut: '/brand/iox-emblem.svg',
-    apple: '/brand/iox-emblem.svg',
-  },
+    'Plateforme B2B pour producteurs, vendeurs et acheteurs professionnels de l\'océan Indien.',
   applicationName: 'IOX',
+  // themeColor : repris par le manifest PWA (manifest.ts). Déclaré ici aussi
+  // pour les navigateurs qui lisent la meta tag directement (Safari iOS).
   themeColor: '#0a1f4d',
+  // PWA / Mobile — M77
+  // Les icônes sont gérées via app/icon.tsx (favicon PNG 32px) et
+  // app/apple-icon.tsx (Apple Touch PNG 180px). Le manifest est dans app/manifest.ts.
+  // apple-mobile-web-app metadata pour iOS Safari "Ajouter à l'écran d'accueil"
+  appleWebApp: {
+    capable: true,
+    title: 'IOX',
+    statusBarStyle: 'black-translucent',
+  },
+  // Manifest lié automatiquement par Next.js depuis app/manifest.ts
+  // Open Graph minimal pour partage réseaux sociaux
+  openGraph: {
+    type: 'website',
+    siteName: 'IOX — Indian Ocean Xchange',
+    title: 'IOX — Indian Ocean Xchange',
+    description: 'Plateforme B2B pour producteurs et acheteurs professionnels de l\'océan Indien.',
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

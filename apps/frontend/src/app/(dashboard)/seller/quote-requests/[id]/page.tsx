@@ -145,7 +145,7 @@ export default function SellerQuoteRequestDetailPage() {
           {rfq.marketplaceOffer.title}
         </h1>
         <div className="mt-1 text-sm text-gray-600">
-          Demande de {rfq.buyerCompany?.name ?? `${rfq.buyerUser.firstName} ${rfq.buyerUser.lastName}`}
+          Demande de {rfq.buyerCompany?.name ?? (rfq.buyerUser ? `${rfq.buyerUser.firstName} ${rfq.buyerUser.lastName}` : '—')}
         </div>
         <div className="mt-1 text-xs text-gray-500">
           Reçue le {new Date(rfq.createdAt).toLocaleDateString('fr-FR')}

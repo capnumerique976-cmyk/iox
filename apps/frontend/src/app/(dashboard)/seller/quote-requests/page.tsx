@@ -109,7 +109,7 @@ export default function SellerQuoteRequestsPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span>{rfq.buyerCompany?.name ?? rfq.buyerUser.email}</span>
+                    <span>{rfq.buyerCompany?.name ?? rfq.buyerUser?.email ?? '—'}</span>
                     {rfq.requestedQuantity && (
                       <span>
                         {rfq.requestedQuantity}{rfq.requestedUnit ? ` ${rfq.requestedUnit}` : ''}
