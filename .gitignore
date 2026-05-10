@@ -47,6 +47,9 @@ docker-compose.vps*.yml
 # ── Claude Code (worktrees, session data) ─────────────────────────
 .claude/
 
+# ── Exports générés (PDF/HTML Marp — regénérer via npx marp-cli) ──
+exports/
+
 # ── OS / éditeurs ─────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
