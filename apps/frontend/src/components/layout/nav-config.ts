@@ -376,6 +376,13 @@ export const SECTIONS: NavSection[] = [
         description: 'Pièces justificatives et contrats',
       },
       {
+        label: 'Ma conformité',
+        href: '/seller/compliance',
+        permission: '*',
+        icon: ShieldCheck,
+        description: 'Statut de conformité et documents requis',
+      },
+      {
         label: 'Paiements',
         href: '/seller/payments',
         permission: '*',
@@ -469,6 +476,13 @@ export const SECTIONS: NavSection[] = [
         permission: 'marketplace:review',
         icon: Store,
         description: 'Profils vendeurs marketplace',
+      },
+      {
+        label: 'Conformité',
+        href: '/admin/compliance',
+        permission: 'marketplace:review',
+        icon: ShieldCheck,
+        description: 'Vue conformité documents et certifications',
       },
       {
         label: 'File de revue',
