@@ -106,23 +106,37 @@ export function PublicMarketplaceFooter() {
           <Logo variant="horizontal" height={30} />
           <p className="max-w-xs text-center sm:text-left">{tFooter('tagline')}</p>
         </div>
-        <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 sm:justify-end">
-          <Link href="/marketplace" className="transition-colors hover:text-white">
-            {tNav('catalog')}
-          </Link>
-          <Link href="/marketplace/sellers" className="transition-colors hover:text-white">
-            {tNav('sellers')}
-          </Link>
-          <Link href="/marketplace/categories" className="transition-colors hover:text-white">
-            {tNav('categories')}
-          </Link>
-          <Link href="/marketplace/how-it-works" className="transition-colors hover:text-white">
-            {tNav('howItWorks')}
-          </Link>
-          <Link href="/login" className="transition-colors hover:text-white">
-            {tNav('proArea')}
-          </Link>
-        </nav>
+        <div className="flex flex-col items-center gap-4 sm:items-end">
+          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 sm:justify-end">
+            <Link href="/marketplace" className="transition-colors hover:text-white">
+              {tNav('catalog')}
+            </Link>
+            <Link href="/marketplace/sellers" className="transition-colors hover:text-white">
+              {tNav('sellers')}
+            </Link>
+            <Link href="/marketplace/categories" className="transition-colors hover:text-white">
+              {tNav('categories')}
+            </Link>
+            <Link href="/marketplace/how-it-works" className="transition-colors hover:text-white">
+              {tNav('howItWorks')}
+            </Link>
+            <Link href="/login" className="transition-colors hover:text-white">
+              {tNav('proArea')}
+            </Link>
+          </nav>
+          {/* Liens légaux */}
+          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 sm:justify-end" aria-label="Liens légaux">
+            <Link href="/legal/terms" className="transition-colors hover:text-white/80">
+              CGU
+            </Link>
+            <Link href="/legal/privacy" className="transition-colors hover:text-white/80">
+              Confidentialité
+            </Link>
+            <Link href="/legal/mentions-legales" className="transition-colors hover:text-white/80">
+              Mentions légales
+            </Link>
+          </nav>
+        </div>
       </div>
     </footer>
   );
