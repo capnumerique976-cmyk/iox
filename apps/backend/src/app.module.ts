@@ -42,6 +42,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { MarketplaceCategoriesModule } from './marketplace-categories/marketplace-categories.module';
 import { SearchModule } from './search/search.module';
 import { QueueModule } from './queue/queue.module';
+import { ComplianceModule } from './compliance/compliance.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
@@ -136,6 +137,8 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
     SearchModule,
     // Mandat 53 — BullMQ async job queues (email + search indexing)
     QueueModule,
+    // Mandat 57 — Compliance seller/admin summary + sellers list
+    ComplianceModule,
   ],
   providers: [
     // Rate limiting (doit être AVANT JwtAuthGuard pour protéger /auth/login)
