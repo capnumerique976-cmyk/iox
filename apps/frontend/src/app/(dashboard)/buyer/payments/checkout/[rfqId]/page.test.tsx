@@ -166,4 +166,35 @@ describe('BuyerCheckoutPage (PAY-1 LOT 4)', () => {
     expect(screen.getByTestId('buyer-checkout-summary')).toHaveTextContent('Vanille Bourbon');
     expect(screen.getByTestId('buyer-checkout-summary')).toHaveTextContent('100');
   });
+
+  it('affiche le nom du vendeur dans le résumé', async () => {
+    getMock.mockResolvedValue(makeRfq());
+    render(<BuyerCheckoutPage />);
+    await waitFor(() => expect(screen.getByTestId('buyer-checkout-summary')).toBeInTheDocument());
+    expect(screen.getByTestId('buyer-checkout-summary')).toHaveTextContent('Coop X');
+  });
+
+  it('affiche le montant total proéminent', async () => {
+    getMock.mockResolvedValue(makeRfq());
+    render(<BuyerCheckoutPage />);
+    await waitFor(() => expect(screen.getByTestId('buyer-checkout-total')).toBeInTheDocument());
+    expect(screen.getByTestId('buyer-checkout-total')).toHaveTextContent('500.00');
+  });
+
+  it('affiche le bandeau sécurité Stripe', async () => {
+    getMock.mockResolvedValue(makeRfq());
+    render(<BuyerCheckoutPage />);
+    await waitFor(() => expect(screen.getByTestId('buyer-checkout-security')).toBeInTheDocument());
+    expect(screen.getByTestId('buyer-checkout-security')).toHaveTextContent('Stripe');
+  });
+
+  it('lien retour pointe vers la demande RFQ', async () => {
+    getMock.mockResolvedValue(makeRfq());
+    render(<BuyerCheckoutPage />);
+    await waitFor(() => expect(screen.getByTestId('buyer-checkout-back-link')).toBeInTheDocument());
+    expect(screen.getByTestId('buyer-checkout-back-link')).toHaveAttribute(
+      'href',
+      '/buyer/quote-requests/rfq-test-1',
+    );
+  });
 });

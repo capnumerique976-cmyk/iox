@@ -11,7 +11,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CreditCard, AlertCircle, Loader2, Store } from 'lucide-react';
+import { CreditCard, AlertCircle, Loader2, Store, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { authStorage } from '@/lib/auth';
 import { paymentsApi } from '@/lib/payments';
@@ -169,10 +169,50 @@ export default function BuyerCheckoutPage() {
             <div>
               <dt className="text-gray-500">Montant</dt>
               <dd className="font-semibold text-gray-900">
-                {amountEuros ? `${amountEuros} €` : '—'}
+                {amountEuros ? `${amountEuros} ${rfq.marketplaceOffer.currency ?? 'EUR'}` : '—'}
               </dd>
             </div>
+            <div>
+              <dt className="text-gray-500">Vendeur</dt>
+              <dd className="font-medium text-gray-800">{rfq.marketplaceOffer.sellerProfile?.publicDisplayName ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Acheteur</dt>
+              <dd className="font-medium text-gray-800">
+                {rfq.buyerCompany?.name ?? ([rfq.buyerUser?.firstName, rfq.buyerUser?.lastName].filter(Boolean).join(' ') || '—')}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Statut</dt>
+              <dd>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  rfq.status === 'WON' ? 'bg-green-100 text-green-700' :
+                  rfq.status === 'QUOTED' ? 'bg-blue-100 text-blue-700' :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {rfq.status}
+                </span>
+              </dd>
+            </div>
+            {rfq.marketplaceOffer.incoterm && (
+              <div>
+                <dt className="text-gray-500">Incoterm</dt>
+                <dd className="font-medium text-gray-800">{rfq.marketplaceOffer.incoterm}</dd>
+              </div>
+            )}
           </dl>
+        </div>
+      )}
+
+      {rfq && amountEuros && (
+        <div
+          className="rounded-lg bg-gray-900 p-4 text-center"
+          data-testid="buyer-checkout-total"
+        >
+          <p className="text-xs text-gray-400 uppercase tracking-wide">Total à payer</p>
+          <p className="mt-1 text-3xl font-bold text-white">
+            {amountEuros} {rfq.marketplaceOffer.currency ?? 'EUR'}
+          </p>
         </div>
       )}
 
@@ -210,10 +250,21 @@ export default function BuyerCheckoutPage() {
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Payer via Stripe
         </button>
+        <p
+          className="flex items-center justify-center gap-1.5 text-xs text-gray-400 mt-2"
+          data-testid="buyer-checkout-security"
+        >
+          <Lock className="h-3 w-3 flex-shrink-0" />
+          Paiement sécurisé par Stripe — vos données bancaires ne transitent pas par IOX.
+        </p>
       </div>
 
-      <Link href="/buyer" className="inline-block text-sm text-blue-600 hover:underline">
-        ← Annuler et revenir
+      <Link
+        href={`/buyer/quote-requests/${rfqId}`}
+        className="inline-block text-sm text-blue-600 hover:underline"
+        data-testid="buyer-checkout-back-link"
+      >
+        ← Retour à la demande
       </Link>
     </div>
   );
