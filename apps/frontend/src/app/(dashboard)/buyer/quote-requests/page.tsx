@@ -20,13 +20,20 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 
 const STATUS_LABELS: Record<QuoteRequestStatus, string> = {
-  NEW: 'Nouvelle',
-  QUALIFIED: 'Qualifiée',
-  QUOTED: 'Devisée',
+  NEW: 'En attente',
+  QUALIFIED: 'En cours',
+  QUOTED: 'Devis reçu',
   NEGOTIATING: 'Négociation',
-  WON: 'Gagnée',
-  LOST: 'Perdue',
+  WON: 'Acceptée',
+  LOST: 'Non retenue',
   CANCELLED: 'Annulée',
+};
+
+/** Hint contextuel affiché sous le statut pour guider l'acheteur */
+const STATUS_HINTS: Partial<Record<QuoteRequestStatus, string>> = {
+  QUOTED: 'Devis disponible — consultez et payez',
+  WON: 'Commande confirmee — voir la facture',
+  NEGOTIATING: 'Echanges en cours avec le vendeur',
 };
 
 const STATUS_COLORS: Record<QuoteRequestStatus, string> = {
@@ -172,13 +179,13 @@ export default function BuyerQuoteRequestsListPage() {
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-xs text-gray-600">
-            Vendeur (nom ou slug)
+            Rechercher un vendeur
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
               <input
                 value={sellerQuery}
                 onChange={(e) => setSellerQuery(e.target.value)}
-                placeholder="ex. coopérative-x"
+                placeholder="ex. Cooperative Mayotte"
                 className="w-64 rounded border border-gray-300 py-1.5 pl-7 pr-2 text-sm focus:border-blue-500 focus:outline-none"
               />
             </div>
@@ -216,57 +223,105 @@ export default function BuyerQuoteRequestsListPage() {
       ) : filtered.length === 0 ? (
         <EmptyState hasAny={meta.total > 0} />
       ) : (
-        <div className="iox-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Offre</th>
-                <th>Vendeur</th>
-                <th>Quantité</th>
-                <th>Statut</th>
-                <th>Mise à jour</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((q) => (
-                <tr key={q.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2">
-                    <div className="font-medium text-gray-900">{q.marketplaceOffer.title}</div>
+        <>
+          {/* Mobile: cards */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {filtered.map((q) => (
+              <div
+                key={q.id}
+                className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900">{q.marketplaceOffer.title}</p>
                     {q.marketplaceOffer.marketplaceProduct && (
-                      <div className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500">
                         {q.marketplaceOffer.marketplaceProduct.commercialName}
-                      </div>
+                      </p>
                     )}
-                  </td>
-                  <td className="px-4 py-2 text-gray-700">
-                    {q.marketplaceOffer.sellerProfile?.publicDisplayName ?? '—'}
-                  </td>
-                  <td className="px-4 py-2 text-gray-700">
-                    {q.requestedQuantity
-                      ? `${q.requestedQuantity}${q.requestedUnit ? ` ${q.requestedUnit}` : ''}`
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_COLORS[q.status]}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[q.status]}`} aria-hidden />
-                      {STATUS_LABELS[q.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">{formatDate(q.updatedAt)}</td>
-                  <td className="px-4 py-2 text-right">
-                    <Link
-                      href={`/buyer/quote-requests/${q.id}`}
-                      className="text-blue-700 hover:text-blue-800"
-                    >
-                      Voir →
-                    </Link>
-                  </td>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {q.marketplaceOffer.sellerProfile?.publicDisplayName ?? ''}
+                    </p>
+                  </div>
+                  <span className={`flex-shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_COLORS[q.status]}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[q.status]}`} aria-hidden />
+                    {STATUS_LABELS[q.status]}
+                  </span>
+                </div>
+                {STATUS_HINTS[q.status] && (
+                  <p className="mt-1.5 text-xs font-medium text-blue-700">{STATUS_HINTS[q.status]}</p>
+                )}
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-xs text-gray-400">{formatDate(q.updatedAt)}</span>
+                  <Link
+                    href={`/buyer/quote-requests/${q.id}`}
+                    className="text-xs font-medium text-blue-700 hover:text-blue-800"
+                  >
+                    Voir la demande →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left">Offre</th>
+                  <th className="px-4 py-2 text-left">Vendeur</th>
+                  <th className="px-4 py-2 text-left">Quantite</th>
+                  <th className="px-4 py-2 text-left">Statut</th>
+                  <th className="px-4 py-2 text-left">Mis a jour</th>
+                  <th className="px-4 py-2"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((q) => (
+                  <tr key={q.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2">
+                      <div className="font-medium text-gray-900">{q.marketplaceOffer.title}</div>
+                      {q.marketplaceOffer.marketplaceProduct && (
+                        <div className="text-xs text-gray-500">
+                          {q.marketplaceOffer.marketplaceProduct.commercialName}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">
+                      {q.marketplaceOffer.sellerProfile?.publicDisplayName ?? '—'}
+                    </td>
+                    <td className="px-4 py-2 text-gray-700">
+                      {q.requestedQuantity
+                        ? `${q.requestedQuantity}${q.requestedUnit ? ` ${q.requestedUnit}` : ''}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2">
+                      <div>
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_COLORS[q.status]}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_COLORS[q.status]}`} aria-hidden />
+                          {STATUS_LABELS[q.status]}
+                        </span>
+                        {STATUS_HINTS[q.status] && (
+                          <p className="mt-0.5 text-[11px] text-blue-600">{STATUS_HINTS[q.status]}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-gray-500">{formatDate(q.updatedAt)}</td>
+                    <td className="px-4 py-2 text-right">
+                      <Link
+                        href={`/buyer/quote-requests/${q.id}`}
+                        className="text-sm font-medium text-blue-700 hover:text-blue-800"
+                      >
+                        Voir →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Pagination */}

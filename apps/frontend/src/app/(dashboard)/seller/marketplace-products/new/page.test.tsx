@@ -102,7 +102,7 @@ describe('SellerMarketplaceProductNewPage (MP-EDIT-PRODUCT.2)', () => {
     await user.type(screen.getByTestId('field-productId'), 'pas-un-uuid');
     await user.click(screen.getByTestId('submit-create'));
 
-    expect(screen.getByTestId('validation-error')).toHaveTextContent(/UUID valide/i);
+    expect(screen.getByTestId('validation-error')).toHaveTextContent(/n'est pas valide/i);
     expect(createMock).not.toHaveBeenCalled();
   });
 

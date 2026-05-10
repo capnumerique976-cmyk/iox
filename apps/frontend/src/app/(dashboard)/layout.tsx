@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { MobileSidebar } from '@/components/layout/mobile-sidebar';
 import { TopNav } from '@/components/layout/top-nav';
 import { AlertsBell } from '@/components/layout/alerts-bell';
+import { MarketplaceBell } from '@/components/layout/marketplace-bell';
 import { SellerOnboardingBanner } from '@/components/layout/seller-onboarding-banner';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog';
@@ -72,6 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Droite : alertes + locale switcher + avatar */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <MarketplaceBell />
             <AlertsBell />
             <div className="hidden h-7 w-px bg-white/10 sm:block" aria-hidden />
             <LocaleSwitcher />

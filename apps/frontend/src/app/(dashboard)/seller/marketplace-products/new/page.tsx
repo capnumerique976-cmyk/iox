@@ -51,12 +51,12 @@ function validateClient(form: FormState): string | null {
   if (form.commercialName.length > 255)
     return 'Le nom commercial est limité à 255 caractères.';
   if (!form.slug || !SLUG_REGEX.test(form.slug))
-    return 'Le slug doit être en kebab-case ASCII (lettres, chiffres, tirets uniquement).';
-  if (form.originCountry.trim().length === 0) return 'Le pays d’origine est requis.';
+    return "L'adresse web ne doit contenir que des lettres, chiffres et tirets (ex : vanille-bourbon).";
+  if (form.originCountry.trim().length === 0) return "Le pays d'origine est requis.";
   if (form.originCountry.length > 100)
     return 'Le code pays est limité à 100 caractères.';
   if (!UUID_REGEX.test(form.productId.trim()))
-    return 'L’identifiant Product MCH doit être un UUID valide.';
+    return "L'identifiant du produit de référence n'est pas valide. Contactez l'équipe IOX si besoin.";
   return null;
 }
 
@@ -181,8 +181,8 @@ export default function SellerMarketplaceProductNewPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Nouveau produit marketplace"
-        subtitle="Création d'un brouillon — vous compléterez le détail à l'étape suivante"
+        title="Nouveau produit"
+        subtitle="Remplissez les informations de base — vous completerez le detail a l'etape suivante"
         actions={
           <Link
             href="/seller/marketplace-products"
@@ -203,7 +203,7 @@ export default function SellerMarketplaceProductNewPage() {
           <div>
             <p className="font-medium">{state.message}</p>
             <p className="mt-1 text-xs">
-              Aucun profil vendeur n’est rattaché à votre compte. Contactez l’équipe IOX
+              Aucun profil vendeur n'est rattaché à votre compte. Contactez l'équipe IOX
               pour finaliser votre onboarding avant de créer un produit.
             </p>
           </div>
@@ -212,7 +212,7 @@ export default function SellerMarketplaceProductNewPage() {
 
       {isReady && (
         <form onSubmit={onSubmit} className="space-y-5" noValidate>
-          <Section title="Identité minimale">
+          <Section title="Votre produit">
             <Field label="Nom commercial" required>
               <input
                 type="text"
@@ -226,9 +226,9 @@ export default function SellerMarketplaceProductNewPage() {
               />
             </Field>
             <Field
-              label="Slug (URL publique)"
+              label="Adresse web du produit"
               required
-              hint="Auto-généré depuis le nom commercial, modifiable. Lettres, chiffres et tirets uniquement."
+              hint="Générée automatiquement à partir du nom. Vous pouvez la modifier si besoin."
             >
               <input
                 type="text"
@@ -240,7 +240,7 @@ export default function SellerMarketplaceProductNewPage() {
                 data-testid="field-slug"
               />
             </Field>
-            <Field label="Pays d’origine" required hint="Code ISO recommandé (YT, FR, …)">
+            <Field label="Pays d'origine" required hint="Ex : Mayotte, France, Madagascar">
               <input
                 type="text"
                 value={form.originCountry}
@@ -253,11 +253,11 @@ export default function SellerMarketplaceProductNewPage() {
             </Field>
           </Section>
 
-          <Section title="Lien vers le Product IOX (MCH)">
+          <Section title="Produit de référence">
             <Field
-              label="Identifiant Product MCH (UUID)"
+              label="Produit associé (traçabilité)"
               required
-              hint="UUID du produit MCH côté traçabilité. Un picker visuel sera ajouté ultérieurement — collez l'UUID en attendant."
+              hint="Identifiant du produit dans le système de traçabilité IOX. Contactez l'équipe si vous ne le connaissez pas."
             >
               <input
                 type="text"
@@ -294,7 +294,7 @@ export default function SellerMarketplaceProductNewPage() {
 
           <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-premium-sm">
             <p className="text-xs text-gray-500">
-              Le brouillon sera créé en statut <strong>DRAFT</strong>. Vous pourrez ensuite
+              Le brouillon sera créé en statut <strong>Brouillon</strong>. Vous pourrez ensuite
               compléter les autres champs et soumettre à la revue qualité.
             </p>
             <button

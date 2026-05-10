@@ -37,7 +37,19 @@ interface MockedPrisma {
     update: jest.Mock;
   };
   quoteRequestMessage: { findFirst: jest.Mock; create: jest.Mock };
+  // M62-DEMO
+  payment: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
+  invoice: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
 }
+
+// Nombre de RFQ WON dans le dataset (ont un paymentAmountCents).
+const WON_RFQ_COUNT = DEMO_DATASET.quoteRequests.filter(
+  (r) => r.status === 'WON' && r.paymentAmountCents,
+).length;
+
+// Nombre de documents de conformité seedés pour le smoke-seller.
+const COMPLIANCE_DOCS_COUNT = 3;
+
 
 function makePrismaMock(opts: {
   offerExists?: boolean;
@@ -45,6 +57,8 @@ function makePrismaMock(opts: {
   publicDocExists?: boolean;
   rfqExists?: boolean;
   rfqMessageExists?: boolean;
+  paymentExists?: boolean;
+  invoiceExists?: boolean;
 } = {}): MockedPrisma {
   // Les upserts renvoient un objet avec `id` dérivé de la clé naturelle —
   // suffisant pour que le runner enchaîne les FK.
@@ -138,6 +152,21 @@ function makePrismaMock(opts: {
         .mockResolvedValue(opts.rfqMessageExists ? { id: 'existing-msg-id' } : null),
       create: jest.fn().mockResolvedValue({ id: 'mock-msg-id' }),
     },
+    // M62-DEMO
+    payment: {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(opts.paymentExists ? { id: 'existing-payment-id' } : null),
+      create: jest.fn().mockResolvedValue({ id: 'mock-payment-id' }),
+      update: jest.fn().mockResolvedValue({ id: 'existing-payment-id' }),
+    },
+    invoice: {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(opts.invoiceExists ? { id: 'existing-invoice-id' } : null),
+      create: jest.fn().mockResolvedValue({ id: 'mock-invoice-id' }),
+      update: jest.fn().mockResolvedValue({ id: 'existing-invoice-id' }),
+    },
   };
 }
 
@@ -194,6 +223,10 @@ describe('SEED-DEMO runner', () => {
         smokeSeller: 'smoke-seller@iox.mch',
         // SEED-DEMO-FIX : 1 MediaAsset PRIMARY APPROVED par produit demo.
         mediaAssets: DEMO_DATASET.products.length,
+        // M62-DEMO : 1 Payment + 1 Invoice pour la RFQ WON, 3 compliance docs.
+        payments: WON_RFQ_COUNT,
+        invoices: WON_RFQ_COUNT,
+        sellerComplianceDocs: COMPLIANCE_DOCS_COUNT,
       });
       // SEED-DEMO-FIX-3 : +1 Company pour le smoke-buyer.
       expect(prismaMock.company.upsert).toHaveBeenCalledTimes(
@@ -386,33 +419,51 @@ describe('SEED-DEMO runner', () => {
     it('crée 1 MarketplaceDocument PUBLIC par produit cible (1ʳᵉ exécution)', async () => {
       const prismaMock = makePrismaMock();
       await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
-      expect(prismaMock.marketplaceDocument.create).toHaveBeenCalledTimes(
-        DEMO_DATASET.publicDocuments.length,
+      // Total create = PUBLIC docs + compliance docs (PRIVATE/SELLER_PROFILE).
+      const allDocCalls: any[] = prismaMock.marketplaceDocument.create.mock.calls;
+      expect(allDocCalls.length).toBe(
+        DEMO_DATASET.publicDocuments.length + COMPLIANCE_DOCS_COUNT,
       );
-      for (const [arg] of prismaMock.marketplaceDocument.create.mock.calls) {
-        expect(arg.data.visibility).toBe('PUBLIC');
+      // PUBLIC docs : visibility=PUBLIC, relatedType=MARKETPLACE_PRODUCT.
+      const publicCalls = allDocCalls.filter((c) => c[0].data.visibility === 'PUBLIC');
+      expect(publicCalls).toHaveLength(DEMO_DATASET.publicDocuments.length);
+      for (const [arg] of publicCalls) {
         expect(arg.data.verificationStatus).toBe('VERIFIED');
         expect(arg.data.relatedType).toBe('MARKETPLACE_PRODUCT');
       }
+      // Compliance docs : visibility=PRIVATE, relatedType=SELLER_PROFILE.
+      const complianceCalls = allDocCalls.filter((c) => c[0].data.visibility === 'PRIVATE');
+      expect(complianceCalls).toHaveLength(COMPLIANCE_DOCS_COUNT);
+      for (const [arg] of complianceCalls) {
+        expect(arg.data.relatedType).toBe('SELLER_PROFILE');
+      }
     });
 
-    it("idempotent : 2ᵉ run avec docs/RFQ déjà présents → 0 create, N updates", async () => {
+    it("idempotent : 2ᵉ run avec docs/RFQ/payment déjà présents → 0 create, N updates", async () => {
       const prismaMock = makePrismaMock({
         publicDocExists: true,
         rfqExists: true,
         rfqMessageExists: true,
+        paymentExists: true,
+        invoiceExists: true,
       });
       const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
       expect(prismaMock.marketplaceDocument.create).not.toHaveBeenCalled();
+      // PUBLIC docs + compliance docs all update.
       expect(prismaMock.marketplaceDocument.update).toHaveBeenCalledTimes(
-        DEMO_DATASET.publicDocuments.length,
+        DEMO_DATASET.publicDocuments.length + COMPLIANCE_DOCS_COUNT,
       );
       expect(prismaMock.quoteRequest.create).not.toHaveBeenCalled();
       expect(prismaMock.quoteRequestMessage.create).not.toHaveBeenCalled();
+      expect(prismaMock.payment.create).not.toHaveBeenCalled();
+      expect(prismaMock.invoice.create).not.toHaveBeenCalled();
+      expect(prismaMock.invoice.update).toHaveBeenCalledTimes(WON_RFQ_COUNT); // corrects sellerProfileId
       expect(summary.publicDocs).toBe(DEMO_DATASET.publicDocuments.length);
+      expect(summary.payments).toBe(WON_RFQ_COUNT); // paymentsCount increments even for existing
+      expect(summary.invoices).toBe(0); // invoicesCount only increments on new invoice
     });
 
-    it("crée 2 RFQ + 4 messages (1ʳᵉ exécution, RFQ absentes)", async () => {
+    it("crée N RFQ + 2N messages (1ʳᵉ exécution, RFQ absentes)", async () => {
       const prismaMock = makePrismaMock();
       await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
       expect(prismaMock.quoteRequest.create).toHaveBeenCalledTimes(
@@ -426,7 +477,11 @@ describe('SEED-DEMO runner', () => {
         (c) => c[0].data.targetMarket,
       );
       expect(targetMarkets).toEqual(
-        expect.arrayContaining(['rfq-vanille-poudre-init', 'rfq-mangue-maya-quoted']),
+        expect.arrayContaining([
+          'rfq-vanille-poudre-init',
+          'rfq-mangue-maya-quoted',
+          'rfq-ylang-extra-won',
+        ]),
       );
     });
 
@@ -443,6 +498,55 @@ describe('SEED-DEMO runner', () => {
       );
       expect(buyerCompanyCall).toBeDefined();
       expect(buyerCompanyCall![0].create.types).toContain('BUYER');
+    });
+  });
+
+  // ── M62-DEMO ───────────────────────────────────────────────────────────────
+
+  describe('M62-DEMO — Payment SUCCEEDED + Invoice ISSUED + compliance docs', () => {
+    it('crée 1 Payment SUCCEEDED + 1 Invoice ISSUED pour la RFQ WON (1ʳᵉ exécution)', async () => {
+      const prismaMock = makePrismaMock();
+      const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(summary.payments).toBe(WON_RFQ_COUNT);
+      expect(summary.invoices).toBe(WON_RFQ_COUNT);
+      expect(prismaMock.payment.create).toHaveBeenCalledTimes(WON_RFQ_COUNT);
+      expect(prismaMock.invoice.create).toHaveBeenCalledTimes(WON_RFQ_COUNT);
+
+      const paymentCall = prismaMock.payment.create.mock.calls[0][0];
+      expect(paymentCall.data.status).toBe('SUCCEEDED');
+      expect(paymentCall.data.currency).toBe('EUR');
+      expect(paymentCall.data.amountCents).toBe(240000);
+      expect(paymentCall.data.stripePaymentIntentId).toMatch(/^pi_demo_/);
+
+      const invoiceCall = prismaMock.invoice.create.mock.calls[0][0];
+      expect(invoiceCall.data.status).toBe('ISSUED');
+      expect(invoiceCall.data.invoiceNumber).toMatch(/^INV-DEMO-/);
+      expect(invoiceCall.data.amountCents).toBe(240000);
+    });
+
+    it('idempotent Payment+Invoice : 2ᵉ exécution avec payment+invoice existants → 0 create, updates', async () => {
+      const prismaMock = makePrismaMock({ paymentExists: true, invoiceExists: true });
+      const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(prismaMock.payment.create).not.toHaveBeenCalled();
+      expect(prismaMock.payment.update).toHaveBeenCalledTimes(WON_RFQ_COUNT);
+      // Invoice update also called with corrected sellerProfileId.
+      expect(prismaMock.invoice.create).not.toHaveBeenCalled();
+      expect(prismaMock.invoice.update).toHaveBeenCalledTimes(WON_RFQ_COUNT);
+      expect(summary.payments).toBe(WON_RFQ_COUNT); // compte même si update
+      expect(summary.invoices).toBe(0); // invoicesCount ne compte que les nouvelles
+    });
+
+    it('crée 3 compliance docs PRIVATE pour le smoke-seller SellerProfile', async () => {
+      const prismaMock = makePrismaMock();
+      const summary = await runDemoSeed(buildOpts({ IOX_DEMO_SEED: '1' }, prismaMock));
+      expect(summary.sellerComplianceDocs).toBe(COMPLIANCE_DOCS_COUNT);
+      const complianceCalls: any[] = prismaMock.marketplaceDocument.create.mock.calls.filter(
+        (c: any[]) => c[0].data.relatedType === 'SELLER_PROFILE',
+      );
+      expect(complianceCalls).toHaveLength(COMPLIANCE_DOCS_COUNT);
+      // Statuts attendus : 1 VERIFIED, 1 PENDING, 1 REJECTED.
+      const statuses = complianceCalls.map((c: any[]) => c[0].data.verificationStatus);
+      expect(statuses).toEqual(expect.arrayContaining(['VERIFIED', 'PENDING', 'REJECTED']));
     });
   });
 });

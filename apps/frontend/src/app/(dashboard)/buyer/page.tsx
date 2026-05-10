@@ -21,14 +21,15 @@ import { useAuth } from '@/contexts/auth.context';
 import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
 import { QuoteRequestStatus, UserRole } from '@iox/shared';
 import { PageHeader } from '@/components/ui/page-header';
+import { GuidedDashboardHeader } from '@/components/onboarding/guided-dashboard-header';
 
 const STATUS_LABELS: Record<QuoteRequestStatus, string> = {
-  NEW: 'Nouvelle',
-  QUALIFIED: 'Qualifiée',
-  QUOTED: 'Devisée',
+  NEW: 'En attente',
+  QUALIFIED: 'En cours',
+  QUOTED: 'Devis reçu',
   NEGOTIATING: 'Négociation',
-  WON: 'Gagnée',
-  LOST: 'Perdue',
+  WON: 'Acceptée',
+  LOST: 'Non retenue',
   CANCELLED: 'Annulée',
 };
 
@@ -80,6 +81,9 @@ export default function BuyerCockpitPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Guided journey header — visible for marketplace buyers */}
+      {isBuyer && <GuidedDashboardHeader />}
+
       <PageHeader
         icon={<Sparkles className="h-5 w-5" aria-hidden />}
         title={greeting}
@@ -110,6 +114,20 @@ export default function BuyerCockpitPage() {
         </h2>
         {loading ? (
           <div className="text-sm text-gray-500">Chargement…</div>
+        ) : totalAll === 0 ? (
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50 p-6 text-center">
+            <p className="text-sm font-medium text-blue-900">Pas encore de demande de devis</p>
+            <p className="max-w-sm text-xs text-blue-700">
+              Parcourez le catalogue, choisissez une offre et cliquez sur
+              &laquo; Demander un devis &raquo; pour contacter un vendeur.
+            </p>
+            <Link
+              href="/marketplace"
+              className="mt-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Explorer le catalogue
+            </Link>
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {(
@@ -166,7 +184,7 @@ export default function BuyerCockpitPage() {
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Parcourir le catalogue</h3>
             <p className="mt-1 text-xs text-gray-600">
-              Découvrez les offres marketplace publiées et envoyez vos demandes de devis.
+              Trouvez des produits, contactez les vendeurs et negociez vos prix.
             </p>
           </div>
         </Link>
@@ -204,7 +222,7 @@ export default function BuyerCockpitPage() {
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Préférences notifications</h3>
             <p className="mt-1 text-xs text-gray-600">
-              Choisissez les emails que vous voulez recevoir : RFQ, transactionnel, etc.
+              Choisissez les emails que vous souhaitez recevoir.
             </p>
           </div>
         </Link>

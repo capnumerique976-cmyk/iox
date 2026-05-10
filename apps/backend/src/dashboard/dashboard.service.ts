@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { SellerProfileStatus } from '@iox/shared';
+import { QuoteRequestStatus, PaymentStatus, SellerProfileStatus, UserRole } from '@iox/shared';
+import { RequestUser } from '@iox/shared';
 
 @Injectable()
 export class DashboardService {
@@ -294,6 +295,92 @@ export class DashboardService {
       expiringSoonDocuments,
       plannedDistributions,
     };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  MARKETPLACE-ALERTS — compteurs d'actions requises seller/buyer     */
+  /* ------------------------------------------------------------------ */
+
+  async getMarketplaceAlerts(actor: RequestUser) {
+    const since24h = new Date();
+    since24h.setHours(since24h.getHours() - 24);
+
+    const since3d = new Date();
+    since3d.setDate(since3d.getDate() - 3);
+
+    if (actor.role === UserRole.MARKETPLACE_SELLER) {
+      const sellerProfileId = actor.sellerProfileIds?.[0];
+
+      if (!sellerProfileId) {
+        return { total: 0, newRfqs: 0, newQuotes: 0, pendingPayment: 0, pendingActions: 0, newMessages: 0 };
+      }
+
+      const [newRfqs, pendingActions, newMessages] = await Promise.all([
+        this.prisma.quoteRequest.count({
+          where: {
+            marketplaceOffer: { sellerProfileId },
+            createdAt: { gte: since24h },
+          },
+        }),
+        this.prisma.quoteRequest.count({
+          where: {
+            marketplaceOffer: { sellerProfileId },
+            status: QuoteRequestStatus.QUALIFIED,
+            updatedAt: { lt: since3d },
+          },
+        }),
+        this.prisma.quoteRequestMessage.count({
+          where: {
+            quoteRequest: { marketplaceOffer: { sellerProfileId } },
+            authorUserId: { not: actor.id },
+            isInternalNote: false,
+            createdAt: { gte: since24h },
+          },
+        }),
+      ]);
+
+      const total = newRfqs + pendingActions + newMessages;
+      return { total, newRfqs, newQuotes: 0, pendingPayment: 0, pendingActions, newMessages };
+    }
+
+    // MARKETPLACE_BUYER
+    const [newQuotes, wonRfqs, paidRfqIds, newMessages] = await Promise.all([
+      this.prisma.quoteRequest.count({
+        where: {
+          buyerUserId: actor.id,
+          status: QuoteRequestStatus.QUOTED,
+          updatedAt: { gte: since24h },
+        },
+      }),
+      this.prisma.quoteRequest.count({
+        where: {
+          buyerUserId: actor.id,
+          status: QuoteRequestStatus.WON,
+        },
+      }),
+      this.prisma.payment
+        .findMany({
+          where: {
+            buyerUserId: actor.id,
+            status: PaymentStatus.SUCCEEDED,
+            quoteRequestId: { not: null },
+          },
+          select: { quoteRequestId: true },
+        })
+        .then((rows) => new Set(rows.map((r) => r.quoteRequestId))),
+      this.prisma.quoteRequestMessage.count({
+        where: {
+          quoteRequest: { buyerUserId: actor.id },
+          authorUserId: { not: actor.id },
+          isInternalNote: false,
+          createdAt: { gte: since24h },
+        },
+      }),
+    ]);
+
+    const pendingPayment = Math.max(0, wonRfqs - paidRfqIds.size);
+    const total = newQuotes + pendingPayment + newMessages;
+    return { total, newRfqs: 0, newQuotes, pendingPayment, pendingActions: 0, newMessages };
   }
 
   /* ------------------------------------------------------------------ */

@@ -27,6 +27,7 @@ import {
   type SeasonalityPickerValue,
 } from '@/components/marketplace/SeasonalityPicker';
 import { PageHeader } from '@/components/ui/page-header';
+import { publicationStatusLabel } from '@/lib/status-labels';
 
 type LoadState =
   | { kind: 'loading' }
@@ -196,7 +197,7 @@ export default function SellerProductSeasonalityPage() {
     <div className="space-y-5">
       <PageHeader
         title={`Saisonnalité — ${product.commercialName}`}
-        subtitle={`Statut : ${product.publicationStatus}`}
+        subtitle={`Statut : ${publicationStatusLabel(product.publicationStatus)}`}
         actions={
           <Link
             href="/seller/marketplace-products"
@@ -214,7 +215,7 @@ export default function SellerProductSeasonalityPage() {
         >
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <p>
-            Ce produit est <strong>{product.publicationStatus}</strong>. Modifier la
+            Ce produit est <strong>{publicationStatusLabel(product.publicationStatus)}</strong>. Modifier la
             saisonnalité repassera la fiche en <strong>revue qualité</strong> avant
             republication.
           </p>

@@ -1,41 +1,75 @@
 'use client';
 
-// PAY-1 phase 1 LOT 3 — Page buyer checkout pour RFQ WON.
+// PAY-1 phase 1 LOT 4 — Page buyer checkout avec pré-remplissage depuis RFQ.
 //
-// Comportement client component :
-//  1. POST /payments/checkout-session → retourne checkoutUrl
-//  2. window.location.href = checkoutUrl (redirect Stripe)
-//
-// Server component plus propre mais le checkout-session crée un Payment row,
-// donc client-driven via un bouton "Payer" évite les double-clics ou les
-// effets non-intentionnels au pre-fetch.
+// Comportement :
+//  1. Au montage, GET /api/v1/marketplace/quote-requests/:rfqId → pré-remplit offerId + amountEuros
+//  2. Affiche résumé (produit, quantité, montant)
+//  3. POST /payments/checkout-session → retourne checkoutUrl
+//  4. window.location.href = checkoutUrl (redirect Stripe)
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CreditCard, AlertCircle, Loader2 } from 'lucide-react';
+import { CreditCard, AlertCircle, Loader2, Store, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 import { authStorage } from '@/lib/auth';
 import { paymentsApi } from '@/lib/payments';
+import { quoteRequestsApi, type QuoteRequestSummary } from '@/lib/quote-requests';
 
 export default function BuyerCheckoutPage() {
   const params = useParams<{ rfqId: string }>();
   const rfqId = params.rfqId;
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // amount + offerId à fournir par le user dans une vraie UI ; V1 simplifié,
-  // le pré-remplissage côté SSR/client viendra dans une LOT 4 (afficher details RFQ).
+  const [rfqLoading, setRfqLoading] = useState(true);
+  const [rfqError, setRfqError] = useState<string | null>(null);
+  const [rfq, setRfq] = useState<QuoteRequestSummary | null>(null);
   const [amountEuros, setAmountEuros] = useState('');
   const [offerId, setOfferId] = useState('');
 
+  // Pre-fill depuis le RFQ
+  useEffect(() => {
+    const fetchRfq = async () => {
+      setRfqLoading(true);
+      setRfqError(null);
+      try {
+        const token = authStorage.getAccessToken() ?? '';
+        const data = await quoteRequestsApi.get(rfqId, token);
+        setRfq(data);
+        // Pre-fill offerId
+        setOfferId(data.marketplaceOffer.id);
+        // Pre-fill montant : unitPrice × requestedQuantity si disponible
+        const unitPrice = data.marketplaceOffer.unitPrice;
+        const qty = data.requestedQuantity;
+        if (unitPrice && qty) {
+          const computed = parseFloat(String(unitPrice)) * parseFloat(String(qty));
+          if (Number.isFinite(computed) && computed > 0) {
+            setAmountEuros(computed.toFixed(2));
+          }
+        } else if (unitPrice) {
+          const price = parseFloat(String(unitPrice));
+          if (Number.isFinite(price) && price > 0) {
+            setAmountEuros(price.toFixed(2));
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'RFQ introuvable';
+        setRfqError(msg);
+      } finally {
+        setRfqLoading(false);
+      }
+    };
+    fetchRfq();
+  }, [rfqId]);
+
   const handlePay = async () => {
-    setError(null);
     const amountCents = Math.round(parseFloat(amountEuros) * 100);
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
-      setError('Montant invalide');
+      toast.error('Montant invalide');
       return;
     }
     if (!offerId) {
-      setError('Offer ID manquant');
+      toast.error('Offer ID manquant');
       return;
     }
     setLoading(true);
@@ -54,11 +88,46 @@ export default function BuyerCheckoutPage() {
       );
       window.location.href = res.checkoutUrl;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur création session');
+      toast.error(err instanceof Error ? err.message : 'Erreur création session');
     } finally {
       setLoading(false);
     }
   };
+
+  // État de chargement RFQ
+  if (rfqLoading) {
+    return (
+      <div className="flex items-center justify-center p-12" data-testid="buyer-checkout-page">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <span className="ml-2 text-sm text-gray-500">Chargement de la demande…</span>
+      </div>
+    );
+  }
+
+  // Erreur RFQ (404 ou autre)
+  if (rfqError) {
+    return (
+      <div className="space-y-4 p-6" data-testid="buyer-checkout-page">
+        <Link href="/buyer/payments" className="inline-block text-sm text-blue-600 hover:underline">
+          ← Retour aux paiements
+        </Link>
+        <div
+          role="alert"
+          data-testid="buyer-checkout-rfq-error"
+          className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+        >
+          <AlertCircle className="mr-2 inline h-4 w-4" />
+          {rfqError}
+        </div>
+      </div>
+    );
+  }
+
+  const productName =
+    rfq?.marketplaceOffer?.marketplaceProduct?.commercialName ??
+    rfq?.marketplaceOffer?.title ??
+    '—';
+  const shortOfferId = offerId.length > 8 ? `${offerId.slice(0, 8)}…` : offerId;
 
   return (
     <div className="space-y-6 p-6" data-testid="buyer-checkout-page">
@@ -70,35 +139,96 @@ export default function BuyerCheckoutPage() {
         <p className="mt-1 text-xs text-gray-500">RFQ : {rfqId}</p>
       </div>
 
-      {error && (
-        <p
-          role="alert"
-          data-testid="buyer-checkout-error"
-          className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+      {/* Résumé RFQ */}
+      {rfq && (
+        <div
+          className="rounded-lg border border-blue-100 bg-blue-50 p-4"
+          data-testid="buyer-checkout-summary"
         >
-          <AlertCircle className="mr-1 inline h-3 w-3" />
-          {error}
-        </p>
+          <div className="flex items-center gap-2 mb-2">
+            <Store className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-semibold text-blue-900">Résumé de la commande</span>
+          </div>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            <div>
+              <dt className="text-gray-500">Produit</dt>
+              <dd className="font-medium text-gray-800">{productName}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Quantité</dt>
+              <dd className="font-medium text-gray-800">
+                {rfq.requestedQuantity
+                  ? `${rfq.requestedQuantity}${rfq.requestedUnit ? ` ${rfq.requestedUnit}` : ''}`
+                  : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Offre (ID)</dt>
+              <dd className="font-mono font-medium text-gray-800">{shortOfferId}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Montant</dt>
+              <dd className="font-semibold text-gray-900">
+                {amountEuros ? `${amountEuros} ${rfq.marketplaceOffer.currency ?? 'EUR'}` : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Vendeur</dt>
+              <dd className="font-medium text-gray-800">{rfq.marketplaceOffer.sellerProfile?.publicDisplayName ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Acheteur</dt>
+              <dd className="font-medium text-gray-800">
+                {rfq.buyerCompany?.name ?? ([rfq.buyerUser?.firstName, rfq.buyerUser?.lastName].filter(Boolean).join(' ') || '—')}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Statut</dt>
+              <dd>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  rfq.status === 'WON' ? 'bg-green-100 text-green-700' :
+                  rfq.status === 'QUOTED' ? 'bg-blue-100 text-blue-700' :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {rfq.status}
+                </span>
+              </dd>
+            </div>
+            {rfq.marketplaceOffer.incoterm && (
+              <div>
+                <dt className="text-gray-500">Incoterm</dt>
+                <dd className="font-medium text-gray-800">{rfq.marketplaceOffer.incoterm}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {rfq && amountEuros && (
+        <div
+          className="rounded-lg bg-gray-900 p-4 text-center"
+          data-testid="buyer-checkout-total"
+        >
+          <p className="text-xs text-gray-400 uppercase tracking-wide">Total à payer</p>
+          <p className="mt-1 text-3xl font-bold text-white">
+            {amountEuros} {rfq.marketplaceOffer.currency ?? 'EUR'}
+          </p>
+        </div>
       )}
 
       <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-5">
         <div>
-          <label className="block text-xs font-medium text-gray-700">
-            Offer ID
-          </label>
+          <label className="block text-xs font-medium text-gray-700">Offer ID</label>
           <input
             type="text"
             value={offerId}
-            onChange={(e) => setOfferId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+            readOnly
+            className="mt-1 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600"
             data-testid="buyer-checkout-offer-id"
-            placeholder="uuid-offer"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700">
-            Montant total (EUR)
-          </label>
+          <label className="block text-xs font-medium text-gray-700">Montant total (EUR)</label>
           <input
             type="number"
             value={amountEuros}
@@ -120,10 +250,21 @@ export default function BuyerCheckoutPage() {
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
           Payer via Stripe
         </button>
+        <p
+          className="flex items-center justify-center gap-1.5 text-xs text-gray-400 mt-2"
+          data-testid="buyer-checkout-security"
+        >
+          <Lock className="h-3 w-3 flex-shrink-0" />
+          Paiement sécurisé par Stripe — vos données bancaires ne transitent pas par IOX.
+        </p>
       </div>
 
-      <Link href="/buyer" className="inline-block text-sm text-blue-600 hover:underline">
-        ← Annuler et revenir
+      <Link
+        href={`/buyer/quote-requests/${rfqId}`}
+        className="inline-block text-sm text-blue-600 hover:underline"
+        data-testid="buyer-checkout-back-link"
+      >
+        ← Retour à la demande
       </Link>
     </div>
   );

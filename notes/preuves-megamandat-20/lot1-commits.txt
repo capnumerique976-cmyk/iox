@@ -1,0 +1,6 @@
+9719fbe docs(marketplace): BUYER_DASHBOARD_1
+05d4753 test(frontend): BUYER-DASHBOARD-1 — couverture liste + détail (11 specs)
+f265899 feat(frontend): BUYER-DASHBOARD-1 — page détail /buyer/quote-requests/[id] (thread + message + cancel)
+751debf feat(frontend): BUYER-DASHBOARD-1 — page liste /buyer/quote-requests (filtres + pagination)
+e486d23 feat(frontend): BUYER-DASHBOARD-1 — layout + role guard MARKETPLACE_BUYER
+05ccc34 chore(notes): plan BUYER-DASHBOARD-1

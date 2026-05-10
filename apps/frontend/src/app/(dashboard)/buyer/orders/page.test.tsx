@@ -88,10 +88,11 @@ describe('BuyerOrdersPage (BUYER-DASHBOARD-2 LOT B)', () => {
     });
     render(<BuyerOrdersPage />);
     expect(await screen.findByTestId('orders-table')).toBeInTheDocument();
-    expect(screen.getByTestId('order-row-q1')).toBeInTheDocument();
-    expect(screen.getByTestId('order-row-q2')).toBeInTheDocument();
-    expect(screen.getAllByText('Vanille Bourbon')).toHaveLength(2);
-    expect(screen.getAllByText('Coop X')).toHaveLength(2);
+    expect(screen.getAllByTestId('order-row-q1')[0]).toBeInTheDocument();
+    expect(screen.getAllByTestId('order-row-q2')[0]).toBeInTheDocument();
+    // dual layout (mobile card + desktop table) = 2 layouts × 2 orders = 4
+    expect(screen.getAllByText('Vanille Bourbon')).toHaveLength(4);
+    expect(screen.getAllByText('Coop X')).toHaveLength(4);
   });
 
   it('shows empty state when no orders', async () => {

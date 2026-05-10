@@ -25,7 +25,7 @@ export class CreateCheckoutSessionDto {
   @IsUUID()
   marketplaceOfferId: string;
 
-  @ApiProperty({ example: 100000, description: 'Montant total en centimes EUR' })
+  @ApiProperty({ example: 100000, description: 'Montant total en centimes. Pas de conversion de devise — montant stocké dans la devise choisie.' })
   @IsInt()
   @Min(50) // 0.50 EUR min côté Stripe
   amountCents: number;
@@ -40,7 +40,11 @@ export class CreateCheckoutSessionDto {
   @IsUrl({ require_tld: false })
   cancelUrl: string;
 
-  @ApiPropertyOptional({ example: 'EUR', default: 'EUR' })
+  @ApiPropertyOptional({
+    example: 'EUR',
+    default: 'EUR',
+    description: 'Devise (case-insensitive). Valeurs acceptées : EUR, USD. Défaut : EUR. Pas de conversion EUR↔USD.',
+  })
   @IsOptional()
   @IsString()
   currency?: string;

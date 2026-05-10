@@ -199,7 +199,7 @@ export default function NewProductPage() {
             Informations générales
           </h2>
 
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <FormField label="Nom du produit *" error={errors.name} wide>
               <input
                 type="text"
@@ -323,7 +323,7 @@ export default function NewProductPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <FormField label="Ingrédients" wide>
               <textarea
                 value={form.ingredients}

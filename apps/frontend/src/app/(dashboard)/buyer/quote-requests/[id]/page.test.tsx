@@ -112,7 +112,7 @@ describe('BuyerQuoteRequestDetailPage (BUYER-DASHBOARD-1)', () => {
     render(<BuyerQuoteRequestDetailPage />);
     await waitFor(() => expect(screen.getByText('Vanille Bourbon')).toBeInTheDocument());
     expect(screen.getByText(/Coop X/)).toBeInTheDocument();
-    expect(screen.getByText('Nouvelle')).toBeInTheDocument();
+    expect(screen.getAllByText('Nouvelle').length).toBeGreaterThanOrEqual(1);
   });
 
   it('rend le thread vide + form actif', async () => {

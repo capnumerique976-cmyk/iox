@@ -81,8 +81,9 @@ describe('BuyerQuoteRequestsListPage (BUYER-DASHBOARD-1)', () => {
       meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
     });
     render(<BuyerQuoteRequestsListPage />);
-    await waitFor(() => expect(screen.getByText('Vanille Bourbon')).toBeInTheDocument());
-    expect(screen.getByText('Coop X')).toBeInTheDocument();
+    // dual layout: both mobile card and desktop table render in jsdom
+    await waitFor(() => expect(screen.getAllByText('Vanille Bourbon')[0]).toBeInTheDocument());
+    expect(screen.getAllByText('Coop X')[0]).toBeInTheDocument();
     const link = screen.getByText(/Voir →/).closest('a') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/buyer/quote-requests/q1');
   });
@@ -106,7 +107,8 @@ describe('BuyerQuoteRequestsListPage (BUYER-DASHBOARD-1)', () => {
     render(<BuyerQuoteRequestsListPage />);
     await waitFor(() => expect(listMock).toHaveBeenCalled());
     listMock.mockClear();
-    fireEvent.click(screen.getAllByText('Nouvelle')[0]);
+    // 'Nouvelle' renamed to 'En attente' in Phase 4 UX rewrite
+    fireEvent.click(screen.getAllByText('En attente')[0]);
     await waitFor(() => expect(listMock).toHaveBeenCalled());
     const lastCall = listMock.mock.calls[listMock.mock.calls.length - 1];
     expect(lastCall[1].status).toBe('NEW');
@@ -128,11 +130,13 @@ describe('BuyerQuoteRequestsListPage (BUYER-DASHBOARD-1)', () => {
       meta: { total: 2, page: 1, limit: 20, totalPages: 1 },
     });
     render(<BuyerQuoteRequestsListPage />);
-    await waitFor(() => expect(screen.getByText('Coop X')).toBeInTheDocument());
-    fireEvent.change(screen.getByPlaceholderText(/coopérative/i), {
+    // dual layout: both mobile card and desktop table render in jsdom
+    await waitFor(() => expect(screen.getAllByText('Coop X')[0]).toBeInTheDocument());
+    // placeholder changed to "ex. Cooperative Mayotte" in Phase 4
+    fireEvent.change(screen.getByPlaceholderText(/cooperative/i), {
       target: { value: 'coop-x' },
     });
-    expect(screen.getByText('Coop X')).toBeInTheDocument();
+    expect(screen.getAllByText('Coop X')[0]).toBeInTheDocument();
     expect(screen.queryByText('Autre Coop')).not.toBeInTheDocument();
   });
 });

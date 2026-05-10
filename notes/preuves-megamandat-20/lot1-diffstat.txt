@@ -1,0 +1,8 @@
+ apps/frontend/src/app/(dashboard)/buyer/layout.tsx |  46 +++
+ .../buyer/quote-requests/[id]/page.test.tsx        | 176 ++++++++++++
+ .../(dashboard)/buyer/quote-requests/[id]/page.tsx | 270 ++++++++++++++++++
+ .../(dashboard)/buyer/quote-requests/page.test.tsx | 138 +++++++++
+ .../app/(dashboard)/buyer/quote-requests/page.tsx  | 315 +++++++++++++++++++++
+ docs/marketplace/BUYER_DASHBOARD_1.md              |  90 ++++++
+ notes/buyer-dashboard-1-plan.md                    |  33 +++
+ 7 files changed, 1068 insertions(+)

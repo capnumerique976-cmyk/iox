@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -25,6 +26,11 @@ import {
 } from '@iox/shared';
 import { MarketplaceReviewService } from '../marketplace-review/marketplace-review.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import {
+  SELLER_CREATED,
+  SELLER_UPDATED,
+  SELLER_STATUS_CHANGED,
+} from '../search/search.events';
 import type { Prisma } from '@prisma/client';
 
 const SELLER_INCLUDE = {
@@ -39,6 +45,7 @@ export class SellerProfilesService {
     private auditService: AuditService,
     private reviewQueue: MarketplaceReviewService,
     private ownership: SellerOwnershipService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async findAll(query: QuerySellerProfilesDto, actor?: RequestUser) {
@@ -202,6 +209,8 @@ export class SellerProfilesService {
       newData: { companyId: profile.companyId, slug: profile.slug, status: profile.status },
     });
 
+    this.eventEmitter.emit(SELLER_CREATED, { entityId: profile.id });
+
     return profile;
   }
 
@@ -248,6 +257,8 @@ export class SellerProfilesService {
       previousData: { status: existing.status, slug: existing.slug },
       newData: { status: updated.status, slug: updated.slug },
     });
+
+    this.eventEmitter.emit(SELLER_UPDATED, { entityId: id });
 
     return updated;
   }
@@ -342,6 +353,8 @@ export class SellerProfilesService {
       actorId,
     );
 
+    this.eventEmitter.emit(SELLER_STATUS_CHANGED, { entityId: id });
+
     return updated;
   }
 
@@ -381,6 +394,8 @@ export class SellerProfilesService {
       actorId,
     );
 
+    this.eventEmitter.emit(SELLER_STATUS_CHANGED, { entityId: id });
+
     return updated;
   }
 
@@ -411,6 +426,8 @@ export class SellerProfilesService {
       previousData: { status: existing.status },
       newData: { status: updated.status, reason: dto.reason },
     });
+
+    this.eventEmitter.emit(SELLER_STATUS_CHANGED, { entityId: id });
 
     return updated;
   }

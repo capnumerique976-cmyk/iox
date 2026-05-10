@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, RequestMethod } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -101,8 +101,10 @@ async function bootstrap() {
   // au SIGTERM/SIGINT, évite les connexions orphelines lors des rolling updates.
   app.enableShutdownHooks();
 
-  // Préfixe global API
-  app.setGlobalPrefix('api/v1');
+  // Préfixe global API — /admin/* exclus pour Bull Board (pas api/v1 devant).
+  app.setGlobalPrefix('api/v1', {
+    exclude: [{ path: 'admin/(.*)', method: RequestMethod.ALL }],
+  });
 
   // Validation globale des DTOs
   app.useGlobalPipes(
@@ -135,14 +137,38 @@ async function bootstrap() {
       )
       .setVersion('1.0')
       .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
+      // ── Authentification & utilisateurs ─────────────────────────────────
       .addTag('auth', 'Authentification et gestion des sessions')
       .addTag('users', 'Gestion des utilisateurs')
+      // ── Marketplace — catalogue & offres ────────────────────────────────
+      .addTag('marketplace - catalog (public)', 'Catalogue public (sans auth) — offres, produits, vendeurs')
+      .addTag('marketplace - products', 'Produits marketplace (seller) — CRUD, publication, modération')
+      .addTag('marketplace - offers', "Offres marketplace (prix, devise, disponibilité) — nécessite rôle MARKETPLACE_SELLER")
+      .addTag('marketplace - seller profiles', 'Profils vendeur — création, KYC, statuts, ownership')
+      .addTag('marketplace - quote requests', "Demandes de devis (RFQ) — FSM: NEW→QUOTED→WON/LOST. Scoping automatique par rôle buyer/seller/admin.")
+      .addTag('marketplace - documents', 'Documents de conformité marketplace (upload, validation admin)')
+      .addTag('marketplace - certifications', 'Certifications produits/profils marketplace')
+      .addTag('marketplace - media assets', 'Images et médias marketplace')
+      .addTag('marketplace - review queue', "File de modération admin — approve/reject profils et offres")
+      .addTag('admin marketplace categories', 'Catégories marketplace (admin)')
+      // ── Paiements & facturation ──────────────────────────────────────────
+      .addTag('payments', "Paiements Stripe Connect — checkout session (buyer), onboarding (seller), remboursement, webhook Stripe. Devises supportées : EUR, USD.")
+      .addTag('invoices', 'Factures — liste, détail, téléchargement PDF (application/pdf)')
+      // ── Conformité & dashboard ───────────────────────────────────────────
+      .addTag('compliance', "Conformité vendeur — résumé KYC, documents manquants/refusés, alertes. Rôles : MARKETPLACE_SELLER (propre profil) ou ADMIN/QUALITY_MANAGER (global).")
+      .addTag('dashboard', "Tableaux de bord — stats internes (staff), alertes marketplace (seller/buyer), activité récente")
+      // ── Documents & labels ───────────────────────────────────────────────
+      .addTag('documents', 'Documents de conformité (upload multipart, validation statut, URL download)')
+      .addTag('label-validations', "Validations de labels/certifications — création, mise à jour, requêtes")
+      // ── Modules opérationnels MCH ────────────────────────────────────────
       .addTag('beneficiaries', 'Gestion des bénéficiaires')
       .addTag('products', 'Produits et fiches techniques')
       .addTag('supply', 'Partenaires et contrats approvisionnement')
       .addTag('batches', 'Lots entrants, transformation, lots finis')
       .addTag('market', 'Décision de mise en marché')
       .addTag('audit', "Journal d'audit")
+      // ── Support ──────────────────────────────────────────────────────────
+      .addTag('search', 'Recherche full-text (MeiliSearch + fallback Postgres)')
       .addTag('health', 'Santé du service')
       .build();
 

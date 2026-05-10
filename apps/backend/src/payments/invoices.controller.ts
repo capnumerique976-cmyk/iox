@@ -4,7 +4,7 @@
 //  - GET    /invoices         (ADMIN, COORDINATOR, MARKETPLACE_BUYER, MARKETPLACE_SELLER)
 //  - GET    /invoices/:id     (same roles)
 //  - POST   /invoices         (ADMIN, COORDINATOR) — body: { paymentId }
-//  - GET    /invoices/:id/pdf (same roles) — 501 stub
+//  - GET    /invoices/:id/pdf (same roles) — PDF download
 
 import {
   Body,
@@ -17,9 +17,24 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiProduces,
+  ApiQuery,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -27,8 +42,18 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserRole, RequestUser } from '@iox/shared';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/payments.dto';
+import { InvoiceResponseDto, PaginatedInvoicesDto } from '../common/dto/swagger-responses.dto';
+
+const INVOICE_ROLES = [
+  UserRole.ADMIN,
+  UserRole.COORDINATOR,
+  UserRole.MARKETPLACE_BUYER,
+  UserRole.MARKETPLACE_SELLER,
+] as const;
 
 @ApiTags('invoices')
+@ApiBearerAuth('access-token')
+@ApiUnauthorizedResponse({ description: 'JWT manquant ou expiré' })
 @Controller('invoices')
 export class InvoicesController {
   private readonly logger = new Logger(InvoicesController.name);
@@ -37,14 +62,22 @@ export class InvoicesController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth('access-token')
-  @Roles(
-    UserRole.ADMIN,
-    UserRole.COORDINATOR,
-    UserRole.MARKETPLACE_BUYER,
-    UserRole.MARKETPLACE_SELLER,
-  )
-  @ApiOperation({ summary: 'Liste les factures (filtré par buyer/seller selon rôle)' })
+  @Roles(...INVOICE_ROLES)
+  @ApiOperation({
+    summary: 'Liste les factures (filtré par buyer/seller selon rôle)',
+    description:
+      'Scoping automatique selon le rôle : ' +
+      'MARKETPLACE_BUYER → factures de sa compagnie ; ' +
+      'MARKETPLACE_SELLER → factures de son profil vendeur ; ' +
+      'ADMIN/COORDINATOR → filtrage explicite via `buyerCompanyId` ou `sellerProfileId`. ' +
+      'Les montants sont en centimes. La devise est EUR ou USD.',
+  })
+  @ApiQuery({ name: 'buyerCompanyId', required: false, description: 'Filtrer par compagnie acheteuse (UUID)' })
+  @ApiQuery({ name: 'sellerProfileId', required: false, description: 'Filtrer par profil vendeur (UUID)' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiOkResponse({ type: PaginatedInvoicesDto })
+  @ApiForbiddenResponse({ description: 'Rôle insuffisant' })
   async list(
     @Query('buyerCompanyId') buyerCompanyId?: string,
     @Query('sellerProfileId') sellerProfileId?: string,
@@ -70,7 +103,6 @@ export class InvoicesController {
       );
     }
 
-    // Default : buyer scope if MARKETPLACE_BUYER, seller scope if MARKETPLACE_SELLER.
     if (actor?.role === UserRole.MARKETPLACE_BUYER && actor.companyIds?.length) {
       return this.invoices.listByBuyer(
         actor.companyIds[0],
@@ -91,14 +123,17 @@ export class InvoicesController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth('access-token')
-  @Roles(
-    UserRole.ADMIN,
-    UserRole.COORDINATOR,
-    UserRole.MARKETPLACE_BUYER,
-    UserRole.MARKETPLACE_SELLER,
-  )
-  @ApiOperation({ summary: 'Détail d\'une facture' })
+  @Roles(...INVOICE_ROLES)
+  @ApiOperation({
+    summary: 'Détail d\'une facture',
+    description:
+      'Ownership : buyer/seller voient uniquement leurs propres factures. ' +
+      'Admin/Coordinator voient toutes les factures.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID de la facture' })
+  @ApiOkResponse({ type: InvoiceResponseDto })
+  @ApiNotFoundResponse({ description: 'Facture introuvable ou accès refusé' })
+  @ApiForbiddenResponse({ description: 'Ownership non respectée' })
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() actor: RequestUser,
@@ -108,10 +143,18 @@ export class InvoicesController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth('access-token')
   @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Créer une facture à partir d\'un paiement' })
+  @ApiOperation({
+    summary: 'Créer une facture à partir d\'un paiement',
+    description:
+      'Génère une facture PDF à partir d\'un paiement SUCCEEDED. ' +
+      'La facture reçoit un numéro auto-incrémenté (INV-YYYY-NNNNN). ' +
+      'Rôles : ADMIN, COORDINATOR.',
+  })
+  @ApiCreatedResponse({ type: InvoiceResponseDto })
+  @ApiBadRequestResponse({ description: 'Paiement introuvable ou non en statut SUCCEEDED' })
+  @ApiForbiddenResponse({ description: 'Rôles ADMIN ou COORDINATOR requis' })
   async create(
     @Body() dto: CreateInvoiceDto,
     @CurrentUser() actor: RequestUser,
@@ -121,15 +164,38 @@ export class InvoicesController {
 
   @Get(':id/pdf')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth('access-token')
-  @Roles(
-    UserRole.ADMIN,
-    UserRole.COORDINATOR,
-    UserRole.MARKETPLACE_BUYER,
-    UserRole.MARKETPLACE_SELLER,
-  )
-  @ApiOperation({ summary: 'Télécharger le PDF d\'une facture (stub V1 — 501)' })
-  async downloadPdf(@Param('id', ParseUUIDPipe) id: string) {
-    return this.invoices.generatePdf(id);
+  @Roles(...INVOICE_ROLES)
+  @ApiOperation({
+    summary: 'Télécharger le PDF d\'une facture',
+    description:
+      'Génère ou retourne le PDF de la facture. ' +
+      'Content-Type : application/pdf. ' +
+      'Content-Disposition : attachment; filename="facture-INV-YYYY-NNNNN.pdf". ' +
+      'Ownership identique à GET /invoices/:id.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID de la facture' })
+  @ApiProduces('application/pdf')
+  @ApiOkResponse({
+    description: 'PDF de la facture (binary)',
+    content: { 'application/pdf': { schema: { type: 'string', format: 'binary' } } },
+  })
+  @ApiNotFoundResponse({ description: 'Facture introuvable ou accès refusé' })
+  @ApiForbiddenResponse({ description: 'Ownership non respectée' })
+  async downloadPdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() actor: RequestUser,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.invoices.generatePdf(id, actor);
+
+    const invoice = await this.invoices.findById(id, actor);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="facture-${invoice.invoiceNumber}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+      'Cache-Control': 'private, no-cache',
+    });
+    res.end(pdfBuffer);
   }
 }

@@ -52,11 +52,13 @@ export function SellerOnboardingBanner() {
       <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
       <div className="text-sm">
         <p className="font-medium text-orange-900">
-          Votre compte vendeur n'est pas encore rattaché à une entreprise.
+          Votre espace vendeur est en cours de configuration.
         </p>
         <p className="text-orange-800 mt-1">
-          Les actions de création marketplace sont désactivées tant qu'un administrateur n'a pas
-          créé votre rattachement. Contactez l'équipe IOX pour finaliser l'onboarding.
+          Notre équipe doit finaliser la création de votre profil vendeur.
+          En attendant, vous pouvez explorer la plateforme. Contactez-nous à{' '}
+          <a href="mailto:support@iox.yt" className="underline font-medium">support@iox.yt</a>{' '}
+          si vous avez des questions.
         </p>
       </div>
     </div>

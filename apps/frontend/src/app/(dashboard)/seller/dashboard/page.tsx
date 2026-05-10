@@ -21,6 +21,8 @@ import { useAuth } from '@/contexts/auth.context';
 import { authStorage } from '@/lib/auth';
 import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
 import { PageHeader } from '@/components/ui/page-header';
+import { GuidedDashboardHeader } from '@/components/onboarding/guided-dashboard-header';
+import { publicationStatusLabel, sellerProfileStatusLabel, rfqStatusLabel, verificationStatusLabel } from '@/lib/status-labels';
 
 /**
  * Cockpit vendeur marketplace — vue synthétique 1 écran.
@@ -112,10 +114,10 @@ function completionCriteria(p: SellerProfileRow): CompletionCriterion[] {
     },
     { key: 'email', label: 'Email commercial', done: !!p.salesEmail },
     { key: 'logo', label: 'Logo', done: !!p.logoMediaId },
-    { key: 'incoterms', label: 'Incoterms supportés', done: arr(p.supportedIncoterms).length > 0 },
+    { key: 'incoterms', label: 'Conditions de livraison', done: arr(p.supportedIncoterms).length > 0 },
     {
       key: 'destinations',
-      label: 'Destinations servies',
+      label: 'Pays de livraison',
       done: arr(p.destinationsServed).length > 0,
     },
   ];
@@ -237,17 +239,20 @@ export default function SellerDashboardPage() {
   if (user && !CAN_VIEW.includes(user.role as (typeof CAN_VIEW)[number])) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        Votre rôle ne permet pas d&apos;accéder au cockpit vendeur. Contactez un administrateur si vous pensez que c&apos;est une erreur.
+        Votre compte ne dispose pas des droits pour accéder à cet espace. Contactez un administrateur si vous pensez que c&apos;est une erreur.
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Guided journey header — visible for marketplace sellers */}
+      {user?.role === UserRole.MARKETPLACE_SELLER && <GuidedDashboardHeader />}
+
       <PageHeader
         icon={<Store className="h-5 w-5" aria-hidden />}
-        title="Cockpit vendeur marketplace"
-        subtitle="Synthèse de votre activité marketplace : publications, demandes de devis, conformité documentaire."
+        title="Mon espace vendeur"
+        subtitle="Suivez vos produits, offres et demandes de devis en un coup d'oeil."
         actions={
           <div className="flex items-center gap-2">
             {profile.status === 'ok' && profile.value?.slug && (
@@ -289,7 +294,7 @@ export default function SellerDashboardPage() {
                 <span
                   className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusTone(profile.value.status)}`}
                 >
-                  {profile.value.status}
+                  {sellerProfileStatusLabel(profile.value.status)}
                 </span>
               </p>
             </div>
@@ -369,7 +374,7 @@ export default function SellerDashboardPage() {
             ['En revue', productCounts.byStatus[MarketplacePublicationStatus.IN_REVIEW] ?? 0],
             ['Brouillons', productCounts.byStatus[MarketplacePublicationStatus.DRAFT] ?? 0],
           ]}
-          emptyHint="Aucun produit marketplace pour l'instant."
+          emptyHint="Aucun produit pour l'instant."
         />
         <StatCard
           icon={<Tag className="h-5 w-5 text-emerald-600" />}
@@ -394,7 +399,7 @@ export default function SellerDashboardPage() {
             ['Gagnées', rfqCounts.byStatus[QuoteRequestStatus.WON] ?? 0],
           ]}
           emptyHint="Aucune demande entrante."
-          cta={{ href: '/quote-requests', label: 'Ouvrir la file RFQ' }}
+          cta={{ href: '/quote-requests', label: 'Voir les demandes' }}
         />
       </section>
 
@@ -490,7 +495,7 @@ export default function SellerDashboardPage() {
                           : 'bg-gray-100 text-gray-700'
                     }`}
                   >
-                    {q.status}
+                    {rfqStatusLabel(q.status)}
                   </span>
                   <Link
                     href={`/quote-requests/${q.id}`}
@@ -535,7 +540,7 @@ export default function SellerDashboardPage() {
               items={docAlerts.pending.map((d) => ({
                 id: d.id,
                 label: d.title,
-                detail: d.verificationStatus,
+                detail: verificationStatusLabel(d.verificationStatus),
               }))}
               emptyLabel="Tous vos documents sont vérifiés."
             />
@@ -560,10 +565,10 @@ export default function SellerDashboardPage() {
             href="/seller/profile/certifications"
             label="Mes certifications vendeur"
           />
-          <QuickLink href="/seller/marketplace-products" label="Mes produits marketplace" />
+          <QuickLink href="/seller/marketplace-products" label="Mes produits" />
           <QuickLink href="/seller/marketplace-offers" label="Mes offres" />
           <QuickLink href="/quote-requests" label="Demandes de devis" />
-          <QuickLink href="/seller/documents" label="Documents marketplace" />
+          <QuickLink href="/seller/documents" label="Mes documents" />
           <QuickLink href="/marketplace" label="Voir le catalogue public" />
           <QuickLink href="/marketplace/categories" label="Catégories produits" />
         </div>

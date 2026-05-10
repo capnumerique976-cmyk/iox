@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { JourneyService } from './journey.service';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -31,7 +32,10 @@ import { UserRole, RequestUser } from '@iox/shared';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private journeyService: JourneyService,
+  ) {}
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
@@ -44,6 +48,12 @@ export class UsersController {
   @ApiOperation({ summary: "Profil complet de l'utilisateur connecté" })
   async getMyProfile(@CurrentUser() user: RequestUser) {
     return this.usersService.findById(user.id);
+  }
+
+  @Get('me/journey')
+  @ApiOperation({ summary: 'Parcours guidé — progression et prochaine action' })
+  async getMyJourney(@CurrentUser() user: RequestUser) {
+    return this.journeyService.getJourney(user);
   }
 
   @Patch('me')

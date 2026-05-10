@@ -20,6 +20,7 @@ import {
 import { SellerCertificationsManager } from '@/components/marketplace/SellerCertificationsManager';
 import { PageHeader } from '@/components/ui/page-header';
 import { MarketplaceRelatedEntityType } from '@iox/shared';
+import { publicationStatusLabel } from '@/lib/status-labels';
 
 type LoadState =
   | { kind: 'loading' }
@@ -97,7 +98,7 @@ export default function SellerProductCertificationsPage() {
     <div className="space-y-5">
       <PageHeader
         title={`Certifications — ${product.commercialName}`}
-        subtitle={`Statut produit : ${product.publicationStatus}`}
+        subtitle={`Statut produit : ${publicationStatusLabel(product.publicationStatus)}`}
         actions={
           <Link
             href="/seller/marketplace-products"

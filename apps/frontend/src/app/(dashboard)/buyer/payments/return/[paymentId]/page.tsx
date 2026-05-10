@@ -16,14 +16,25 @@ export default function BuyerCheckoutReturnPage() {
           Paiement reçu
         </h1>
         <p className="mt-2 text-sm text-emerald-700">
-          Merci ! Votre paiement a été initié avec succès. Le vendeur sera notifié
-          dans quelques instants.
+          Merci ! Votre paiement a ete recu avec succes. Le vendeur sera notifie
+          et votre facture sera disponible sous peu.
         </p>
-        <p className="mt-1 text-xs text-emerald-600">Réf. RFQ : {params.paymentId}</p>
+        <p className="mt-1 text-xs text-emerald-600">N° demande : {params.paymentId}</p>
       </div>
-      <Link href="/buyer" className="inline-block text-sm text-blue-600 hover:underline">
-        ← Retour à mon espace acheteur
-      </Link>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Link
+          href="/buyer/invoices"
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+        >
+          Voir ma facture
+        </Link>
+        <Link
+          href="/buyer"
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Mon espace acheteur
+        </Link>
+      </div>
     </div>
   );
 }

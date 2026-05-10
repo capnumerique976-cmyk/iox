@@ -4,11 +4,13 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotifEmailService } from '../notif-email/notif-email.service';
+import { EmailQueueService } from '../queue/services/email-queue.service';
 import {
   CreateQuoteRequestDto,
   QueryQuoteRequestsDto,
@@ -27,6 +29,7 @@ import {
 } from '@iox/shared';
 import type { Prisma } from '@prisma/client';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import { QuoteRequestFsm } from './quote-request-fsm';
 
 const RFQ_INCLUDE = {
   marketplaceOffer: {
@@ -70,38 +73,7 @@ const STAFF_ROLES = new Set<UserRole>([
   UserRole.QUALITY_MANAGER,
 ]);
 
-/**
- * Transitions autorisées par statut.
- * Logique B2B simple : tous les acteurs (buyer/seller/staff) peuvent naviguer
- * le funnel, avec quelques restrictions (WON/LOST = seller/staff only).
- */
-const ALLOWED_TRANSITIONS: Record<QuoteRequestStatus, QuoteRequestStatus[]> = {
-  [QuoteRequestStatus.NEW]: [
-    QuoteRequestStatus.QUALIFIED,
-    QuoteRequestStatus.CANCELLED,
-    QuoteRequestStatus.LOST,
-  ],
-  [QuoteRequestStatus.QUALIFIED]: [
-    QuoteRequestStatus.QUOTED,
-    QuoteRequestStatus.CANCELLED,
-    QuoteRequestStatus.LOST,
-  ],
-  [QuoteRequestStatus.QUOTED]: [
-    QuoteRequestStatus.NEGOTIATING,
-    QuoteRequestStatus.WON,
-    QuoteRequestStatus.LOST,
-    QuoteRequestStatus.CANCELLED,
-  ],
-  [QuoteRequestStatus.NEGOTIATING]: [
-    QuoteRequestStatus.QUOTED,
-    QuoteRequestStatus.WON,
-    QuoteRequestStatus.LOST,
-    QuoteRequestStatus.CANCELLED,
-  ],
-  [QuoteRequestStatus.WON]: [],
-  [QuoteRequestStatus.LOST]: [],
-  [QuoteRequestStatus.CANCELLED]: [],
-};
+// Mandat 53: ALLOWED_TRANSITIONS moved to QuoteRequestFsm (quote-request-fsm.ts).
 
 @Injectable()
 export class QuoteRequestsService {
@@ -112,8 +84,12 @@ export class QuoteRequestsService {
     private auditService: AuditService,
     private ownership: SellerOwnershipService,
     // MP-NOTIF-1 phase 1 — émetteur d'emails transactionnels.
+    // Mandat 53 — kept for backward compat + processor; safeNotify now
+    // routes via EmailQueueService when available.
     private notifEmail: NotifEmailService,
     private config: ConfigService,
+    // Mandat 53 — BullMQ email queue (optional: tests without Redis omit this).
+    @Optional() private emailQueue?: EmailQueueService,
   ) {}
 
   /**
@@ -208,9 +184,13 @@ export class QuoteRequestsService {
   }
 
   /**
-   * MP-NOTIF-1 phase 1 — Émet un email transactionnel sans bloquer le
-   * workflow métier en cas d'échec (try/catch silencieux + log warn).
-   * Phase 2 ajoutera EmailLog + retry.
+   * MP-NOTIF-1 phase 1 / Mandat 53 — Émet un email transactionnel.
+   *
+   * Route :
+   *   - Si EmailQueueService injecté (prod) → push job BullMQ (async, retry).
+   *   - Sinon (tests sans Redis) → appel direct NotifEmailService (sync).
+   *
+   * Dans les deux cas : erreur = log warn/error, jamais throw vers l'appelant.
    */
   private async safeNotify(
     templateId: string,
@@ -218,6 +198,13 @@ export class QuoteRequestsService {
     templateData: Record<string, unknown>,
     locale?: string,
   ): Promise<void> {
+    if (this.emailQueue) {
+      // Mandat 53 — queue path: BullMQ handles send + retry.
+      await this.emailQueue.enqueue({ templateId, to, templateData, locale });
+      return;
+    }
+
+    // Fallback: direct send (used when queue not wired, e.g. tests).
     try {
       // I18N-4 — locale passée au service pour résolution template.
       const res = await this.notifEmail.send({ to, templateId, templateData, locale });
@@ -450,28 +437,8 @@ export class QuoteRequestsService {
     if (!rfq) throw new NotFoundException('Demande de devis introuvable');
     this.ensureCanAccess(actor, rfq);
 
-    if (rfq.status === dto.status) {
-      throw new BadRequestException('Statut identique au statut courant');
-    }
-
-    const allowed = ALLOWED_TRANSITIONS[rfq.status as QuoteRequestStatus];
-    if (!allowed.includes(dto.status)) {
-      throw new BadRequestException(`Transition interdite : ${rfq.status} → ${dto.status}`);
-    }
-
-    // Restrictions métier :
-    // - buyer ne peut que CANCELLED
-    // - WON/LOST : seller ou staff uniquement
-    if (this.isBuyer(actor) && dto.status !== QuoteRequestStatus.CANCELLED) {
-      throw new ForbiddenException("Un acheteur ne peut qu'annuler sa demande");
-    }
-    if (
-      (dto.status === QuoteRequestStatus.WON || dto.status === QuoteRequestStatus.LOST) &&
-      !this.isStaff(actor) &&
-      !this.isSeller(actor)
-    ) {
-      throw new ForbiddenException("Seul le vendeur ou l'équipe IOX peut clôturer cette demande");
-    }
+    // Mandat 53: centralized FSM validation (structure + role).
+    QuoteRequestFsm.assertTransition(rfq.status as QuoteRequestStatus, dto.status, actor);
 
     const updated = await this.prisma.quoteRequest.update({
       where: { id },

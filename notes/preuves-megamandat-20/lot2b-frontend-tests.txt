@@ -1,0 +1,8 @@
+
+ ✓ src/app/(dashboard)/admin/notif-email/logs/page.test.tsx (4 tests) 63ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  21:17:58
+   Duration  882ms (transform 67ms, setup 126ms, collect 100ms, tests 63ms, environment 411ms, prepare 51ms)
+

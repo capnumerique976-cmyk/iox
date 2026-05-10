@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -30,6 +31,11 @@ import {
 } from '@iox/shared';
 import { MarketplaceReviewService } from '../marketplace-review/marketplace-review.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import {
+  PRODUCT_CREATED,
+  PRODUCT_UPDATED,
+  PRODUCT_STATUS_CHANGED,
+} from '../search/search.events';
 import type { Prisma } from '@prisma/client';
 
 const MP_INCLUDE = {
@@ -87,6 +93,7 @@ export class MarketplaceProductsService {
     private auditService: AuditService,
     private reviewQueue: MarketplaceReviewService,
     private ownership: SellerOwnershipService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   // ─── Lecture ─────────────────────────────────────────────────────────────
@@ -258,6 +265,8 @@ export class MarketplaceProductsService {
       },
     });
 
+    this.eventEmitter.emit(PRODUCT_CREATED, { entityId: mp.id });
+
     return mp;
   }
 
@@ -361,6 +370,8 @@ export class MarketplaceProductsService {
         completionScore: updated.completionScore,
       },
     });
+
+    this.eventEmitter.emit(PRODUCT_UPDATED, { entityId: id });
 
     return updated;
   }
@@ -484,6 +495,8 @@ export class MarketplaceProductsService {
       actorId,
     );
 
+    this.eventEmitter.emit(PRODUCT_STATUS_CHANGED, { entityId: id });
+
     return updated;
   }
 
@@ -522,6 +535,8 @@ export class MarketplaceProductsService {
       dto.reason,
       actorId,
     );
+
+    this.eventEmitter.emit(PRODUCT_STATUS_CHANGED, { entityId: id });
 
     return updated;
   }
@@ -587,6 +602,8 @@ export class MarketplaceProductsService {
       newData: { publicationStatus: updated.publicationStatus },
     });
 
+    this.eventEmitter.emit(PRODUCT_STATUS_CHANGED, { entityId: id });
+
     return updated;
   }
 
@@ -618,6 +635,8 @@ export class MarketplaceProductsService {
       previousData: { publicationStatus: existing.publicationStatus },
       newData: { publicationStatus: updated.publicationStatus, reason: dto.reason },
     });
+
+    this.eventEmitter.emit(PRODUCT_STATUS_CHANGED, { entityId: id });
 
     return updated;
   }

@@ -27,9 +27,9 @@ interface TypeSpec {
 const TYPES: TypeSpec[] = [
   {
     type: 'RFQ_NOTIFICATIONS',
-    label: 'Notifications RFQ',
+    label: 'Alertes demandes de devis',
     description:
-      'Emails liés à vos demandes de devis : nouveaux messages, qualification, devis reçu, gagné, perdu.',
+      'Emails liés à vos demandes de devis : nouveaux messages, devis recu, commande acceptee ou refusee.',
   },
   {
     type: 'TRANSACTIONAL',
@@ -41,7 +41,7 @@ const TYPES: TypeSpec[] = [
     type: 'ALL',
     label: 'Désinscription totale',
     description:
-      'Désactive TOUS les emails marketplace. Override les autres préférences. Vous pourrez toujours vous reconnecter à votre compte.',
+      'Desactive TOUS les emails marketplace. Remplace toutes les autres preferences. Vous pourrez toujours vous reconnecter a votre compte.',
   },
   {
     type: 'ORDER_SHIPPED',

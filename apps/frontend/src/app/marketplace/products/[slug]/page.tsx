@@ -23,6 +23,28 @@ import { CertificationBadgeList } from '@/components/marketplace/CertificationBa
 // MP-MEDIA-1 LOT 1 — galerie publique avec lightbox.
 import { PublicGalleryLightbox } from '@/components/marketplace/PublicGalleryLightbox';
 
+/** Labels lisibles pour les types de documents publics (buyer-facing). */
+const DOC_TYPE_LABELS: Record<string, string> = {
+  TECHNICAL_DATA_SHEET: 'Fiche technique',
+  PHYTOSANITARY_CERTIFICATE: 'Certificat phytosanitaire',
+  QUALITY_CERTIFICATE: 'Certificat qualite',
+  ANALYSIS_REPORT: 'Rapport d\'analyse',
+  ORGANIC_CERTIFICATE: 'Certificat bio',
+  HALAL_CERTIFICATE: 'Certificat halal',
+  ISO_CERTIFICATE: 'Certificat ISO',
+  OTHER: 'Document',
+};
+
+function formatDocType(type: string): string {
+  return (
+    DOC_TYPE_LABELS[type] ??
+    type
+      .split('_')
+      .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+      .join(' ')
+  );
+}
+
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
@@ -368,7 +390,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   <li key={d.id} className="flex items-center gap-2 text-white/80">
                     <FileText className="h-3.5 w-3.5 flex-shrink-0 text-[#00D4FF]" aria-hidden />
                     <span className="font-medium">{d.title}</span>
-                    <span className="text-xs text-white/40">({d.documentType})</span>
+                    <span className="text-xs text-white/40">({formatDocType(d.documentType)})</span>
                   </li>
                 ))}
               </ul>

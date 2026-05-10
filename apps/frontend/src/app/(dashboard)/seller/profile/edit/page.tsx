@@ -28,6 +28,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { InlineMediaUploader } from '@/components/marketplace/InlineMediaUploader';
 import { MarketplaceRelatedEntityType, MediaAssetRole } from '@iox/shared';
+import { sellerProfileStatusLabel } from '@/lib/status-labels';
 
 type LoadState =
   | { kind: 'loading' }
@@ -142,13 +143,13 @@ function validateClient(form: FormState): string | null {
   }
   if (form.descriptionShort.length > 280) return 'La description courte est limitée à 280 caractères.';
   if (form.descriptionLong.length > 2000) return 'La description longue est limitée à 2000 caractères.';
-  if (form.story.length > 4000) return 'L’histoire est limitée à 4000 caractères.';
+  if (form.story.length > 4000) return "L'histoire est limitee a 4000 caracteres.";
   if (form.salesPhone.length > 30) return 'Le téléphone est limité à 30 caractères.';
   if (form.salesEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.salesEmail)) {
     return 'Email commercial invalide.';
   }
   if (form.website && !/^https?:\/\//i.test(form.website)) {
-    return 'L’URL du site doit commencer par http:// ou https://.';
+    return "L'URL du site doit commencer par http:// ou https://.";
   }
   if (form.averageLeadTimeDays && Number.parseInt(form.averageLeadTimeDays, 10) < 0) {
     return 'Le délai moyen ne peut pas être négatif.';
@@ -231,7 +232,7 @@ export default function SellerProfileEditPage() {
             ? err.message
             : err instanceof Error
               ? err.message
-              : 'Échec de l’association du média.';
+              : "Echec de l'association du media.";
         setSubmitError(message);
         throw err;
       } finally {
@@ -303,7 +304,7 @@ export default function SellerProfileEditPage() {
             <p className="font-medium">{state.message}</p>
             {state.status === 404 && (
               <p className="mt-1 text-xs">
-                Aucun profil vendeur n’est rattaché à votre compte. Contactez l’équipe IOX pour
+                Aucun profil vendeur n'est rattaché à votre compte. Contactez l'équipe IOX pour
                 finaliser votre onboarding.
               </p>
             )}
@@ -319,7 +320,7 @@ export default function SellerProfileEditPage() {
           href="/seller/dashboard"
           className="inline-flex items-center gap-1 text-xs text-gray-600 hover:underline"
         >
-          <ArrowLeft className="h-3 w-3" /> Retour au cockpit vendeur
+          <ArrowLeft className="h-3 w-3" /> Mon espace vendeur
         </Link>
       </div>
     );
@@ -332,7 +333,7 @@ export default function SellerProfileEditPage() {
     <div className="space-y-5">
       <PageHeader
         title="Édition de mon profil vendeur"
-        subtitle={`Statut actuel : ${profile.status}`}
+        subtitle={`Statut : ${sellerProfileStatusLabel(profile.status)}`}
         actions={
           <div className="flex items-center gap-2">
             <Link
@@ -346,7 +347,7 @@ export default function SellerProfileEditPage() {
               href="/seller/dashboard"
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
             >
-              <ArrowLeft className="h-3 w-3" /> Cockpit vendeur
+              <ArrowLeft className="h-3 w-3" /> Mon espace vendeur
             </Link>
           </div>
         }
@@ -357,7 +358,7 @@ export default function SellerProfileEditPage() {
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <p>
             Votre profil est actuellement <strong>approuvé et publié</strong>. Modifier le nom
-            public, les descriptions, l’histoire ou le logo/bannière repassera votre fiche en
+            public, les descriptions, l'histoire ou le logo/bannière repassera votre fiche en
             <strong> revue qualité</strong> avant nouvelle publication.
           </p>
         </div>
@@ -365,7 +366,7 @@ export default function SellerProfileEditPage() {
 
       <form onSubmit={onSubmit} className="space-y-5" noValidate>
         <Section title="Identité publique">
-          <Field label="Nom public" required>
+          <Field label="Nom public" required hint="Le nom que verront les acheteurs sur votre vitrine">
             <input
               type="text"
               value={form.publicDisplayName}
@@ -378,7 +379,7 @@ export default function SellerProfileEditPage() {
             />
           </Field>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <Field label="Pays (ISO 2 lettres)">
+            <Field label="Pays" hint="Ex : Mayotte, France, Madagascar">
               <input
                 type="text"
                 value={form.country}
@@ -411,7 +412,7 @@ export default function SellerProfileEditPage() {
         <Section title="Récit & descriptions">
           <Field
             label="Description courte"
-            hint={`${form.descriptionShort.length} / 280`}
+            hint={`${form.descriptionShort.length} / 280 — Presentez-vous en une phrase`}
           >
             <textarea
               value={form.descriptionShort}
@@ -421,7 +422,7 @@ export default function SellerProfileEditPage() {
               className={textareaCls}
             />
           </Field>
-          <Field label="Description détaillée" hint={`${form.descriptionLong.length} / 2000`}>
+          <Field label="Description détaillée" hint={`${form.descriptionLong.length} / 2000 — Decrivez votre activite, vos produits, vos atouts`}>
             <textarea
               value={form.descriptionLong}
               onChange={set('descriptionLong')}
@@ -430,7 +431,7 @@ export default function SellerProfileEditPage() {
               className={textareaCls}
             />
           </Field>
-          <Field label="Histoire / story" hint={`${form.story.length} / 4000`}>
+          <Field label="Votre histoire" hint={`${form.story.length} / 4000 — Racontez votre parcours, vos valeurs, ce qui rend vos produits uniques`}>
             <textarea
               value={form.story}
               onChange={set('story')}
@@ -474,11 +475,11 @@ export default function SellerProfileEditPage() {
           </Field>
         </Section>
 
-        <Section title="Capacités export">
+        <Section title="Livraison et langues">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Field
               label="Langues parlées"
-              hint="Codes courts séparés par des virgules (FR, EN, AR…)"
+              hint="Ex : français, anglais, arabe"
             >
               <input
                 type="text"
@@ -488,8 +489,8 @@ export default function SellerProfileEditPage() {
               />
             </Field>
             <Field
-              label="Délai moyen (jours)"
-              hint="Entier ≥ 0"
+              label="Délai de livraison moyen"
+              hint="En jours — combien de temps entre la commande et l'expédition ?"
             >
               <input
                 type="number"
@@ -501,7 +502,7 @@ export default function SellerProfileEditPage() {
             </Field>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="Incoterms supportés" hint="Ex : FOB, CIF, EXW">
+            <Field label="Conditions de livraison" hint="Ex : FOB, CIF, EXW — laissez vide si vous ne savez pas">
               <input
                 type="text"
                 value={form.supportedIncotermsCsv}
@@ -509,7 +510,7 @@ export default function SellerProfileEditPage() {
                 className={inputCls}
               />
             </Field>
-            <Field label="Destinations servies" hint="Codes pays ISO (FR, DE, RE…)">
+            <Field label="Pays où vous pouvez livrer" hint="Ex : France, Allemagne, La Réunion">
               <input
                 type="text"
                 value={form.destinationsServedCsv}
@@ -522,9 +523,9 @@ export default function SellerProfileEditPage() {
 
         <Section title="Médias vitrine (logo & bannière)">
           <p className="text-xs text-gray-500">
-            PNG, JPEG ou WebP — 5 Mo maximum. Chaque téléversement crée un MediaAsset en attente
-            de modération puis associe immédiatement le média à votre profil. Sur un profil
-            déjà <strong>approuvé</strong>, remplacer un visuel repasse la fiche en revue qualité.
+            PNG, JPEG ou WebP — 5 Mo maximum. Vos images seront visibles sur votre vitrine
+            publique. Sur un profil déjà <strong>approuvé</strong>, changer une image repasse
+            votre fiche en revue avant publication.
           </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <InlineMediaUploader

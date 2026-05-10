@@ -9,8 +9,8 @@ import { MarketplaceDocumentsPanel } from '@/components/marketplace/MarketplaceD
 
 const RELATED_LABEL: Record<MarketplaceRelatedEntityType, string> = {
   [MarketplaceRelatedEntityType.SELLER_PROFILE]: 'Profil vendeur',
-  [MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT]: 'Produit marketplace',
-  [MarketplaceRelatedEntityType.MARKETPLACE_OFFER]: 'Offre marketplace',
+  [MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT]: 'Produit',
+  [MarketplaceRelatedEntityType.MARKETPLACE_OFFER]: 'Offre',
   [MarketplaceRelatedEntityType.PRODUCT_BATCH]: 'Lot produit',
 };
 

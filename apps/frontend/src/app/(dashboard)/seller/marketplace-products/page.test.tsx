@@ -65,11 +65,11 @@ describe('SellerMarketplaceProductsPage (FP-4)', () => {
     });
     render(<SellerMarketplaceProductsPage />);
     await waitFor(() => expect(screen.getByTestId('seller-mp-list')).toBeInTheDocument());
-    expect(screen.getByText('Vanille de Mayotte')).toBeInTheDocument();
-    const link = screen.getByTestId('seller-mp-seasonality-mp1') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toBe('/seller/marketplace-products/mp1/seasonality');
-    const certLink = screen.getByTestId('seller-mp-certifications-mp1') as HTMLAnchorElement;
-    expect(certLink.getAttribute('href')).toBe(
+    expect(screen.getAllByText('Vanille de Mayotte').length).toBeGreaterThanOrEqual(1);
+    const links = screen.getAllByTestId('seller-mp-seasonality-mp1') as HTMLAnchorElement[];
+    expect(links[0].getAttribute('href')).toBe('/seller/marketplace-products/mp1/seasonality');
+    const certLinks = screen.getAllByTestId('seller-mp-certifications-mp1') as HTMLAnchorElement[];
+    expect(certLinks[0].getAttribute('href')).toBe(
       '/seller/marketplace-products/mp1/certifications',
     );
   });
@@ -91,6 +91,6 @@ describe('SellerMarketplaceProductsPage (FP-4)', () => {
       meta: { total: 0, page: 1, limit: 50, totalPages: 0 },
     });
     render(<SellerMarketplaceProductsPage />);
-    expect(await screen.findByText(/Aucun produit marketplace/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pas encore de produit/i)).toBeInTheDocument();
   });
 });
