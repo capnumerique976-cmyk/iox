@@ -6,8 +6,9 @@ import type { NextRequest } from 'next/server';
  *
  * Responsibilities:
  * 1. Remove trailing slashes (SEO: canonical URLs, avoid duplicate content)
- * 2. Add security headers not covered by backend (X-Content-Type-Options,
- *    Permissions-Policy, X-Frame-Options for non-API routes)
+ * 2. Add security headers not covered by next.config.mjs (X-Content-Type-Options,
+ *    Permissions-Policy). NOTE: X-Frame-Options is set to DENY globally in
+ *    next.config.mjs headers() — do NOT set it here to avoid conflicting values.
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -31,10 +32,9 @@ export function middleware(request: NextRequest) {
     'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   );
 
-  // Prevent clickjacking on non-API routes (API has its own CORS/headers)
-  if (!pathname.startsWith('/api')) {
-    response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  }
+  // X-Frame-Options intentionally omitted here — set to DENY in next.config.mjs
+  // headers() for all routes. Setting it here too would produce duplicate/conflicting
+  // values (SAMEORIGIN vs DENY). Single source of truth: next.config.mjs.
 
   return response;
 }

@@ -156,9 +156,9 @@ class EnvSchema {
   @IsOptional()
   METRICS_TOKEN?: string;
 
-  // ── PAY-1 phase 1 — STRIPE CONNECT EXPRESS (test mode V1) ───────────────
-  // Toutes optionnelles V1 : si absentes, le module payments throw clair
-  // au moment d'un endpoint qui requiert Stripe (pas au boot).
+  // ── PAY-1 phase 1 — STRIPE CONNECT EXPRESS ───────────────────────────────
+  // Optionnelles : si absentes, les endpoints paiement throwent au call time.
+  // En production, un WARNING est émis au boot si manquantes ou en mode test.
   @IsString()
   @IsOptional()
   STRIPE_SECRET_KEY?: string;
@@ -205,6 +205,43 @@ function assertNoPlaceholder(env: EnvSchema) {
   }
 }
 
+/**
+ * Avertissements non bloquants pour les variables optionnelles critiques.
+ * Utilise console.warn (visible dans les logs PM2/Docker) sans jamais logger
+ * les valeurs des secrets.
+ */
+function warnMissingOptional(env: EnvSchema, raw: Record<string, unknown>): void {
+  if (env.APP_ENV === NodeEnv.development || env.APP_ENV === NodeEnv.test) return;
+
+  const isProd = env.APP_ENV === NodeEnv.production;
+
+  // Stripe : payments non fonctionnels si absent en production
+  if (!env.STRIPE_SECRET_KEY) {
+    console.warn(
+      `⚠️  [IOX] STRIPE_SECRET_KEY absent — paiements désactivés (${env.APP_ENV}). ` +
+        `Configurer avant ouverture.`,
+    );
+  } else if (isProd && env.STRIPE_SECRET_KEY.startsWith('sk_test_')) {
+    console.warn(
+      `⚠️  [IOX] STRIPE_SECRET_KEY est une clé TEST en production. ` +
+        `Remplacer par sk_live_ avant les premières transactions réelles.`,
+    );
+  }
+
+  if (!env.STRIPE_WEBHOOK_SECRET) {
+    console.warn(
+      `⚠️  [IOX] STRIPE_WEBHOOK_SECRET absent — webhooks Stripe non vérifiés (${env.APP_ENV}).`,
+    );
+  }
+
+  // APP_URL : liens emails RFQ pointent vers fallback si absent
+  if (!raw['APP_URL'] && isProd) {
+    console.warn(
+      `⚠️  [IOX] APP_URL absent — les liens dans les emails RFQ utiliseront le fallback 'https://iox.example'.`,
+    );
+  }
+}
+
 export function validateEnv(raw: Record<string, unknown>): EnvSchema {
   const instance = plainToInstance(EnvSchema, raw, {
     enableImplicitConversion: true,
@@ -229,5 +266,6 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
   }
 
   assertNoPlaceholder(instance);
+  warnMissingOptional(instance, raw);
   return instance;
 }

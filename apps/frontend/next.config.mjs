@@ -10,7 +10,11 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000'],
+      // En dev : localhost:3000. En prod : dérivé de FRONTEND_URL (ex: iox.example).
+      // Évite d'autoriser localhost en production (risque CSRF).
+      allowedOrigins: process.env.FRONTEND_URL
+        ? [new URL(process.env.FRONTEND_URL).host]
+        : ['localhost:3000'],
     },
   },
   /**
