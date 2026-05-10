@@ -36,7 +36,17 @@ export class RfqReminderService {
         id: true,
         buyerUserId: true,
         status: true,
-        buyerUser: { select: { email: true } },
+        buyerUser: {
+          select: { email: true, firstName: true, lastName: true, preferredLocale: true },
+        },
+        marketplaceOffer: {
+          select: {
+            title: true,
+            sellerProfile: {
+              select: { publicDisplayName: true },
+            },
+          },
+        },
       },
     });
 
@@ -49,10 +59,25 @@ export class RfqReminderService {
     await Promise.all(
       rfqs.map(async (rfq) => {
         try {
+          const buyerDisplayName =
+            [rfq.buyerUser.firstName, rfq.buyerUser.lastName].filter(Boolean).join(' ') ||
+            rfq.buyerUser.email;
+          const sellerDisplayName =
+            rfq.marketplaceOffer.sellerProfile?.publicDisplayName ?? 'IOX Marketplace';
+          const locale = rfq.buyerUser.preferredLocale ?? 'fr';
+          const ctaUrl = `${process.env['APP_URL'] ?? 'https://iox.example'}/buyer/quote-requests/${rfq.id}`;
+
           await this.emailQueue.enqueue({
             templateId: 'rfq-reminder',
             to: rfq.buyerUser.email,
-            templateData: { rfqId: rfq.id },
+            locale,
+            templateData: {
+              recipientDisplayName: buyerDisplayName,
+              senderDisplayName: sellerDisplayName,
+              offerTitle: rfq.marketplaceOffer.title,
+              note: null,
+              ctaUrl,
+            },
           });
           await this.audit.log({
             action: 'QUOTE_REQUEST_REMINDER_SENT',

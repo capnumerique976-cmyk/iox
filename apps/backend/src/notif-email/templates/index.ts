@@ -30,6 +30,9 @@ import { paymentConfirmedToBuyerEnTemplate } from './payment-confirmed-to-buyer.
 // BÊTA-PRIVÉE-PREP — Email welcome seller.
 import { sellerWelcomeTemplate } from './seller-welcome.template';
 import { sellerWelcomeEnTemplate } from './seller-welcome.en.template';
+// M56 — Relance buyer RFQ QUOTED > 7j.
+import { rfqReminderTemplate } from './rfq-reminder.template';
+import { rfqReminderEnTemplate } from './rfq-reminder.en.template';
 
 // I18N-4 — Type structure : id → { fr: required, en?: optional }.
 // Si la variante EN n'existe pas, fallback FR (graceful degradation).
@@ -76,6 +79,11 @@ const REGISTRY: Record<string, LocaleVariants> = {
   'seller-welcome': {
     fr: sellerWelcomeTemplate as EmailTemplate,
     en: sellerWelcomeEnTemplate as EmailTemplate,
+  },
+  // M56 — Relance buyer RFQ QUOTED > 7j.
+  'rfq-reminder': {
+    fr: rfqReminderTemplate as EmailTemplate,
+    en: rfqReminderEnTemplate as EmailTemplate,
   },
 };
 

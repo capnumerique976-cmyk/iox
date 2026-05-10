@@ -53,13 +53,15 @@ describe('RfqReminderService', () => {
         id: 'rfq-1',
         buyerUserId: 'user-1',
         status: QuoteRequestStatus.QUOTED,
-        buyerUser: { email: 'buyer1@test.yt' },
+        buyerUser: { email: 'buyer1@test.yt', firstName: 'Alice', lastName: 'Buyer', preferredLocale: 'fr' },
+        marketplaceOffer: { title: 'Vanille Bourbon', sellerProfile: { publicDisplayName: 'Coop Test' } },
       },
       {
         id: 'rfq-2',
         buyerUserId: 'user-2',
         status: QuoteRequestStatus.QUOTED,
-        buyerUser: { email: 'buyer2@test.yt' },
+        buyerUser: { email: 'buyer2@test.yt', firstName: 'Bob', lastName: null, preferredLocale: 'en' },
+        marketplaceOffer: { title: 'Cacao Bio', sellerProfile: { publicDisplayName: 'Farm EN' } },
       },
     ];
     prisma.quoteRequest.findMany.mockResolvedValue(rfqs);
@@ -71,14 +73,12 @@ describe('RfqReminderService', () => {
       expect.objectContaining({
         templateId: 'rfq-reminder',
         to: 'buyer1@test.yt',
-        templateData: { rfqId: 'rfq-1' },
       }),
     );
     expect(emailQueue.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         templateId: 'rfq-reminder',
         to: 'buyer2@test.yt',
-        templateData: { rfqId: 'rfq-2' },
       }),
     );
 
@@ -95,6 +95,30 @@ describe('RfqReminderService', () => {
         action: 'QUOTE_REQUEST_REMINDER_SENT',
         entityType: EntityType.QUOTE_REQUEST,
         entityId: 'rfq-2',
+      }),
+    );
+  });
+
+  it('enqueue contient templateData enrichi avec offerTitle et senderDisplayName', async () => {
+    const rfqs = [
+      {
+        id: 'rfq-1',
+        buyerUserId: 'user-1',
+        status: QuoteRequestStatus.QUOTED,
+        buyerUser: { email: 'buyer@test.com', firstName: 'Alice', lastName: 'Buyer', preferredLocale: 'fr' },
+        marketplaceOffer: { title: 'Vanille Bourbon', sellerProfile: { publicDisplayName: 'Coop Test' } },
+      },
+    ];
+    prisma.quoteRequest.findMany.mockResolvedValue(rfqs);
+
+    await service.sendQuotedReminders();
+
+    expect(emailQueue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateData: expect.objectContaining({
+          offerTitle: 'Vanille Bourbon',
+          senderDisplayName: 'Coop Test',
+        }),
       }),
     );
   });
