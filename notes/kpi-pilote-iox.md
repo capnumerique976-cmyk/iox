@@ -1,303 +1,182 @@
-# KPI Pilote IOX — Suivi et mesure de performance
+# KPI Pilote — IOX Mayotte
 
-> Document interne — Pilote IOX (Mayotte)
-> Dernière mise à jour : 2026-05-11
-> Responsable : Admin IOX / Chef de projet pilote
+> Tableau de bord des indicateurs clés de performance pour la phase pilote terrain.  
+> Version 2026-05-11 — Usage interne équipe IOX.
 
 ---
 
 ## 1. KPI Business
 
-Tableau de bord des indicateurs business à suivre pendant la durée du pilote (4-8 semaines).
+Métriques liées à l'adoption et à l'activité commerciale de la plateforme.
 
-| KPI | Définition | Cible pilote | Fréquence mesure | Statut |
-|---|---|---|---|---|
-| Vendeurs actifs | Coopératives ayant publié ≥1 produit (statut PUBLISHED) | ≥ 3 / 5 | Hebdomadaire | — |
-| Produits publiés | Nombre total d'offres avec statut PUBLISHED | ≥ 10 | Hebdomadaire | — |
-| RFQ créées | Demandes de devis soumises par les acheteurs | ≥ 5 | Hebdomadaire | — |
-| Taux réponse RFQ | % RFQ avec réponse vendeur dans les 48h | ≥ 70% | Hebdomadaire | — |
-| RFQ converties en transaction | % RFQ aboutissant à un paiement confirmé | ≥ 30% | Fin pilote | — |
-| Paiements traités | Nombre de paiements avec statut SUCCEEDED | ≥ 2 | Fin pilote | — |
-| Factures téléchargées | Nombre de PDFs de factures téléchargés | ≥ 2 | Fin pilote | — |
-| Acheteurs actifs | Acheteurs s'étant connectés au moins 1 fois dans la semaine | ≥ 7 / 10 | Hebdomadaire | — |
-| Valeur totale transactée | Somme des paiements SUCCEEDED (mode test) | ≥ 2 transactions | Fin pilote | — |
+| KPI | Définition | Cible pilote | Fréquence |
+|---|---|---|---|
+| **Vendeurs actifs** | Coopératives ayant publié au moins 1 produit | ≥ 3 | Hebdomadaire |
+| **Produits publiés** | Offres au statut PUBLISHED dans le marketplace | ≥ 10 | Hebdomadaire |
+| **Documents validés** | Documents KYB/compliance approuvés par l'admin | ≥ 5 | Hebdomadaire |
+| **RFQ créées** | Demandes de devis soumises par les acheteurs | ≥ 5 | Hebdomadaire |
+| **Taux de réponse RFQ < 48h** | Part des RFQ ayant reçu une réponse vendeur en moins de 48h | ≥ 70 % | Hebdomadaire |
+| **RFQ converties** | RFQ ayant abouti à un devis accepté (statut WON) | ≥ 30 % | Fin de pilote |
+| **Paiements traités** | Transactions Stripe confirmées (statut SUCCEEDED) | ≥ 2 | Fin de pilote |
+| **Factures téléchargées** | Factures PDF téléchargées par vendeurs ou acheteurs | ≥ 2 | Fin de pilote |
+
+**Lecture :** un KPI en dessous de sa cible deux semaines consécutives déclenche une analyse d'impact et une action corrective documentée dans le rapport hebdomadaire.
 
 ---
 
 ## 2. KPI Technique
 
-Indicateurs de fiabilité et de performance de l'infrastructure IOX.
+Métriques liées à la fiabilité et à la performance de la plateforme.
 
-| KPI | Définition | Cible pilote | Fréquence mesure | Outil de mesure |
-|---|---|---|---|---|
-| Uptime backend | % de temps où le backend répond correctement (HTTP 200) | ≥ 99% | Continu | UptimeRobot / monitoring |
-| Erreurs 5xx | % de requêtes HTTP retournant une erreur serveur (5xx) | < 1% | Quotidien | Logs PM2 / Nginx |
-| Temps réponse API moyen | Latence moyenne des réponses API (p50) | < 500ms | Quotidien | Logs Nginx / APM |
-| Temps réponse API p95 | Latence des 5% de requêtes les plus lentes | < 2000ms | Quotidien | Logs Nginx / APM |
-| Jobs BullMQ failed | Nombre de jobs BullMQ en erreur non retentés | 0 | Quotidien | Interface Bull Board |
-| Emails délivrés | % d'emails transactionnels effectivement délivrés (hors bounce) | ≥ 95% | Hebdomadaire | Dashboard Postmark/Mailgun |
-| Erreurs webhook Stripe | Événements Stripe non traités ou en erreur | 0 | Quotidien | Logs backend + Dashboard Stripe |
-| Redis disponibilité | Cache Redis opérationnel (connexion backend établie) | 100% | Continu | Health check |
+| KPI | Définition | Cible | Fréquence |
+|---|---|---|---|
+| **Uptime backend** | Disponibilité de l'API (`/api/health` répondant 200) | ≥ 99 % | Continu (UptimeRobot) |
+| **Erreurs 5xx** | Taux de réponses HTTP 5xx sur le total des requêtes API | < 1 % | Quotidien |
+| **Latence API p95** | 95e percentile du temps de réponse des endpoints API | < 500 ms | Quotidien |
+| **Jobs BullMQ échoués** | Nombre de jobs en statut "failed" non retentés dans les queues | 0 | Quotidien |
+| **Emails délivrés** | Taux de délivrance des emails transactionnels (invitations, notifications) | ≥ 95 % | Hebdomadaire |
+
+**Sources de données :**
+- Uptime et erreurs 5xx : UptimeRobot + logs PM2
+- Latence : logs applicatifs NestJS ou APM (si configuré)
+- Jobs BullMQ : Bull Board (`/admin/bull-board`)
+- Emails : dashboard du provider SMTP (Mailgun, SendGrid…)
 
 ---
 
 ## 3. KPI Satisfaction
 
-Indicateurs de satisfaction utilisateur collectés en fin de pilote.
+Métriques liées à l'expérience utilisateur et à la qualité du service.
 
-| KPI | Définition | Cible pilote | Fréquence mesure | Méthode |
-|---|---|---|---|---|
-| NPS coopératives | Note moyenne de satisfaction vendeurs (sur 10) | ≥ 6 / 10 | Fin pilote | Fiche retour utilisateur |
-| NPS acheteurs | Note moyenne de satisfaction acheteurs (sur 10) | ≥ 6 / 10 | Fin pilote | Fiche retour utilisateur |
-| Problèmes bloquants remontés | Incidents empêchant totalement l'utilisation de IOX | < 3 | Fin pilote | Log support |
-| Taux de remplissage des fiches retour | % de participants ayant retourné la fiche feedback | ≥ 70% | Fin pilote | Suivi manuel |
-| Intention de continuer à utiliser IOX | % de participants souhaitant continuer post-pilote | ≥ 60% | Fin pilote | Fiche retour utilisateur |
+| KPI | Définition | Cible | Fréquence |
+|---|---|---|---|
+| **NPS vendeurs** | Note moyenne de satisfaction des coopératives (fiche retour, question 5) | ≥ 6 / 10 | Fin de pilote |
+| **NPS acheteurs** | Note moyenne de satisfaction des acheteurs (fiche retour, question 5) | ≥ 6 / 10 | Fin de pilote |
+| **Bugs bloquants remontés** | Incidents empêchant totalement l'utilisation normale de la plateforme | < 3 | Fin de pilote |
+
+**Note sur le NPS simplifié :** la note est collectée via la fiche retour utilisateur (section 10 du kit pilote). L'échelle utilisée est 1-5 → convertie sur 10 pour comparaison. Une note ≥ 6/10 correspond à ≥ 3/5 sur la fiche.
 
 ---
 
 ## 4. Requêtes SQL utiles
 
-Ces requêtes SQL sont sûres (SELECT uniquement) et peuvent être exécutées par l'admin sur la base PostgreSQL de production. Adapter les noms de tables selon le schéma Prisma actuel si nécessaire.
-
-### 4.1 Vendeurs actifs (ayant publié ≥1 produit)
+Ces requêtes sont exécutées en **lecture seule** (SELECT uniquement) sur la base de données de pilote.
 
 ```sql
--- Nombre de vendeurs actifs
-SELECT COUNT(DISTINCT s.id) AS vendeurs_actifs
-FROM sellers s
-JOIN marketplace_offers mo ON mo."sellerId" = s.id
-WHERE mo.status = 'PUBLISHED';
-
--- Détail par vendeur
-SELECT 
-  s.id,
-  s."companyName",
-  COUNT(mo.id) AS nb_produits_publies
-FROM sellers s
-JOIN marketplace_offers mo ON mo."sellerId" = s.id
-WHERE mo.status = 'PUBLISHED'
-GROUP BY s.id, s."companyName"
-ORDER BY nb_produits_publies DESC;
+-- Vendeurs ayant au moins 1 produit publié
+SELECT COUNT(DISTINCT "sellerId") AS vendeurs_actifs
+FROM marketplace_offers WHERE status = 'PUBLISHED';
 ```
 
-### 4.2 Produits publiés (total et par catégorie)
-
 ```sql
--- Total produits publiés
-SELECT COUNT(*) AS total_produits_publies
-FROM marketplace_offers
-WHERE status = 'PUBLISHED';
-
--- Par catégorie
-SELECT category, COUNT(*) AS nb_produits
-FROM marketplace_offers
-WHERE status = 'PUBLISHED'
-GROUP BY category
-ORDER BY nb_produits DESC;
+-- Produits publiés total
+SELECT COUNT(*) AS produits_publies 
+FROM marketplace_offers WHERE status = 'PUBLISHED';
 ```
 
-### 4.3 RFQ par statut
-
 ```sql
--- Vue globale des RFQ par statut
-SELECT 
-  status,
-  COUNT(*) AS nb_rfq
+-- RFQ par statut
+SELECT status, COUNT(*) AS total
 FROM quote_requests
-GROUP BY status
-ORDER BY nb_rfq DESC;
+GROUP BY status ORDER BY total DESC;
+```
 
--- RFQ créées par semaine (depuis début pilote)
+```sql
+-- Paiements confirmés + montant total
+SELECT COUNT(*) AS nb_paiements, 
+       SUM(amount) / 100.0 AS montant_total_eur
+FROM payments WHERE status = 'SUCCEEDED';
+```
+
+```sql
+-- Taux réponse RFQ (répondues dans 48h)
 SELECT 
-  DATE_TRUNC('week', "createdAt") AS semaine,
-  COUNT(*) AS nb_rfq
+  COUNT(*) FILTER (WHERE status != 'PENDING') AS rfq_avec_reponse,
+  COUNT(*) AS rfq_total,
+  ROUND(COUNT(*) FILTER (WHERE status != 'PENDING') * 100.0 / NULLIF(COUNT(*),0), 1) AS taux_pct
 FROM quote_requests
-WHERE "createdAt" >= '2026-05-01'
-GROUP BY semaine
-ORDER BY semaine;
+WHERE "createdAt" < NOW() - INTERVAL '48 hours';
 ```
 
-### 4.4 Taux de réponse RFQ dans les 48 heures
-
-```sql
--- RFQ avec première réponse dans les 48h
-SELECT
-  COUNT(*) FILTER (WHERE first_response_delay <= INTERVAL '48 hours') AS rfq_repondues_dans_48h,
-  COUNT(*) AS total_rfq_avec_reponse,
-  ROUND(
-    100.0 * COUNT(*) FILTER (WHERE first_response_delay <= INTERVAL '48 hours') 
-    / NULLIF(COUNT(*), 0), 
-    1
-  ) AS taux_reponse_48h_pct
-FROM (
-  SELECT 
-    qr.id,
-    MIN(q."createdAt") - qr."createdAt" AS first_response_delay
-  FROM quote_requests qr
-  JOIN quotes q ON q."quoteRequestId" = qr.id
-  GROUP BY qr.id, qr."createdAt"
-) AS rfq_avec_delai;
-```
-
-### 4.5 Paiements confirmés (total et montant)
-
-```sql
--- Paiements réussis : nombre et montant total
-SELECT 
-  COUNT(*) AS nb_paiements,
-  SUM(amount) AS montant_total_centimes,
-  ROUND(SUM(amount) / 100.0, 2) AS montant_total_euros
-FROM payments
-WHERE status = 'SUCCEEDED';
-
--- Détail par paiement
-SELECT 
-  p.id,
-  p.amount / 100.0 AS montant_euros,
-  p.currency,
-  p."createdAt",
-  b."companyName" AS acheteur,
-  s."companyName" AS vendeur
-FROM payments p
-JOIN buyers b ON b.id = p."buyerId"
-JOIN sellers s ON s.id = p."sellerId"
-WHERE p.status = 'SUCCEEDED'
-ORDER BY p."createdAt" DESC;
-```
-
-### 4.6 Acheteurs actifs dans la semaine
-
-```sql
--- Acheteurs s'étant connectés dans les 7 derniers jours
-SELECT COUNT(DISTINCT u.id) AS acheteurs_actifs_7j
-FROM users u
-WHERE u.role = 'BUYER'
-  AND u."lastLoginAt" >= NOW() - INTERVAL '7 days';
-```
-
-### 4.7 Factures téléchargées
-
-```sql
--- Nombre de téléchargements de factures (si table invoice_downloads existe)
-SELECT COUNT(*) AS nb_telechargements_facture
-FROM invoice_downloads
-WHERE "downloadedAt" >= '2026-05-01';
-
--- Alternative : compter les paiements avec facture générée
-SELECT COUNT(*) AS paiements_avec_facture
-FROM payments
-WHERE status = 'SUCCEEDED'
-  AND "invoiceUrl" IS NOT NULL;
-```
-
-### 4.8 État des jobs BullMQ
-
-```sql
--- Si les jobs sont tracés en base (adapter selon implémentation)
-SELECT 
-  name AS job_type,
-  status,
-  COUNT(*) AS nb_jobs
-FROM bull_jobs
-WHERE "createdAt" >= NOW() - INTERVAL '24 hours'
-GROUP BY name, status
-ORDER BY name, status;
-```
-
-**Note :** Si les jobs BullMQ ne sont pas tracés en base, consulter l'interface Bull Board disponible dans l'application admin, ou via les logs PM2 :
-```bash
-pm2 logs backend 2>&1 | grep -i "bull\|job\|failed"
-```
+> **Précautions :** toujours exécuter ces requêtes avec un utilisateur PostgreSQL sans droits d'écriture. Ne jamais lancer de DELETE, UPDATE ou INSERT sur la base de pilote réelle sans backup préalable.
 
 ---
 
-## 5. Dashboard admin existant
+## 5. Dashboard admin
 
-Une page de tableau de bord KPI est disponible dans l'interface d'administration IOX.
+La page `/admin/kpi` de l'application IOX affiche en temps réel les métriques business principales :
 
-**URL :** `https://pilot.iox.example/admin/kpi`
+- Nombre de vendeurs actifs
+- Nombre de produits publiés
+- RFQ créées et leur statut
+- Taux de réponse
+- Paiements traités
 
-**Accès requis :** Compte avec rôle `ADMIN` dans IOX.
+**Accès :** connexion avec un compte ayant le rôle `ADMIN` sur la plateforme → menu latéral → **"KPI / Tableau de bord"**.
 
-**Métriques disponibles sur la page :**
-- Compteurs en temps réel (vendeurs actifs, produits, RFQ, paiements)
-- Graphiques d'activité hebdomadaire
-- Liste des RFQ récentes et leur statut
-- Alertes sur les indicateurs hors cible
-
-**Limites du dashboard pilote :**
-- Les données sont rafraîchies toutes les 5 minutes (cache Redis)
-- Pas d'export CSV disponible depuis l'interface (utiliser les requêtes SQL de la Section 4 pour l'export)
-- Le dashboard ne montre pas les métriques de satisfaction (à collecter manuellement)
+Pour les métriques techniques (uptime, erreurs), consulter :
+- **Bull Board** : `/admin/bull-board` pour les jobs BullMQ
+- **Swagger** : `/api/docs` pour tester les endpoints
+- **Logs PM2** : voir les commandes dans le runbook exploitation
 
 ---
 
-## 6. Reporting hebdomadaire — Template
+## 6. Rapport hebdomadaire pilote
 
-À compléter chaque vendredi pendant la durée du pilote et partagé avec l'équipe IOX.
-
----
-
-### Rapport pilote IOX — Semaine [N] — [Date]
-
-**Rédigé par :** [Nom]
-**Période :** [Date début] → [Date fin]
+Template à remplir chaque lundi matin et à partager avec l'équipe IOX.
 
 ---
 
-#### Section 1 — KPI Business de la semaine
+**Semaine n° :** ___ / Date : _______________  
+**Rédacteur :** _______________
+
+---
+
+### Section 1 — Métriques de la semaine
 
 | KPI | Valeur semaine | Cible | Statut |
 |---|---|---|---|
-| Vendeurs actifs | [N]/5 | ≥ 3 | Atteint / En cours / Non atteint |
-| Produits publiés | [N] | ≥ 10 | Atteint / En cours / Non atteint |
-| RFQ créées | [N] | ≥ 5 | Atteint / En cours / Non atteint |
-| Taux réponse RFQ | [N]% | ≥ 70% | Atteint / En cours / Non atteint |
-| Paiements test | [N] | ≥ 2 | Atteint / En cours / Non atteint |
+| Vendeurs actifs | | ≥ 3 | ☐ OK ☐ NOK |
+| Produits publiés | | ≥ 10 | ☐ OK ☐ NOK |
+| Documents validés | | ≥ 5 | ☐ OK ☐ NOK |
+| RFQ créées | | ≥ 5 | ☐ OK ☐ NOK |
+| Taux réponse < 48h | | ≥ 70 % | ☐ OK ☐ NOK |
+| Uptime backend | | ≥ 99 % | ☐ OK ☐ NOK |
+| Erreurs 5xx | | < 1 % | ☐ OK ☐ NOK |
+| Jobs BullMQ échoués | | 0 | ☐ OK ☐ NOK |
 
-#### Section 2 — KPI Technique de la semaine
+---
 
-| KPI | Valeur | Cible | Incident ? |
+### Section 2 — Incidents de la semaine
+
+| Date | Description | Impact | Résolution | Durée |
+|---|---|---|---|---|
+| | | | | |
+
+*Si aucun incident : mentionner "Aucun incident cette semaine."*
+
+---
+
+### Section 3 — Retours utilisateurs
+
+Synthèse des retours qualitatifs collectés auprès des coopératives et acheteurs :
+
+- **Points positifs :** _______________
+- **Points de friction :** _______________
+- **Demandes spécifiques :** _______________
+
+---
+
+### Section 4 — Actions correctives
+
+| Action | Priorité | Responsable | Deadline |
 |---|---|---|---|
-| Uptime backend | [N]% | ≥ 99% | Oui / Non |
-| Erreurs 5xx | [N]% | < 1% | Oui / Non |
-| Temps réponse moyen | [N]ms | < 500ms | Oui / Non |
-| Jobs BullMQ failed | [N] | 0 | Oui / Non |
-| Emails délivrés | [N]% | ≥ 95% | Oui / Non |
-
-#### Section 3 — Incidents et support
-
-**Nombre de demandes de support reçues :** [N]
-**Incidents bloquants :** [N]
-
-**Description des incidents (si applicable) :**
-- [Incident 1] : [Description] — [Résolu / En cours]
-- [Incident 2] : [Description] — [Résolu / En cours]
-
-#### Section 4 — Retours terrain informels
-
-*Résumé des retours utilisateurs collectés par WhatsApp, téléphone ou sur le terrain :*
-
-**Coopératives :**
-- [Coopérative 1] : [retour]
-- [Coopérative 2] : [retour]
-
-**Acheteurs :**
-- [Acheteur 1] : [retour]
-- [Acheteur 2] : [retour]
-
-#### Section 5 — Actions pour la semaine suivante
-
-| Action | Responsable | Deadline |
-|---|---|---|
-| [Action 1] | [Prénom] | [Date] |
-| [Action 2] | [Prénom] | [Date] |
-| [Action 3] | [Prénom] | [Date] |
+| | | | |
 
 ---
 
-*Distribuer ce rapport à : équipe IOX, investisseurs (sur demande), participants pilote (version allégée)*
+### Section 5 — Objectifs semaine suivante
 
----
-
-*Ce document est mis à jour chaque semaine pendant la durée du pilote. Archiver chaque rapport avec la date dans le dossier `notes/archive/`.*
+1. _______________
+2. _______________
+3. _______________

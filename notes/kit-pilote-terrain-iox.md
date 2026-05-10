@@ -1,385 +1,383 @@
-# Kit pilote terrain IOX — Guide complet coopératives et acheteurs
+# Kit Pilote Terrain — IOX Mayotte
 
-> Document interne — Pilote IOX (Mayotte)
-> Dernière mise à jour : 2026-05-11
-> Version : 1.0
+> Document opérationnel destiné aux équipes terrain, formateurs et coopératives participantes.  
+> Version 2026-05-11 — Confidentiel pilote.
 
 ---
 
 ## 1. Objectif du pilote
 
-### Ce que nous testons
+Le pilote terrain IOX a pour objectif de valider la plateforme dans des conditions réelles, avec de vrais utilisateurs, avant tout déploiement à grande échelle.
 
-IOX est une marketplace B2B agricole dédiée à l'océan Indien, avec un focus initial sur Mayotte. Le pilote terrain a pour objectif de valider :
+**Durée :** 4 à 8 semaines (selon disponibilité des coopératives)
 
-1. **L'utilisabilité** : les coopératives et acheteurs peuvent utiliser la plateforme de manière autonome après une formation de 30 minutes.
-2. **Le flux de transaction** : le cycle complet RFQ → devis → paiement → facture fonctionne de bout en bout avec de vrais utilisateurs.
-3. **La valeur perçue** : les coopératives et acheteurs trouvent un avantage réel à utiliser IOX par rapport aux méthodes actuelles (WhatsApp, téléphone, Excel).
-4. **La fiabilité technique** : la plateforme tient la charge d'utilisation réelle sans incident bloquant.
+**Périmètre cible :**
+- **3 à 5 coopératives vendeurs** (producteurs de vanille, ylang-ylang, épices locales)
+- **5 à 10 acheteurs B2B** (importateurs, distributeurs, grossistes RHF)
+- **Paiements en mode test Stripe** (aucun argent réel ne circule pendant les premières semaines — bascule vers Stripe live sur décision de l'équipe)
 
-### Durée du pilote
+**Objectif principal :** valider le flow complet de bout en bout :
 
-**4 à 8 semaines** selon l'intensité d'utilisation des participants.
-- Semaine 1-2 : onboarding et prise en main
-- Semaine 3-6 : transactions réelles (mode test Stripe)
-- Semaine 7-8 : bilan, collecte de feedback, rapport
+```
+Acheteur crée une RFQ → Vendeur reçoit et répond → Devis accepté → Paiement traité → Facture téléchargeable
+```
 
-### Participants
+**Résultat attendu minimum :** au moins 2 transactions complètes validées pendant la durée du pilote.
 
-- **Vendeurs :** 5 coopératives agricoles de Mayotte (sélectionnées en amont)
-- **Acheteurs :** 10 acheteurs B2B (importateurs, grossistes, restaurateurs)
+**Ce que le pilote ne couvre pas :** SEO, campagne marketing, scale (charge importante), multidevises avancé, internationalisation complète.
 
-### Critères de succès du pilote
+---
 
-| Critère | Objectif |
+## 2. Préparation avant J-1 — Ce que la coopérative doit préparer
+
+Transmettre cette liste à chaque coopérative au moins **5 jours avant la session de formation**.
+
+### 2.1 Catalogue produits
+
+Préparer une liste de produits à publier sur la plateforme :
+
+| Champ | Exemples |
 |---|---|
-| Vendeurs actifs (≥1 produit publié) | ≥ 3 sur 5 coopératives |
-| RFQ créées pendant le pilote | ≥ 5 |
-| Taux de réponse vendeur sous 48h | ≥ 70% |
-| Transactions complètes (RFQ → paiement) | ≥ 2 |
-| NPS vendeurs | ≥ 6/10 |
-| NPS acheteurs | ≥ 6/10 |
-| Incidents bloquants non résolus sous 4h | 0 |
+| Nom du produit | Vanille Bourbon de Mayotte — grade A |
+| Description | Vanille séchée, longueur min. 14 cm, taux d'humidité 30-35%, conditionnée sous vide |
+| Prix indicatif | 45 € / kg (modifiable après publication) |
+| Unité de vente | kg, tonne, carton de 500g |
+| Quantité minimale de commande | 5 kg |
+| Stock disponible estimé | 200 kg |
+| Photos | 2 à 5 photos (format JPG ou PNG, résolution correcte, fond neutre) |
+| Certifications | Label Rouge, Agriculture Biologique, Commerce Équitable |
+
+**Conseil :** commencer avec 2 à 3 produits phares, pas toute la gamme.
+
+### 2.2 Documents légaux
+
+Avoir numérisés (scan ou photo lisible) les documents suivants :
+
+- Statuts de la coopérative (ou GIE, SICA)
+- Extrait Kbis ou document équivalent (moins de 3 mois)
+- Justificatif de capacité d'export (si applicable : agrément sanitaire, phytosanitaire)
+- Certifications produits (label rouge, bio, AOC…)
+
+### 2.3 Coordonnées essentielles
+
+- Nom et prénom du **contact principal** (interlocuteur IOX au quotidien)
+- Nom et prénom du **responsable légal** (signataire des contrats)
+- Numéro de téléphone WhatsApp (pour le support terrain)
+- Email professionnel (utilisé comme identifiant IOX)
+
+### 2.4 IBAN pour Stripe Connect (KYC)
+
+Pour recevoir des paiements via Stripe, la coopérative doit fournir :
+
+- **IBAN** du compte bancaire au nom de la structure (pas un compte personnel)
+- **BIC/SWIFT** de la banque
+- **Justificatif d'identité** du représentant légal (CNI recto-verso ou passeport)
+- **Justificatif de domicile** de la structure (facture électricité, loyer, moins de 3 mois)
+
+> **Important :** le RIB doit être au nom de la structure légale (SICA, GIE, coopérative), pas au nom du gérant.
+
+### 2.5 Équipement minimum
+
+- Smartphone **Android ou iOS** (testé sur Android 10+ et iOS 14+)
+- Connexion internet : **4G suffit**, Wi-Fi préférable pour l'upload de photos
+- Navigateur : Chrome ou Safari (recommandé), Firefox accepté
 
 ---
 
-## 2. Préparation avant J-1 (coopérative vendeuse)
+## 3. Étapes vendeur — Walkthrough complet
 
-La coopérative doit préparer les éléments suivants AVANT la session de formation :
+### Étape 1 — Activation du compte
 
-### Catalogue de produits
-- [ ] Liste des produits disponibles à la vente (minimum 2-3 pour le pilote)
-- [ ] Pour chaque produit : nom commercial, description, unité de vente (kg, tonne, carton, etc.)
-- [ ] Prix indicatif par unité (peut être modifié à tout moment)
-- [ ] Quantités disponibles actuellement
-- [ ] Photos des produits (minimum 1 photo par produit, format JPG ou PNG, bonne luminosité)
-- [ ] Période de disponibilité si saisonnière
+1. Recevoir l'email d'invitation IOX (expéditeur : `noreply@iox.example`)
+2. Si l'email n'arrive pas dans 10 minutes : vérifier le dossier **Courrier indésirable / SPAM**
+3. Cliquer sur le bouton **"Activer mon compte"** dans l'email
+4. Choisir un mot de passe : minimum 8 caractères, avec au moins 1 chiffre et 1 majuscule
+5. Accepter les **Conditions Générales d'Utilisation** et la **Politique de confidentialité**
+6. Cliquer sur **"Créer mon compte"**
 
-### Documents légaux
-- [ ] Statuts de la coopérative (document fondateur)
-- [ ] Extrait Kbis ou équivalent local (moins de 3 mois) — ou récépissé de déclaration en préfecture
-- [ ] Attestation de capacité d'exportation si applicable
-- [ ] Tout certificat de qualité ou label agricole disponible (AB, indication géographique, etc.)
+### Étape 2 — Compléter le profil coopérative
 
-### Coordonnées
-- [ ] Nom et prénom du contact principal pour le pilote
-- [ ] Email professionnel valide (sera le login IOX)
-- [ ] Numéro de téléphone direct (WhatsApp de préférence)
-- [ ] Adresse postale de la coopérative
+1. Se connecter sur `https://pilot.iox.example`
+2. Cliquer sur son nom en haut à droite → **"Mon profil"**
+3. Remplir : nom de la coopérative, adresse, description (2-3 phrases), numéro SIREN, téléphone
+4. Uploader le **logo** (optionnel mais recommandé pour la crédibilité)
+5. Uploader la **photo de couverture** (optionnel)
+6. Cliquer sur **"Enregistrer"**
 
-### Informations bancaires (pour Stripe)
-- [ ] IBAN du compte bancaire de la coopérative (pour recevoir les paiements)
-- [ ] BIC/SWIFT
-- [ ] Nom du titulaire du compte (doit correspondre au nom légal de la coopérative)
-- [ ] Pièce d'identité du représentant légal (pour KYC Stripe)
+### Étape 3 — Soumettre les documents KYB (compliance)
 
-### Matériel nécessaire le jour J
-- [ ] Connexion internet (WiFi ou 4G suffisant)
-- [ ] Smartphone ou tablette pour l'interface mobile
-- [ ] Photos des produits disponibles sur le téléphone ou par email
+1. Dans le menu, aller sur **"Compliance"** ou **"Documents"**
+2. Uploader chaque document requis dans la catégorie correspondante
+3. Chaque document passe en revue par l'équipe IOX (délai : 24-48h en phase pilote)
+4. Recevoir une notification email (validé ou rejeté avec motif)
 
----
+> Sans documents validés, la publication de produits peut être limitée. Anticiper.
 
-## 3. Étapes vendeur (coopérative) — Guide pas à pas
+### Étape 4 — Configurer Stripe Connect (paiements)
 
-### Étape 1 — Recevoir l'invitation par email
-Vous recevez un email d'invitation de la part de l'équipe IOX (noreply@iox.example).
-Cliquer sur le lien "Rejoindre IOX" dans l'email.
-Si l'email n'est pas reçu dans 5 minutes : vérifier les spams ou contacter le support.
+1. Dans **"Paramètres"** → **"Paiements"** → cliquer sur **"Configurer mon compte Stripe"**
+2. Être redirigé vers l'interface Stripe sécurisée
+3. Renseigner les informations de la structure et du représentant légal
+4. Uploader les pièces justificatives demandées par Stripe
+5. Attendre la validation Stripe (peut prendre 24-72h)
+6. Revenir sur IOX — le statut affiche **"Compte Stripe actif"**
 
-### Étape 2 — Créer votre compte
-Sur la page d'inscription :
-1. Saisir votre adresse email (celle qui a reçu l'invitation)
-2. Choisir un mot de passe sécurisé (minimum 8 caractères, avec majuscule et chiffre)
-3. Accepter les CGU IOX
-4. Cliquer sur "Créer mon compte"
-5. Vérifier votre email : cliquer sur le lien de confirmation reçu
+> En mode test Stripe, l'étape est simplifiée. Les vraies vérifications KYC ont lieu lors du passage en mode live.
 
-### Étape 3 — Compléter le profil de la coopérative
-Dans votre tableau de bord → "Mon profil" :
-1. Saisir le nom légal de la coopérative
-2. Ajouter l'adresse du siège social
-3. Décrire l'activité (ex : "Coopérative maraîchère de Mayotte — production locale de fruits et légumes")
-4. Ajouter le numéro de téléphone de contact
-5. Uploader le logo de la coopérative (optionnel mais recommandé)
-6. Sauvegarder
+### Étape 5 — Publier un produit
 
-### Étape 4 — Uploader les documents KYC Stripe
-Dans votre tableau de bord → "Vérification du compte" :
-1. Cliquer sur "Commencer la vérification"
-2. Renseigner les informations du représentant légal (nom, prénom, date de naissance)
-3. Saisir l'IBAN du compte bancaire de la coopérative
-4. Uploader les documents demandés (pièce d'identité, Kbis)
-5. Attendre la validation (généralement quelques minutes à quelques heures)
-6. Vous recevrez un email de confirmation quand votre compte est activé pour recevoir des paiements
+1. Aller sur **"Mes produits"** → **"Ajouter un produit"**
+2. Remplir le formulaire :
+   - **Titre** : nom commercial clair et précis
+   - **Description** : caractéristiques, origine, conditionnement, certifications
+   - **Catégorie** : sélectionner dans la liste déroulante
+   - **Prix** : prix indicatif par unité (modifiable plus tard)
+   - **Unité** : kg, tonne, carton, litre…
+   - **Quantité minimale de commande** : ex. 5 kg
+   - **Stock disponible** : quantité actuelle estimée
+3. Uploader **2 à 5 photos** du produit
+4. Uploader les **certifications** du produit (PDF ou image)
+5. Cliquer sur **"Publier"**
+6. Le produit apparaît dans le marketplace — vérifier en ouvrant un onglet en navigation privée
 
-### Étape 5 — Publier 2-3 produits
-Dans votre tableau de bord → "Mes produits" → "Ajouter un produit" :
-1. Saisir le nom du produit (ex : "Bananes fraîches de Mayotte")
-2. Ajouter une description détaillée
-3. Choisir la catégorie (fruits, légumes, épices, etc.)
-4. Indiquer l'unité de vente et le prix indicatif
-5. Saisir la quantité disponible
-6. Uploader au moins une photo
-7. Cliquer sur "Publier"
-Répéter pour chaque produit.
+### Étape 6 — Recevoir une RFQ (demande de devis)
 
-### Étape 6 — Recevoir et répondre à une demande de devis (RFQ)
-Quand un acheteur envoie une RFQ pour vos produits :
-1. Vous recevez un email de notification
-2. Dans votre tableau de bord → "Demandes de devis" : cliquer sur la RFQ
-3. Vérifier les détails (produit, quantité, date souhaitée, conditions)
-4. Cliquer sur "Répondre avec un devis"
-5. Saisir votre prix proposé, la quantité disponible, les délais de livraison, les conditions
-6. Cliquer sur "Envoyer le devis"
-**Délai recommandé :** Répondre dans les 48 heures pour maintenir un bon taux de réponse.
+1. Recevoir une notification email : *"Nouvelle demande de devis pour [Produit]"*
+2. Se connecter → **"Mes RFQ"** ou **"Demandes de devis"**
+3. Cliquer sur la RFQ → lire le détail : quantité demandée, délai souhaité, conditions spéciales
+4. Délai maximum pour répondre : **48 heures** (KPI pilote)
 
-### Étape 7 — Confirmer la transaction
-Si l'acheteur accepte votre devis :
-1. Vous recevez une notification "Devis accepté"
-2. Vérifier les conditions de livraison avec l'acheteur (via la messagerie IOX)
-3. Confirmer votre disponibilité pour honorer la commande
+### Étape 7 — Répondre à une RFQ (créer un devis)
 
-### Étape 8 — Recevoir le paiement (mode test pour le pilote)
-Pendant le pilote, les paiements sont effectués en **mode test Stripe** (aucun argent réel ne circule) :
-1. L'acheteur effectue le paiement sur IOX
-2. Vous recevez une notification "Paiement confirmé"
-3. Votre solde IOX est crédité (visible dans "Mon compte → Finances")
-4. En mode live (post-pilote) : le virement est effectué vers votre compte bancaire sous 2-7 jours ouvrés
+1. Depuis la RFQ, cliquer sur **"Répondre / Créer un devis"**
+2. Remplir les champs :
+   - **Prix unitaire proposé** (peut différer du prix catalogue)
+   - **Quantité disponible confirmée**
+   - **Délai de livraison estimé**
+   - **Conditions de paiement** : ex. 30% à la commande, solde à la livraison
+   - **Validité du devis** : ex. 15 jours
+   - **Note personnalisée** (optionnel)
+3. Cliquer sur **"Envoyer le devis"**
+4. L'acheteur reçoit une notification
 
-### Étape 9 — Télécharger la facture
-Dans votre tableau de bord → "Mes transactions" :
-1. Cliquer sur la transaction concernée
-2. Cliquer sur "Télécharger la facture"
-3. La facture au format PDF est générée et téléchargée automatiquement
+### Étape 8 — Devis accepté — suivi de la commande
+
+1. Recevoir notification : *"Votre devis a été accepté"*
+2. Dans **"Mes commandes"**, voir le statut de la commande
+3. Mettre à jour le statut au fil de l'avancement : **Confirmée → En préparation → Expédiée**
+4. Uploader le **bordereau d'expédition** ou **bon de livraison** si applicable
+
+### Étape 9 — Paiement reçu et facture
+
+1. Stripe notifie IOX du paiement reçu
+2. Dans **"Mes paiements"**, voir la transaction confirmée
+3. La **facture** est générée automatiquement par IOX
+4. Télécharger la facture au format PDF depuis **"Mes documents"**
+5. Le virement Stripe arrive sur le compte bancaire selon le calendrier Stripe Connect (généralement 7 jours en mode live)
 
 ---
 
-## 4. Étapes acheteur — Guide pas à pas
+## 4. Étapes acheteur — Walkthrough complet
 
-### Étape 1 — Recevoir l'invitation
-Email d'invitation reçu de noreply@iox.example → cliquer sur le lien "Rejoindre IOX".
+### Étape 1 — Création du compte
 
-### Étape 2 — Créer le compte acheteur
-1. Saisir l'email professionnel
-2. Choisir un mot de passe sécurisé
-3. Sélectionner le rôle "Acheteur B2B"
-4. Accepter les CGU
-5. Confirmer l'email via le lien de vérification
+1. Recevoir l'invitation IOX ou s'inscrire sur `https://pilot.iox.example`
+2. Choisir le profil **"Acheteur"**
+3. Renseigner : raison sociale, pays, secteur d'activité, email, téléphone
+4. Activer le compte via l'email de confirmation
 
-### Étape 3 — Compléter le profil entreprise
-1. Nom légal de l'entreprise
-2. Secteur d'activité (restauration, importation, distribution, etc.)
-3. Adresse de livraison principale
-4. Volume d'achats estimé (annuel)
-5. Sauvegarder
+### Étape 2 — Explorer le catalogue
 
-### Étape 4 — Parcourir le catalogue
-1. Dans "Marketplace" : parcourir les catégories de produits
-2. Utiliser la barre de recherche pour trouver un produit spécifique
-3. Filtrer par catégorie, localisation du vendeur, disponibilité
-4. Cliquer sur un produit pour voir la fiche détaillée
+1. Depuis la page d'accueil, accéder au **Marketplace**
+2. Utiliser la barre de recherche (MeiliSearch — résultats instantanés)
+3. Utiliser les filtres : catégorie, certifications, origine, prix, disponibilité
+4. Cliquer sur une offre pour voir le détail complet
 
-### Étape 5 — Envoyer une demande de devis (RFQ)
-Sur la fiche produit :
-1. Cliquer sur "Demander un devis"
-2. Indiquer la quantité souhaitée et l'unité
-3. Préciser la date de livraison souhaitée
-4. Ajouter des conditions particulières (conditionnement, certificats requis, etc.)
-5. Cliquer sur "Envoyer la demande"
-Le vendeur reçoit une notification et dispose de 48h pour répondre.
+### Étape 3 — Créer une RFQ (demande de devis)
 
-### Étape 6 — Comparer et accepter un devis
-Dans "Mes demandes de devis" :
-1. Consulter les devis reçus en réponse à votre RFQ
-2. Comparer les prix, quantités et conditions proposés
-3. Cliquer sur "Accepter ce devis" pour le devis retenu
-4. Confirmer votre acceptation
+1. Sur la fiche produit, cliquer sur **"Demander un devis"**
+2. Remplir le formulaire :
+   - **Quantité souhaitée**
+   - **Délai de livraison souhaité**
+   - **Port de destination** (pour calcul logistique éventuel)
+   - **Conditions spéciales** (certifications exigées, emballage spécifique…)
+   - **Message personnalisé** au vendeur (optionnel)
+3. Cliquer sur **"Envoyer la demande"**
 
-### Étape 7 — Procéder au paiement
-Après acceptation du devis :
-1. Vous êtes redirigé vers la page de paiement sécurisée Stripe
-2. En mode test (pilote) : utiliser la carte de test fournie par l'équipe IOX
-   - Numéro : `4242 4242 4242 4242`
-   - Date : n'importe quelle date future
-   - CVC : n'importe quels 3 chiffres
-3. Confirmer le paiement
-4. Vous recevez un email de confirmation immédiat
+### Étape 4 — Recevoir et comparer les devis
 
-### Étape 8 — Suivi de la commande et facture
-Dans "Mes commandes" :
-1. Suivre le statut de la commande
-2. Échanger avec le vendeur via la messagerie IOX si besoin
-3. Télécharger la facture au format PDF dans "Mes transactions"
+1. Recevoir une notification email quand le vendeur répond
+2. Dans **"Mes RFQ"**, voir le devis reçu
+3. Si plusieurs devis pour la même demande : les comparer côte à côte
+
+### Étape 5 — Accepter un devis
+
+1. Cliquer sur **"Accepter ce devis"**
+2. Confirmer la commande (récapitulatif : produit, quantité, prix, délai)
+3. Procéder au **paiement sécurisé via Stripe**
+
+### Étape 6 — Paiement
+
+1. Saisir les informations de carte bancaire (interface Stripe sécurisée)
+2. En mode test Stripe : utiliser la carte test `4242 4242 4242 4242`, date future, CVC `123`
+3. Paiement confirmé → notification email + statut commande mis à jour
+
+### Étape 7 — Suivi et facture
+
+1. Dans **"Mes commandes"**, suivre l'avancement : Confirmée → En préparation → Expédiée
+2. Télécharger la **facture** depuis **"Mes documents"**
+3. En cas de problème : utiliser le bouton **"Contacter le vendeur"** ou le support IOX
 
 ---
 
 ## 5. Support pilote
 
-### Contact support IOX
-
-| Canal | Contact | Disponibilité |
+| Canal | Coordonnées | Disponibilité |
 |---|---|---|
-| WhatsApp (recommandé) | [À compléter avant lancement] | Lun-Sam 8h-18h (heure Mayotte) |
-| Téléphone | [À compléter avant lancement] | Lun-Ven 9h-17h |
-| Email | support@iox.example | Réponse sous 24h |
+| WhatsApp Business | [À compléter — numéro WhatsApp business] | Lun-ven 8h-18h heure locale |
+| Email | support@iox.example | Réponse sous 4h ouvrées |
+| Téléphone | [À compléter] | Lun-ven 9h-17h |
 
-### Niveaux d'escalade
+**Urgences techniques** (plateforme inaccessible) : signaler immédiatement par WhatsApp, tag `#urgence`.
 
-**Niveau 1 — Problème simple (réponse < 2h) :**
-Compte bloqué, mot de passe oublié, problème d'upload, question fonctionnelle.
-→ Contacter support WhatsApp
-
-**Niveau 2 — Problème bloquant une transaction (réponse < 4h) :**
-Paiement bloqué, erreur lors de la soumission d'un devis, RFQ disparue.
-→ Contacter support téléphone + email support@iox.example
-
-**Niveau 3 — Incident critique (réponse < 1h) :**
-Plateforme inaccessible, données incorrectes ou manquantes.
-→ Contacter directement l'équipe technique IOX (contact interne)
+**Pour les problèmes de paiement Stripe** : préciser le numéro de commande IOX dans le message.
 
 ---
 
 ## 6. Formation 30 minutes — Agenda type
 
-### Déroulement de la session de formation
+La formation se déroule en présentiel ou en visioconférence (WhatsApp, Zoom, Google Meet).
 
-**Structure recommandée pour une session groupe (5-10 participants)**
+| Durée | Contenu | Animateur |
+|---|---|---|
+| 0-2 min | Accueil, tour de table rapide, objectif de la session | Formateur IOX |
+| 2-5 min | Présentation rapide de la plateforme (démo écran) | Formateur IOX |
+| 5-10 min | Activation du compte et première connexion (pratique) | Participant + formateur |
+| 10-17 min | Compléter le profil et uploader les documents (pratique) | Participant + formateur |
+| 17-22 min | Publier un premier produit (pratique guidée) | Participant + formateur |
+| 22-26 min | Simuler une RFQ et répondre à un devis (démo + pratique) | Formateur + participant |
+| 26-28 min | Questions / réponses | Tous |
+| 28-30 min | Récap des 3 actions à faire dans la semaine, contacts support | Formateur IOX |
 
-**[0-5 min] Introduction et contexte**
-- Présentation de l'équipe IOX
-- Objectif du pilote en 3 phrases
-- Rappel : aucune donnée financière réelle pendant le pilote (mode test Stripe)
-- Questions préliminaires des participants
-
-**[5-15 min] Démonstration vendeur (coopérative)**
-Démonstration en direct par le formateur IOX :
-1. Connexion au compte vendeur
-2. Publication d'un produit (1 minute)
-3. Réception et réponse à une RFQ simulée (2 minutes)
-4. Visualisation d'une transaction confirmée
-5. Téléchargement d'une facture de démonstration
-
-**[15-25 min] Démonstration acheteur**
-Démonstration en direct par le formateur IOX :
-1. Connexion au compte acheteur
-2. Recherche d'un produit dans le catalogue
-3. Envoi d'une RFQ (1 minute)
-4. Réception d'un devis et acceptation simulée
-5. Simulation de paiement avec carte de test
-
-**[25-30 min] Questions et manipulation libre**
-- 5 minutes de manipulation libre sur leurs propres comptes (déjà créés)
-- Réponses aux questions
-- Distribution du guide utilisateur papier (version imprimée de ce kit)
-- Rappel du contact support WhatsApp
+**Matériel nécessaire :**
+- Projecteur ou écran partagé
+- Connexion internet stable
+- Un compte de démonstration IOX prêt (avec données test) pour la démo initiale
+- L'email d'invitation du participant déjà envoyé avant la formation
 
 ---
 
 ## 7. Checklist Jour 1
 
-À vérifier le premier jour de lancement du pilote (par l'équipe IOX terrain) :
+À compléter par le formateur terrain le jour de la session.
 
-- [ ] Tous les comptes vendeurs (5 coopératives) ont reçu leur email d'invitation
-- [ ] Tous les comptes acheteurs (10 acheteurs) ont reçu leur email d'invitation
-- [ ] Au minimum 3 vendeurs se sont connectés et ont complété leur profil
-- [ ] Au minimum 3 acheteurs se sont connectés
-- [ ] Au minimum 2 vendeurs ont publié au moins 1 produit
-- [ ] La messagerie IOX fonctionne (test d'un échange entre vendeur et acheteur)
-- [ ] Le contact support WhatsApp est opérationnel et a été testé
-- [ ] L'équipe technique IOX est en alerte monitoring (voir notes/monitoring-alerting-iox.md)
-- [ ] Les logs backend ne montrent pas d'erreurs 5xx au démarrage
-- [ ] Une RFQ test a été envoyée et reçue avec succès
+- [ ] Email d'invitation envoyé au participant **avant** la session (minimum 30 min avant)
+- [ ] Compte démonstration IOX fonctionnel et prêt (tester la connexion au site)
+- [ ] Connexion internet disponible sur place (tester le débit)
+- [ ] Documents KYB du participant disponibles (formats acceptés : PDF, JPG, PNG)
+- [ ] Participant a son IBAN sous la main (pour Stripe)
+- [ ] Le participant a bien reçu l'email d'invitation (vérifier SPAM si besoin)
+- [ ] Le participant réussit à se connecter à son compte IOX
+- [ ] Au moins 1 produit est publié à l'issue de la session
+- [ ] Les documents compliance sont uploadés (même partiellement)
+- [ ] Le participant a le numéro WhatsApp du support IOX dans ses contacts
 
 ---
 
 ## 8. Checklist Semaine 1
 
-À vérifier en fin de première semaine d'utilisation :
+À compléter en fin de première semaine.
 
-- [ ] Au moins 3 coopératives ont publié un catalogue (≥2 produits chacune)
-- [ ] Au moins 5 RFQ ont été créées par les acheteurs
-- [ ] Au moins 70% des RFQ ont reçu une réponse du vendeur dans les 48h
-- [ ] Aucun incident bloquant non résolu dans les logs de support
-- [ ] Les emails de notification sont reçus (pas de plaintes de non-réception)
-- [ ] Au moins 1 transaction complète (RFQ → devis → paiement test) a été effectuée
-- [ ] Les retours utilisateurs informels ont été collectés (appels téléphoniques, WhatsApp)
-- [ ] Un rapport de semaine 1 a été préparé (voir notes/kpi-pilote-iox.md pour le template)
-
----
-
-## 9. KPI à suivre pendant le pilote
-
-| KPI | Définition | Cible | Fréquence |
-|---|---|---|---|
-| Vendeurs actifs | Coopératives ayant publié ≥1 produit | ≥ 3 / 5 | Hebdomadaire |
-| Acheteurs actifs | Acheteurs s'étant connectés ≥1 fois | ≥ 7 / 10 | Hebdomadaire |
-| Produits publiés | Nombre total d'offres publiées | ≥ 10 | Hebdomadaire |
-| RFQ créées | Demandes de devis envoyées | ≥ 5 | Hebdomadaire |
-| Taux réponse RFQ | % RFQ avec réponse vendeur < 48h | ≥ 70% | Hebdomadaire |
-| Taux conversion | % RFQ converties en transaction | ≥ 30% | Fin pilote |
+- [ ] Profil coopérative complété à 100% (tous champs renseignés)
+- [ ] Au moins 2 produits publiés et visibles sur le marketplace
+- [ ] Documents KYB validés par l'équipe IOX (statut "Validé")
+- [ ] Compte Stripe Connect configuré (mode test accepté)
+- [ ] Au moins 1 RFQ reçue ou simulée et traitée (réponse envoyée)
+- [ ] Le participant a exploré le marketplace en tant qu'acheteur (navigation libre)
+- [ ] Compte-rendu d'intégration envoyé à l'équipe IOX (par WhatsApp ou email)
+- [ ] Retour utilisateur J7 rempli et transmis (voir fiche retour section 10)
 
 ---
 
-## 10. Fiche retour utilisateur — Template de collecte de feedback
+## 9. KPI minimaux du pilote
 
-À distribuer en fin de pilote (semaine 7-8) ou par email via un formulaire simple.
+Ces 5 métriques sont suivies hebdomadairement par l'équipe IOX.
 
----
-
-### Fiche retour IOX — Pilote terrain 2026
-
-**Participant :** (coopérative / acheteur)
-**Date :**
-
-**Section 1 — Prise en main (noter de 1 à 5)**
-
-| Question | 1 (très difficile) | 2 | 3 | 4 | 5 (très facile) |
-|---|---|---|---|---|---|
-| La création de mon compte a été facile | | | | | |
-| La publication d'un produit a été facile (vendeur) | | | | | |
-| L'envoi d'une RFQ a été facile (acheteur) | | | | | |
-| La réponse à une RFQ a été facile (vendeur) | | | | | |
-| Le paiement/la confirmation a été facile | | | | | |
-
-**Section 2 — Valeur perçue (noter de 1 à 5)**
-
-| Question | 1 (pas du tout) | 2 | 3 | 4 | 5 (tout à fait) |
-|---|---|---|---|---|---|
-| IOX me fait gagner du temps | | | | | |
-| IOX est plus pratique que mes méthodes actuelles | | | | | |
-| Je ferais confiance à IOX pour de vraies transactions | | | | | |
-
-**Section 3 — Satisfaction globale**
-
-Note globale (1 à 10) : ___/10
-
-**Section 4 — Problèmes rencontrés**
-
-*Décrivez les 1 à 3 principaux problèmes ou difficultés rencontrés :*
-
-1. _______________________________________________
-2. _______________________________________________
-3. _______________________________________________
-
-**Section 5 — Suggestions d'amélioration**
-
-*Qu'est-ce qui vous aiderait le plus à utiliser IOX au quotidien ?*
-
-_______________________________________________
-_______________________________________________
-
-**Section 6 — Continuation d'usage**
-
-Utiliseriez-vous IOX après le pilote si la plateforme était disponible en production ?
-- [ ] Oui, absolument
-- [ ] Oui, si [condition] : _______________
-- [ ] Probablement pas
-- [ ] Non
-
-**Merci pour votre retour. Votre avis nous aide à améliorer IOX.**
-Contact : support@iox.example | WhatsApp : [À compléter]
+| KPI | Valeur cible | Fréquence de suivi |
+|---|---|---|
+| **Vendeurs actifs** (au moins 1 produit publié) | ≥ 3 coopératives | Hebdomadaire |
+| **RFQ créées** (par les acheteurs) | ≥ 5 demandes | Hebdomadaire |
+| **Taux de réponse RFQ < 48h** | ≥ 70 % | Hebdomadaire |
+| **Transactions complètes** (RFQ → paiement confirmé) | ≥ 2 | Fin de pilote |
+| **Score satisfaction moyen** (vendeurs + acheteurs) | ≥ 6 / 10 | Fin de pilote |
 
 ---
 
-*Ce kit est à distribuer à chaque participant pilote. Conserver une version imprimée pour les sessions de formation terrain.*
+## 10. Fiche retour utilisateur
+
+À remplir par chaque participant à la fin de la semaine 1 et à la fin du pilote.
+
+---
+
+**Date :** _______________  
+**Rôle :** ☐ Vendeur (coopérative)  ☐ Acheteur  
+**Nom / Structure :** _______________ (optionnel — anonymat respecté)
+
+---
+
+### Questions fermées (entourer la note de 1 à 5)
+
+**1. La plateforme IOX est facile à utiliser pour moi.**
+
+```
+1 — Très difficile    2 — Difficile    3 — Neutre    4 — Facile    5 — Très facile
+```
+
+**2. Le processus pour publier un produit / créer une RFQ est clair et rapide.**
+
+```
+1 — Pas du tout clair    2 — Peu clair    3 — Neutre    4 — Clair    5 — Très clair
+```
+
+**3. Le support IOX a répondu rapidement et m'a aidé efficacement.**
+
+```
+1 — Pas du tout    2 — Peu satisfait    3 — Neutre    4 — Satisfait    5 — Très satisfait
+```
+
+**4. IOX répond à un vrai besoin pour ma coopérative / mon activité.**
+
+```
+1 — Pas du tout    2 — Peu    3 — Neutre    4 — Oui    5 — Absolument
+```
+
+**5. Je recommanderais IOX à une autre coopérative ou un autre acheteur.**
+
+```
+1 — Non    2 — Probablement non    3 — Neutre    4 — Probablement oui    5 — Oui, certainement
+```
+
+---
+
+### Questions ouvertes
+
+**6. Qu'est-ce qui vous a le plus surpris (positivement ou négativement) lors de votre première utilisation ?**
+
+_______________________________________________________________________________
+
+_______________________________________________________________________________
+
+_______________________________________________________________________________
+
+**7. Quelle est la principale amélioration que vous souhaiteriez voir sur IOX avant un lancement officiel ?**
+
+_______________________________________________________________________________
+
+_______________________________________________________________________________
+
+_______________________________________________________________________________
+
+---
+
+*Merci pour votre retour. Il est précieux pour améliorer la plateforme avant son lancement officiel.*  
+*Transmettez cette fiche par WhatsApp, email à support@iox.example, ou remettez-la en main propre à votre contact IOX.*

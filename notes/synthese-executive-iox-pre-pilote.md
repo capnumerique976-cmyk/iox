@@ -1,39 +1,46 @@
 # Synthèse Exécutive — IOX Pré-Pilote
 
-**Version :** M99 / Mai 2026  
-**Destinataires :** Investisseurs, partenaires stratégiques, comité de pilotage  
+**Version :** M99 / Mai 2026
+**Destinataires :** Investisseurs, partenaires stratégiques, comité de pilotage
 **Statut :** Plateforme prête — Infrastructure à provisionner
+**Date :** 2026-05-11
 
 ---
 
 ## 1. État Produit
 
-### Fonctionnalités clés opérationnelles
+### Ce qui est construit
 
-La plateforme IOX est fonctionnelle et couvre l'intégralité du parcours B2B agricole, de la publication produit au paiement :
+IOX est une marketplace B2B agricole complète, couvrant l'intégralité du parcours de la publication produit jusqu'au paiement. La plateforme compte plus de 70 pages et routes fonctionnelles, couvrant l'ensemble des flux utilisateurs.
 
-**Rôles et accès**
-- **Admin** : gestion globale de la plateforme (utilisateurs, coopératives, litiges, reporting)
-- **Coordinateur** : supervision d'un groupe de coopératives, validation des profils
-- **Vendeur (coopérative)** : publication produits, gestion RFQ, onboarding Stripe, facturation
-- **Acheteur** : exploration catalogue, demandes de devis, paiements, messagerie
+**Quatre rôles utilisateurs**
 
-**Fonctionnalités déployées (70+ pages et routes)**
-- Marketplace avec recherche full-text (MeiliSearch) et filtres multi-critères
-- Request for Quotation (RFQ) : envoi, réponse, négociation, statuts
-- Paiements Stripe Connect : onboarding vendeur KYC, transactions, transferts, remboursements
-- Facturation PDF automatique à chaque transaction confirmée
-- Gestion documents conformité et traçabilité (certificats phytosanitaires, d'origine)
-- Messagerie intégrée par thread RFQ
-- Notifications email transactionnelles (avec lien de désinscription conforme RGPD)
-- PWA installable (manifest, icônes, meta tags — Android Chrome)
+- **Admin** : gestion globale de la plateforme (utilisateurs, coopératives, conformité, KPIs, audit logs)
+- **Coordinator** : supervision d'un groupe de coopératives, accompagnement terrain
+- **Seller (coopérative)** : publication du catalogue, gestion des demandes de devis, facturation, onboarding Stripe
+- **Buyer (acheteur)** : exploration catalogue, demandes de devis, paiements sécurisés, messagerie
+
+**Parcours utilisateur complet implémenté**
+
+- Inscription et onboarding guidé (vendeur et acheteur)
+- Catalogue public accessible sans authentification
+- Recherche full-text MeiliSearch avec filtres multi-critères (catégorie, origine, certifications, prix)
+- Processus RFQ complet : création par l'acheteur, réponse vendeur, négociation, acceptation, paiement
+- Paiements Stripe Connect en mode test avec gestion des webhooks
+- Facturation PDF automatique à chaque paiement confirmé
+- Messagerie intégrée par thread de demande de devis
+- Upload et validation de documents de conformité (certificats phytosanitaires, labels)
+- Notifications email transactionnelles pour chaque événement métier
+- Désinscription email conforme RGPD
+- Audit logs de toutes les actions sensibles
+- Dashboard admin avec KPIs en temps réel, gestion utilisateurs, file de modération
+- Monitoring des files d'attente BullMQ via Bull Board
+- Documentation API Swagger interactive
+- Seed de démonstration complet pour présentations investisseurs
+- PWA installable (manifest, icônes, Apple Touch Icon, méta-tags mobile)
 - Pages légales : CGU, politique de confidentialité, mentions légales
-- Dashboard admin : KPIs, gestion utilisateurs, modération
-
-**Qualité technique**
-- Tests : **1016 tests backend** (NestJS/Jest) + **508 tests frontend** (Next.js/Testing Library) — tous verts
-- TypeScript strict : zéro erreur de compilation
-- Build de production : OK (backend NestJS + frontend Next.js 14)
+- Scripts de backup PostgreSQL
+- Scripts de smoke tests post-déploiement
 
 ---
 
@@ -45,19 +52,23 @@ La plateforme IOX est fonctionnelle et couvre l'intégralité du parcours B2B ag
 |---|---|---|
 | Backend | NestJS (Node.js) — monolithique modulaire | API REST + logique métier |
 | Frontend | Next.js 14 — App Router | Interface utilisateur |
-| Monorepo | pnpm workspaces | Gestion dépendances et scripts |
+| Monorepo | pnpm workspaces | Gestion dépendances et scripts unifiée |
 | Base de données | PostgreSQL + Prisma ORM | Données métier persistantes |
-| Cache / Queues | Redis + BullMQ | Jobs asynchrones (emails, webhooks) |
-| Recherche | MeiliSearch | Recherche plein texte catalogue |
-| Paiements | Stripe Connect | Transactions B2B multi-vendeurs |
-| Stockage fichiers | MinIO (compatible S3) | Photos produits, documents PDF |
-| PWA | Manifest installable + icônes | Installation mobile (no service worker — intentionnel) |
+| Cache / Files d'attente | Redis + BullMQ | Jobs asynchrones (emails, webhooks Stripe, relances RFQ) |
+| Recherche | MeiliSearch | Recherche plein texte et filtres sur le catalogue |
+| Paiements | Stripe Connect | Transactions B2B multi-vendeurs avec commission plateforme |
 
-### Décisions d'architecture notables
+### État des tests et build
 
-- **Pas de service worker** : décision intentionnelle pour le pilote. Les PWA avec service worker ajoutent de la complexité de cache difficile à déboguer. À ajouter post-pilote si le besoin offline est confirmé terrain.
-- **Monolithe modulaire** : architecture choisie pour la vélocité de développement. Migration vers microservices envisageable post-traction commerciale.
-- **Stripe Connect** (et non Stripe standard) : permet aux vendeurs de recevoir des paiements directement sur leur compte bancaire, avec commission IOX prélevée automatiquement.
+| Indicateur | Résultat |
+|---|---|
+| Tests backend (Jest/NestJS) | 1016 / 1016 ✅ |
+| Tests frontend (Jest/Testing Library) | 508 / 508 ✅ |
+| Erreurs TypeScript | 0 erreur ✅ |
+| Build Next.js | OK ✅ |
+| Build NestJS | OK ✅ |
+
+Zéro erreur de compilation TypeScript. Couverture de test complète sur les chemins critiques (authentification, RFQ, paiements, facturation, conformité, notifications).
 
 ---
 
@@ -65,111 +76,131 @@ La plateforme IOX est fonctionnelle et couvre l'intégralité du parcours B2B ag
 
 ### Marché cible
 
-- **Vendeurs :** coopératives agricoles de Mayotte (département français d'outre-mer — 320 000 habitants, économie agricole significative : vanille, ylang-ylang, fruits tropicaux, épices)
-- **Acheteurs :** grossistes, distributeurs, restaurateurs, importateurs B2B — principalement France métropolitaine, La Réunion, Comores, et acheteurs internationaux
+IOX opère sur le marché B2B agricole de l'Océan Indien, avec un focus initial sur Mayotte.
 
-### Phase actuelle
+- **Vendeurs :** coopératives agricoles de Mayotte (produits : vanille, ylang-ylang, fruits tropicaux, épices, légumes). Petit nombre d'acteurs, fortes barrières à l'export sans intermédiaire numérique.
+- **Acheteurs :** grossistes, distributeurs, restaurateurs, importateurs B2B en France métropolitaine, La Réunion, Comores, et marchés internationaux (Europe, Moyen-Orient).
 
-| Paramètre | Valeur |
-|---|---|
-| Phase | Pilote fermé (invitation uniquement) |
-| Vendeurs cibles | 5 coopératives |
-| Acheteurs cibles | 10 acheteurs B2B |
-| Durée pilote estimée | 4-8 semaines terrain |
-| Objectif pilote | Valider l'usage réel, identifier les frictions, mesurer la conversion RFQ→paiement |
+### Utilisateurs cibles pilote
 
-### Modèle économique
+| Profil | Nombre | Territoire |
+|---|---|---|
+| Coopératives vendeurs | 5 | Mayotte |
+| Acheteurs B2B | 10 | La Réunion, France métropolitaine |
 
-- **Commission sur transactions** : pourcentage prélevé sur chaque paiement via Stripe Connect (taux exact à définir — fourchette envisagée : 2-5%)
-- **Freemium possible** : accès catalogue gratuit, commission uniquement sur transactions confirmées
-- **Services premium futurs** : mise en avant produits, import CSV, analytics avancées
+### Modèle de revenus
 
-### Stripe
+- **Commission sur transactions** : pourcentage prélevé automatiquement sur chaque paiement via Stripe Connect (taux à finaliser — fourchette envisagée 2 à 5 %).
+- **Services premium futurs** : mise en avant produits, import CSV en masse, analytics avancées, scoring confiance vendeurs.
+- La plateforme est gratuite pour les acheteurs. La commission est à la charge du vendeur sur chaque vente conclue.
 
-- Actuellement en **mode test** (aucun paiement réel)
-- Passage en **mode live** prévu après validation pilote (nécessite activation compte Stripe Business + KYC vendeurs)
+### Objectif du pilote
+
+Valider les hypothèses business sur le terrain :
+
+1. Les coopératives adoptent-elles la plateforme de manière autonome ?
+2. Le processus RFQ est-il adapté aux habitudes des acheteurs ?
+3. Quel est le taux de conversion catalogue → RFQ → paiement ?
+4. Quelles frictions terrain n'ont pas été anticipées en développement ?
 
 ---
 
 ## 4. État Légal
 
-### Documents créés
+### Documents produits
 
-| Document | Statut | Note |
-|---|---|---|
-| CGU (Conditions Générales d'Utilisation) | Template créé | Champs [À compléter] à renseigner |
-| Politique de confidentialité | Template créé | Champs [À compléter] à renseigner |
-| Mentions légales | Template créé | Champs [À compléter] à renseigner |
-| Checklist RGPD | Existante | DPO à désigner, registre traitements à compléter |
-| Documents conformité export | Intégrés à la plateforme | Validés fonctionnellement |
+| Document | Statut |
+|---|---|
+| Conditions Générales d'Utilisation | Template créé — champs `[À compléter]` non renseignés |
+| Politique de confidentialité RGPD | Template créé — champs `[À compléter]` non renseignés |
+| Mentions légales | Template créé — champs `[À compléter]` non renseignés |
+| Registre des traitements RGPD | Non créé |
+| DPO désigné | Non désigné |
 
-### RGPD
+### Ce qui est prêt
 
-- Des templates de politique de confidentialité et registre des traitements ont été créés
-- Les champs d'identification (SIREN, adresse siège, DPO) sont marqués `[À compléter]`
-- Un DPO (Délégué à la Protection des Données) ou référent RGPD doit être désigné avant la production publique
-- Acceptable pour un pilote fermé — obligatoire avant ouverture publique
+Les templates des trois documents légaux obligatoires sont en ligne sur la plateforme (`/legal/terms`, `/legal/privacy`, `/legal/mentions-legales`). Le contenu est structurellement conforme. Les données spécifiques à l'entreprise (SIREN, adresse siège, nom DPO, coordonnées) doivent être renseignées.
 
-### Conformité export
+### Ce qui manque avant production publique
 
-- Fonctionnalité de gestion de documents de conformité intégrée à la plateforme
-- Les vendeurs peuvent uploader et faire valider leurs certificats phytosanitaires, certificats d'origine, etc.
-- La vérification finale des documents reste sous responsabilité des parties
+- Remplir tous les champs `[À compléter]` dans les trois documents légaux.
+- Faire valider l'ensemble par un juriste spécialisé droit numérique.
+- Désigner un DPO (Délégué à la Protection des Données) ou référent RGPD.
+- Créer et maintenir le registre des traitements de données.
+
+Le pilote fermé peut démarrer avec les templates actuels à condition que les participants soient informés du caractère provisoire des documents.
 
 ---
 
 ## 5. État Déploiement
 
-| Composant | Statut | Action requise |
+### Ce qui est prêt
+
+- Code source complet, testé, buildable
+- Guide de déploiement VPS détaillé (`notes/deployment-vps-pilote-ferme-iox.md`)
+- Scripts de backup PostgreSQL automatisés
+- Runbook backup et restauration testé
+- Runbook exploitation admin
+- Scripts de smoke tests post-déploiement
+- Configuration pm2 pour le démarrage automatique des services
+
+### Ce qui n'est pas encore en place
+
+| Composant | Action requise | Délai estimé |
 |---|---|---|
-| VPS production | Non provisionné | Louer VPS Ubuntu 22.04 (4 vCPU, 8 GB RAM, 100 GB SSD) |
-| Domaine | Non acheté | Acheter domaine (iox.ma, iox.re, ou iox.yt) |
-| SSL | Non configuré | Certbot + Let's Encrypt après domaine |
-| DNS | Non configuré | Configurer après domaine + VPS |
-| Monitoring | Non configuré | Sentry (erreurs) + UptimeRobot (disponibilité) |
-| Backup cron | Scripts prêts, cron inactif | Configurer sur VPS après provisionnement |
-| Stripe live | Non activé | Activer après validation pilote |
-
-### Documentation d'infrastructure disponible
-
-- `notes/deployment-vps-pilote-ferme-iox.md` : guide complet de provisionnement VPS
-- `notes/backup-restore-runbook-iox.md` : runbook backup et restauration
-- `notes/monitoring-alerting-iox.md` : guide configuration monitoring
-- `notes/stripe-live-readiness-iox.md` : checklist activation Stripe live
+| VPS production | Louer VPS Ubuntu 22.04 (4 vCPU, 8 GB RAM, 100 GB SSD) | 1 jour |
+| Domaine officiel | Acheter iox.re ou iox.ma | 1 jour |
+| SSL / HTTPS | Configurer Certbot + Let's Encrypt après domaine | 2 heures |
+| DNS | Configurer les enregistrements A et MX après VPS + domaine | 2 heures |
+| Délivrabilité email | SPF, DKIM, DMARC configurés sur le domaine | 1 jour |
+| Monitoring erreurs | Sentry configuré (backend et frontend) | 1 jour |
+| Monitoring disponibilité | UptimeRobot configuré avec alertes SMS/email | 2 heures |
+| Backup cron | Cron actif sur VPS, restauration testée | 1 jour |
+| Stripe live | Compte Stripe Business vérifié, clés live configurées | 1 à 3 jours |
 
 ---
 
 ## 6. Risques Principaux
 
-| Risque | Criticité | Mitigation |
-|---|---|---|
-| VPS non provisionné | Haute — bloque tout déploiement | Priorité absolue : 1-2 jours de travail |
-| Stripe mode test | Haute — pas de paiements réels | Intentionnel pour pilote ; activation live post-validation |
-| RGPD non finalisé | Haute — obligatoire avant production | Acceptable pilote fermé ; champs à remplir |
-| Monitoring absent | Moyenne — détection incidents lente | Surveiller manuellement logs pendant pilote |
-| Domaine non acheté | Moyenne — emails de confiance impossibles | Requis avant envoi emails production (SPF, DKIM) |
-| Adoption terrain incertaine | Stratégique — risque pilote | Accompagnement intensif (formations, support WhatsApp) |
+| Risque | Criticité | Probabilité | Action | Responsable |
+|---|---|---|---|---|
+| VPS non provisionné avant pilote | Haute | Certaine si non planifié | Provisionner en priorité absolue | CTO / Fondateur |
+| Stripe mode test en production publique | Critique | Faible (détectable) | Checklist activation live avant ouverture publique | CTO |
+| RGPD non finalisé lors d'une plainte | Haute | Faible (pilote fermé) | Finaliser RGPD avant production publique | Fondateur + Juriste |
+| Incident sans monitoring | Moyenne | Possible | Configurer Sentry + UptimeRobot dès le déploiement pilote | CTO |
+| Non-adoption terrain des coopératives | Stratégique | Possible | Accompagnement intensif, formations courtes, support WhatsApp réactif | Coordinateur terrain |
+| Perte de données sans backup actif | Haute | Faible si backup configuré | Activer et tester le backup avant le premier onboarding vendeur | CTO |
+| Litiges non couverts par CGU | Moyenne | Faible (pilote fermé) | Faire valider les CGU par un juriste avant production publique | Fondateur + Juriste |
 
 ---
 
-## 7. Prochaine Décision
+## 7. Timeline Estimée
 
-### GO / NO-GO
+| Période | Actions |
+|---|---|
+| J+0 à J+14 | Provisionnement VPS, achat domaine, configuration DNS et SSL, déploiement application, activation backup cron, configuration monitoring minimal |
+| J+14 à J+21 | Onboarding des 2 premières coopératives pilotes, formation terrain (30 min / coopérative), création des premiers produits sur la plateforme |
+| J+21 à J+49 | Pilote terrain actif — suivi hebdomadaire, support réactif, collecte des retours, tracking des KPIs (RFQ créées, taux de réponse, conversions) |
+| J+49 à J+56 | Analyse des résultats pilote, entretiens avec les participants, décision formelle GO production publique ou non |
+| J+60 et au-delà | Si GO validé : activation Stripe live, finalisation RGPD, validation juridique CGU, ouverture progressive à de nouveaux vendeurs et acheteurs |
+
+---
+
+## 8. Prochaine Décision
+
+La décision critique conditionnant la suite du projet est :
+
+**Provisionner le VPS de production pilote.**
+
+Sans cette action (délai estimé 1 à 2 jours de travail), aucun déploiement terrain n'est possible quel que soit l'état du code.
 
 | Décision | Verdict | Condition |
 |---|---|---|
-| Démo investisseur | **GO** | Aucune condition |
-| Pilote fermé (code) | **GO** | Code prêt |
-| Pilote fermé (infra) | **GO conditionnel** | Provisionner VPS + SSL + tester backup |
-| Production publique | **NO-GO** | RGPD finalisé + Stripe live + monitoring + domaine |
-
-### Timeline estimée
-
-- **Semaines 1-2 :** Provisionnement VPS, domaine, SSL, backup cron, déploiement pilote
-- **Semaines 3-6 :** Pilote terrain (5 coopératives + 10 acheteurs, accompagnement hebdomadaire)
-- **Semaines 7-8 :** Analyse résultats pilote, décision go/no-go production publique
-- **Mois 3-4 :** Si pilote validé : activation Stripe live, finalisation RGPD, production publique
+| GO démo investisseur | GO inconditionnel | Seed demo opérationnel, code prêt |
+| GO pilote fermé (code) | GO | Tests verts, build OK, PWA installable, pages légales en ligne |
+| GO pilote fermé (infra) | GO conditionnel | VPS + SSL + backup testé + monitoring minimal configurés |
+| GO production publique | NO-GO | RGPD finalisé + Stripe live + monitoring complet + validation juridique |
 
 ---
 
-*Rédigé : Mai 2026 — Mandat M99 — IOX*
+*Document rédigé : M99 — 2026-05-11 — IOX Marketplace B2B Agricole — Océan Indien*

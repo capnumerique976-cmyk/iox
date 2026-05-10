@@ -1,107 +1,122 @@
-# Qualité des données & Séparation Démo / Production — IOX
+# Qualité des données — Séparation Démo / Production — IOX
 
-> Ce document définit les conventions de données, les procédures de nettoyage démo et les contrôles qualité à appliquer avant et pendant le pilote terrain.  
-> Date : 2026-05-11
+> Conventions, procédures de nettoyage et contrôles qualité à appliquer avant et pendant le pilote terrain.  
+> Date : 2026-05-11 — Usage interne équipe technique IOX.
 
 ---
 
-## 1. Convention des données de démonstration
+## 1. Le problème
 
-### Règle principale
+Pendant le développement et les démonstrations, la base de données est peuplée avec des données fictives via le script seed (`seed.ts`). Ces données servent à rendre la plateforme présentable lors des démos investisseurs, des tests internes et des formations.
 
-Toutes les données de démonstration (seed) doivent être **clairement identifiables** pour ne jamais être confondues avec des données réelles.
+**Risque concret :** une coopérative réelle invitée sur la plateforme pilote peut voir des produits, des entreprises et des profils fictifs (ex. `[DEMO] Coopérative Agricole de Mayotte`) qui n'existent pas. Cela crée de la confusion, nuit à la crédibilité d'IOX et peut faire échouer le pilote avant même qu'il ait commencé.
 
-### Convention email
+**Conséquences possibles :**
+- Une coopérative pense qu'il y a déjà des concurrents sur la plateforme alors qu'il n'y en a pas
+- Un acheteur contacte un "vendeur" qui est en réalité un compte de démo sans personne derrière
+- Les KPI du pilote sont faussés par des transactions générées automatiquement par le seed
+- La confiance des premiers utilisateurs est irrémédiablement entamée
 
-Les comptes démo utilisent le préfixe `demo_` ou le domaine `@demo.iox` :
+---
 
-| Type | Format email | Exemple |
-|---|---|---|
-| Vendeur démo | `seller@demo.iox` ou `demo_seller_[n]@iox.re` | `demo_coop_mahajanga@iox.re` |
-| Acheteur démo | `buyer@demo.iox` ou `demo_buyer_[n]@iox.re` | `demo_buyer_reunion@iox.re` |
-| Admin démo | `admin@demo.iox` | `demo_admin@iox.re` |
+## 2. Conventions pour les données de démonstration
+
+Toutes les données créées par le script seed doivent respecter des conventions qui les rendent immédiatement identifiables et filtrables.
+
+### Convention emails
+
+| Type de compte | Format email |
+|---|---|
+| Vendeur démo | `demo_seller_[n]@iox.example` — ex. `demo_coop_mahajanga@iox.example` |
+| Acheteur démo | `demo_buyer_[n]@iox.example` — ex. `demo_buyer_reunion@iox.example` |
+| Admin démo | `demo_admin@iox.example` |
+| Utilisateur test générique | `demo_user_[n]@iox.example` |
+
+**Règle :** tous les emails démo utilisent le domaine `@iox.example` (domaine réservé RFC 2606, jamais utilisé en production réelle) ou le préfixe `demo_`.
 
 ### Convention noms d'entreprises
 
-Les noms d'entreprises des comptes démo sont préfixés par `[DEMO]` :
+Tous les noms d'entreprises des comptes démo sont préfixés par `[DEMO]` :
 
 - `[DEMO] Coopérative Agricole de Mayotte`
-- `[DEMO] Épicerie Fine Réunion`
-- `[DEMO] Importateur Test`
+- `[DEMO] Épicerie Fine Réunion SARL`
+- `[DEMO] Importateur Océan Indien`
 
-Cette convention garantit qu'une recherche rapide sur `[DEMO]` ou `demo_` permet de retrouver toutes les données de test.
+### Convention prix et données
+
+- Les prix doivent être clairement irréels : `0.01`, `9999.99`, ou des valeurs rondes impossibles (`1000 €/kg de basilic`)
+- Les descriptions produit peuvent contenir la mention `[DÉMO — données fictives]`
+- Les photos utilisent des images libres de droits génériques (pas des photos de vraies coopératives)
+
+### Avantage de ces conventions
+
+Une recherche rapide sur `demo_`, `@iox.example` ou `[DEMO]` permet de retrouver et supprimer toutes les données de test en un seul passage.
 
 ---
 
-## 2. Scripts seed — Localisation et usage
+## 3. Localisation du script seed
 
-### Localisation
+Le script seed principal se trouve dans :
 
-Le script de seed principal est situé dans :
 ```
 apps/backend/prisma/seed.ts
 ```
 
 Scripts associés potentiels :
+
 ```
 apps/backend/prisma/seed-demo.ts    # données démo enrichies
 apps/backend/scripts/seed-demo.sh   # wrapper shell
 ```
 
-### Exécution
+### Exécution (développement et démo uniquement)
 
 ```bash
 # Depuis le répertoire backend
 cd apps/backend
 
-# Seed de base (schéma minimal)
+# Seed de base
 pnpm exec prisma db seed
 
-# Seed démo (données de démonstration complètes)
+# Seed démo complet
 pnpm run seed:demo
 ```
 
-### Règle absolue
-
-**Les scripts seed ne doivent jamais être exécutés en production.**
-
-Ces scripts créent des données fictives qui pourraient corrompre la base de données de production, créer des comptes non réels et fausser les statistiques et KPIs.
+**Règle absolue :** ces commandes ne doivent jamais être exécutées sur l'environnement de production. Le script vérifie `NODE_ENV` avant de s'exécuter (voir section 4).
 
 ---
 
-## 3. Protection contre l'exécution du seed en production
+## 4. Protection de la production contre l'exécution du seed
 
-### Vérification dans le code
+### Vérification NODE_ENV dans le code
 
-Le script seed doit impérativement vérifier l'environnement avant de s'exécuter :
+Le script seed doit impérativement vérifier l'environnement avant toute action :
 
 ```typescript
 // apps/backend/prisma/seed.ts
 async function main() {
   if (process.env.NODE_ENV === 'production') {
     console.error('ERREUR : Le script seed ne peut pas être exécuté en production.');
-    console.error('Définir NODE_ENV=production empêche le seed.');
+    console.error('Arrêt immédiat pour protéger les données de production.');
     process.exit(1);
   }
-  // ... suite du seed
+  // ... suite du seed uniquement si dev ou staging
 }
 ```
 
 ### Comment vérifier que la protection est en place
 
 ```bash
-# Vérifier que la vérification NODE_ENV existe dans le seed
-grep -n "NODE_ENV" apps/backend/prisma/seed.ts
-grep -n "production" apps/backend/prisma/seed.ts
-
-# Résultat attendu : au moins une ligne contenant la vérification
+grep -n "NODE_ENV\|production" apps/backend/prisma/seed.ts | head -10
 ```
 
-Si la protection n'est pas en place, l'ajouter en priorité avant tout déploiement en production.
+**Résultat attendu :** au moins une ligne contenant la vérification `NODE_ENV === 'production'` avec un `process.exit(1)`.
 
-### Mesure complémentaire
+Si la protection est absente : l'ajouter immédiatement avant tout déploiement en production. C'est un prérequis non négociable.
 
-Sur le VPS de production : ne pas inclure les scripts seed dans le déploiement, ou les rendre non exécutables :
+### Mesure complémentaire sur le VPS de production
+
+Rendre les scripts seed non exécutables sur le serveur de production :
 
 ```bash
 chmod 000 /opt/iox/apps/backend/prisma/seed.ts
@@ -110,158 +125,153 @@ chmod 000 /opt/iox/apps/backend/dist/prisma/seed.js
 
 ---
 
-## 4. Nettoyage des données démo avant le pilote réel
+## 5. Détection des données de démonstration en base
 
-Avant de lancer le pilote avec de vrais utilisateurs, nettoyer intégralement les données démo de la base de production.
-
-### Étape 1 — Détecter les données démo existantes
+Ces requêtes permettent de détecter si des données démo subsistent dans la base de données.
 
 ```sql
--- Comptes avec email démo
-SELECT id, email, role, company_name, created_at
-FROM users
-WHERE email LIKE 'demo_%'
-   OR email LIKE '%@demo.%'
-   OR company_name LIKE '[DEMO]%';
-
--- Offres créées par des vendeurs démo
-SELECT o.id, o.title, o.status, u.email AS seller_email
-FROM offers o
-JOIN users u ON u.id = o.seller_id
-WHERE u.email LIKE 'demo_%'
-   OR u.email LIKE '%@demo.%';
-
--- RFQ impliquant des comptes démo
-SELECT r.id, r.status, buyer.email, seller.email
-FROM rfqs r
-JOIN users buyer ON buyer.id = r.buyer_id
-JOIN users seller ON seller.id = r.seller_id
-WHERE buyer.email LIKE 'demo_%'
-   OR seller.email LIKE 'demo_%'
-   OR buyer.email LIKE '%@demo.%'
-   OR seller.email LIKE '%@demo.%';
+-- Détecter les comptes démo
+SELECT id, email, "createdAt" FROM users 
+WHERE email LIKE 'demo_%' OR email LIKE '%@demo.%' OR email LIKE '%@iox.example'
+ORDER BY "createdAt" DESC;
 ```
 
-### Étape 2 — Sauvegarde avant nettoyage
+```sql
+-- Détecter les produits démo
+SELECT id, title, "createdAt" FROM marketplace_offers
+WHERE title LIKE '[DEMO]%' OR title LIKE 'DEMO%'
+ORDER BY "createdAt" DESC;
+```
+
+```sql
+-- Compter le total de données démo (vue rapide)
+SELECT 
+  (SELECT COUNT(*) FROM users WHERE email LIKE 'demo_%' OR email LIKE '%@iox.example') AS comptes_demo,
+  (SELECT COUNT(*) FROM marketplace_offers WHERE title LIKE '[DEMO]%') AS produits_demo;
+```
+
+Si ces requêtes retournent des lignes en environnement de production : procéder au nettoyage (section 6) avant d'inviter les vraies coopératives.
+
+---
+
+## 6. Procédure de nettoyage avant le pilote réel
+
+### Étape 1 — Backup obligatoire avant toute suppression
 
 ```bash
-# Toujours faire un backup avant toute suppression
+# Toujours sauvegarder avant de supprimer
 pg_dump -h localhost -U iox_user -d iox_prod \
   -F c -f /opt/iox/backups/iox_avant_nettoyage_$(date +%Y%m%d_%H%M%S).dump
+
+# Vérifier que le fichier existe et a une taille cohérente
+ls -lh /opt/iox/backups/
 ```
 
-### Étape 3 — Suppression des données démo
+### Étape 2 — Identifier toutes les données démo
 
-À exécuter avec précaution, dans cet ordre (pour respecter les contraintes de clés étrangères) :
+Exécuter les requêtes de détection de la section 5. Conserver le résultat pour vérification post-nettoyage.
+
+### Étape 3 — Supprimer les données démo
 
 ```sql
--- IMPORTANT : adapter selon le schéma Prisma réel
--- Toujours tester sur un environnement de staging avant la production
-
 BEGIN;
 
 -- Identifier les IDs des utilisateurs démo
-WITH demo_users AS (
+CREATE TEMP TABLE demo_user_ids AS
   SELECT id FROM users
   WHERE email LIKE 'demo_%'
      OR email LIKE '%@demo.%'
-)
--- Supprimer dans l'ordre des dépendances
-DELETE FROM payments WHERE rfq_id IN (
-  SELECT id FROM rfqs WHERE buyer_id IN (SELECT id FROM demo_users)
-    OR seller_id IN (SELECT id FROM demo_users)
-);
+     OR email LIKE '%@iox.example';
 
-DELETE FROM rfqs WHERE buyer_id IN (SELECT id FROM demo_users)
-  OR seller_id IN (SELECT id FROM demo_users);
+-- Supprimer dans l'ordre des dépendances (clés étrangères)
+DELETE FROM payments
+  WHERE "buyerId" IN (SELECT id FROM demo_user_ids)
+     OR "sellerId" IN (SELECT id FROM demo_user_ids);
 
-DELETE FROM offers WHERE seller_id IN (SELECT id FROM demo_users);
+DELETE FROM quote_requests
+  WHERE "buyerId" IN (SELECT id FROM demo_user_ids)
+     OR "sellerId" IN (SELECT id FROM demo_user_ids);
 
-DELETE FROM documents WHERE user_id IN (SELECT id FROM demo_users);
+DELETE FROM marketplace_offers
+  WHERE "sellerId" IN (SELECT id FROM demo_user_ids);
+
+DELETE FROM compliance_documents
+  WHERE "userId" IN (SELECT id FROM demo_user_ids);
 
 DELETE FROM users
-WHERE email LIKE 'demo_%'
-   OR email LIKE '%@demo.%';
+  WHERE id IN (SELECT id FROM demo_user_ids);
 
--- Vérifier avant de valider
-SELECT COUNT(*) FROM users WHERE email LIKE 'demo_%' OR email LIKE '%@demo.%';
+-- Vérification avant validation
+SELECT COUNT(*) FROM users
+  WHERE email LIKE 'demo_%' OR email LIKE '%@iox.example';
 -- Doit retourner 0
 
-COMMIT;
+ROLLBACK; -- Remplacer par COMMIT; uniquement si le COUNT retourne 0
 ```
 
 ### Étape 4 — Vérification post-nettoyage
 
 ```sql
--- Vérification finale : aucune donnée démo ne doit subsister
-SELECT email FROM users WHERE email LIKE 'demo_%' OR email LIKE '%@demo.%';
-SELECT company_name FROM users WHERE company_name LIKE '[DEMO]%';
+-- Aucun compte démo ne doit subsister
+SELECT email FROM users WHERE email LIKE 'demo_%' OR email LIKE '%@iox.example';
+
+-- Aucun produit démo ne doit subsister
+SELECT title FROM marketplace_offers WHERE title LIKE '[DEMO]%';
 ```
 
-### Étape 5 — Réinitialisation des séquences (optionnel)
-
-Si les auto-incréments ont été pollués par les données démo et que des IDs visuellement incohérents posent un problème :
-
-```sql
--- Adapter selon les séquences réelles du schéma
--- Ne faire que si nécessaire et si la base est vide de données réelles
-SELECT setval('users_id_seq', 1, false);
-SELECT setval('offers_id_seq', 1, false);
-```
+Les deux requêtes doivent retourner zéro ligne. Si ce n'est pas le cas, compléter le nettoyage avant de continuer.
 
 ---
 
-## 5. Séparation des bases de données par environnement
+## 7. Séparation des bases de données par environnement
 
-| Environnement | Base de données | Usage |
-|---|---|---|
-| Développement local | `iox_dev` (localhost) | Développement quotidien, seed autorisé |
-| Staging / Préprod | `iox_staging` (VPS staging) | Tests d'intégration, smoke tests, démos |
-| Production pilote | `iox_prod` (VPS production) | Données réelles, seed interdit |
+| Environnement | Base de données | Seed autorisé | Usage |
+|---|---|---|---|
+| Développement local | `iox_dev` (localhost) | Oui | Développement quotidien, tests locaux |
+| Staging / Préprod | `iox_staging` (VPS staging) | Oui (avec prudence) | Tests d'intégration, smoke tests, démos investisseurs |
+| Production pilote | `iox_prod` (VPS production) | **Non** | Données réelles, utilisateurs réels |
 
-### Règle stricte
+### Règle de séparation
 
-**La `DATABASE_URL` de production ne doit jamais apparaître dans un fichier de configuration local.** Utiliser uniquement les variables d'environnement du VPS (`.env` non commité, ou secrets manager).
+La variable `DATABASE_URL` de production ne doit jamais apparaître dans un fichier de configuration local (`.env`, `.env.local`). Elle ne doit exister que dans les variables d'environnement du VPS de production.
 
-### Vérification de la variable d'environnement
+### Vérifier que la bonne base est utilisée
 
 ```bash
-# Sur le VPS production, vérifier que la bonne base est utilisée
+# Sur le VPS production — doit contenir "iox_prod"
 echo $DATABASE_URL | grep "iox_prod"
-# Doit afficher quelque chose contenant "iox_prod"
 
-# En développement local
+# En développement local — doit contenir "iox_dev"
 echo $DATABASE_URL | grep "iox_dev"
-# Doit afficher quelque chose contenant "iox_dev"
 ```
+
+Si la commande ne retourne rien : vérifier le fichier `.env` actif et la configuration du serveur.
 
 ---
 
-## 6. Contrôle des doublons
+## 8. Contraintes d'unicité
 
-### Contraintes UNIQUE en base de données
-
-Les colonnes suivantes doivent avoir des contraintes `UNIQUE` dans le schéma Prisma / PostgreSQL :
+Les colonnes suivantes doivent avoir des contraintes `UNIQUE` dans le schéma Prisma / PostgreSQL.
 
 | Table | Colonne | Justification |
 |---|---|---|
-| `users` | `email` | Un seul compte par email |
-| `users` | `siren` | Un SIREN unique par entreprise |
-| `users` | `siret` | Si collecté (SIRET unique) |
-| `offers` | `(seller_id, sku)` | Si les SKU vendeur sont gérés |
+| `users` | `email` | Un seul compte par adresse email |
+| `users` | `siren` | Un SIREN unique par entreprise (si collecté) |
+| `users` | `siret` | Un SIRET unique si collecté |
 
-### Vérification des contraintes
+### Vérifier les contraintes existantes
 
 ```sql
--- Vérifier les contraintes UNIQUE existantes sur la table users
 SELECT
-  conname AS constraint_name,
-  pg_get_constraintdef(c.oid) AS constraint_definition
+  conname AS contrainte,
+  pg_get_constraintdef(c.oid) AS definition
 FROM pg_constraint c
 JOIN pg_class t ON t.oid = c.conrelid
 WHERE t.relname = 'users'
   AND c.contype = 'u';
 ```
+
+### Ajouter une contrainte manquante
 
 Si la contrainte `UNIQUE` sur `email` ou `siren` est absente, l'ajouter via une migration Prisma :
 
@@ -270,44 +280,25 @@ Si la contrainte `UNIQUE` sur `email` ou `siren` est absente, l'ajouter via une 
 model User {
   email String @unique
   siren String? @unique
-  // ...
 }
 ```
 
 ```bash
-# Générer et appliquer la migration
 cd apps/backend
-pnpm exec prisma migrate dev --name add-unique-constraints
-```
-
-### Détection de doublons existants
-
-```sql
--- Détecter les doublons d'email (ne devrait pas exister si la contrainte UNIQUE est en place)
-SELECT email, COUNT(*) AS occurrences
-FROM users
-GROUP BY email
-HAVING COUNT(*) > 1;
-
--- Détecter les doublons de SIREN
-SELECT siren, COUNT(*) AS occurrences
-FROM users
-WHERE siren IS NOT NULL
-GROUP BY siren
-HAVING COUNT(*) > 1;
+pnpm exec prisma migrate dev --name add-unique-email-siren
 ```
 
 ---
 
-## 7. Checklist avant lancement pilote
+## 9. Checklist avant le pilote — 8 points à cocher
 
-| # | Vérification | Responsable | Statut |
-|---|---|---|---|
-| 1 | Aucune donnée démo dans la base de production (`demo_` / `@demo.`) | Admin tech | A faire |
-| 2 | Emails réels pour tous les utilisateurs pilote (coopératives + acheteurs) | Admin terrain | A faire |
-| 3 | Script seed protégé contre l'exécution en `NODE_ENV=production` | Dev | A vérifier |
-| 4 | Variable `DATABASE_URL` production non exposée en local | Dev | A vérifier |
-| 5 | Contraintes `UNIQUE` sur `email` et `siren` vérifiées en base | Admin tech | A faire |
-| 6 | Aucun doublon d'email ou de SIREN détecté | Admin tech | A faire |
-| 7 | Backup de la base de production effectué avant le J-Jour pilote | Admin tech | A faire |
-| 8 | Staging testé avec données réalistes (non démo) avant production | Dev | A faire |
+À compléter **avant** d'envoyer les premières invitations aux vraies coopératives.
+
+- [ ] **Backup effectué** — la base de production a été sauvegardée avant toute opération
+- [ ] **Aucune donnée démo en production** — les requêtes de détection (section 5) retournent zéro résultat
+- [ ] **Script seed protégé** — `grep -n "NODE_ENV\|production" apps/backend/prisma/seed.ts` confirme la protection
+- [ ] **DATABASE_URL de production non exposée en local** — vérification dans les fichiers `.env` des développeurs
+- [ ] **Contrainte UNIQUE sur `email` présente** — vérifiée via la requête SQL (section 8)
+- [ ] **Contrainte UNIQUE sur `siren` présente ou documentée comme optionnelle** — vérifiée ou décision documentée
+- [ ] **Aucun doublon d'email détecté en base** — `SELECT email, COUNT(*) FROM users GROUP BY email HAVING COUNT(*) > 1` retourne zéro
+- [ ] **Staging testé avec données réalistes** — le flow complet RFQ → paiement a été validé sur staging avant d'ouvrir la production aux pilotes
