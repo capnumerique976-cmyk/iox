@@ -44,6 +44,9 @@ id_ed25519.*
 docker-compose.vps*.yml
 !docker-compose.vps*.example.yml
 
+# ── Claude Code (worktrees, session data) ─────────────────────────
+.claude/
+
 # ── OS / éditeurs ─────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
