@@ -12,6 +12,7 @@ import { Receipt } from 'lucide-react';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
 import { invoicesApi, type InvoiceSummary, type InvoiceListResponse } from '@/lib/invoices';
+import { formatCents } from '@/lib/money';
 import { PageHeader } from '@/components/ui/page-header';
 
 const PAGE_LIMIT = 20;
@@ -33,10 +34,6 @@ const STATUS_CLS: Record<InvoiceSummary['status'], string> = {
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('fr-FR');
-}
-
-function formatAmount(cents: number): string {
-  return `${(cents / 100).toFixed(2)} €`;
 }
 
 export default function BuyerInvoicesPage() {
@@ -123,7 +120,7 @@ export default function BuyerInvoicesPage() {
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-sm font-semibold text-gray-900 tabular-nums">
-                    {formatAmount(inv.amountCents)} <span className="text-xs font-normal text-gray-500 uppercase">{inv.currency}</span>
+                    {formatCents(inv.amountCents, inv.currency)}
                   </span>
                   <Link
                     href={`/buyer/invoices/${inv.id}`}
@@ -161,7 +158,7 @@ export default function BuyerInvoicesPage() {
                       {inv.invoiceNumber}
                     </td>
                     <td className="px-4 py-2 text-gray-700 tabular-nums">
-                      {formatAmount(inv.amountCents)}
+                      {formatCents(inv.amountCents, inv.currency)}
                     </td>
                     <td className="px-4 py-2 text-gray-500 uppercase">
                       {inv.currency}

@@ -284,7 +284,44 @@ describe('PaymentsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('currency non-EUR → BadRequestException', async () => {
+    it('M59 — currency USD → accepté, Payment créé avec currency=USD', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue(validRfq);
+      prisma.payment.create.mockResolvedValue({ id: 'pay-usd' });
+      const res = await service.createCheckoutSession(
+        {
+          quoteRequestId: 'rfq1',
+          marketplaceOfferId: 'o1',
+          amountCents: 150000,
+          currency: 'USD',
+          returnUrl: 'https://iox/r',
+          cancelUrl: 'https://iox/c',
+        },
+        buyer,
+      );
+      expect(res.paymentId).toBe('pay-usd');
+      const data = prisma.payment.create.mock.calls[0][0].data;
+      expect(data.currency).toBe('USD');
+    });
+
+    it('M59 — currency usd (lowercase) → normalisé USD, accepté', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue(validRfq);
+      prisma.payment.create.mockResolvedValue({ id: 'pay-usd2' });
+      await service.createCheckoutSession(
+        {
+          quoteRequestId: 'rfq1',
+          marketplaceOfferId: 'o1',
+          amountCents: 5000,
+          currency: 'usd',
+          returnUrl: 'r',
+          cancelUrl: 'c',
+        },
+        buyer,
+      );
+      const data = prisma.payment.create.mock.calls[0][0].data;
+      expect(data.currency).toBe('USD');
+    });
+
+    it('M59 — currency GBP non supporté → BadRequestException', async () => {
       prisma.quoteRequest.findUnique.mockResolvedValue(validRfq);
       await expect(
         service.createCheckoutSession(
@@ -292,7 +329,7 @@ describe('PaymentsService', () => {
             quoteRequestId: 'rfq1',
             marketplaceOfferId: 'o1',
             amountCents: 1000,
-            currency: 'USD',
+            currency: 'GBP',
             returnUrl: 'r',
             cancelUrl: 'c',
           },

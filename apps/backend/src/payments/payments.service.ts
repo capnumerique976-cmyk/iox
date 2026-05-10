@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
 import { AuditService } from '../audit/audit.service';
+import { normalizeCurrency, toStripeCurrency } from '../common/money';
 import {
   EntityType,
   PaymentStatus,
@@ -106,9 +107,14 @@ export class PaymentsService {
       );
     }
 
-    const currency = (input.currency ?? 'EUR').toUpperCase();
-    if (currency !== 'EUR') {
-      throw new BadRequestException('Devise non supportée V1 (EUR uniquement)');
+    // M59: multi-devise EUR/USD — normalizeCurrency valide + normalise UPPERCASE
+    let currency: string;
+    try {
+      currency = normalizeCurrency(input.currency);
+    } catch {
+      throw new BadRequestException(
+        `Devise non supportée : ${input.currency ?? '(vide)'}. Devises acceptées : EUR, USD`,
+      );
     }
 
     const applicationFeeCents = this.computeApplicationFeeCents(input.amountCents);
@@ -135,7 +141,7 @@ export class PaymentsService {
       line_items: [
         {
           price_data: {
-            currency: currency.toLowerCase(),
+            currency: toStripeCurrency(currency),
             product_data: {
               name: rfq.marketplaceOffer.title ?? 'Commande IOX Marketplace',
             },

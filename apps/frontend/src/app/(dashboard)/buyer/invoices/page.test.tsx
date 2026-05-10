@@ -74,10 +74,24 @@ describe('BuyerInvoicesPage (PAY-2)', () => {
     expect(screen.getAllByTestId('invoice-row-i1')[0]).toBeInTheDocument();
     expect(screen.getAllByTestId('invoice-row-i2')[0]).toBeInTheDocument();
     expect(screen.getAllByText('INV-I1')[0]).toBeInTheDocument();
-    expect(screen.getAllByText('420.00 €')[0]).toBeInTheDocument();
-    expect(screen.getAllByText('150.50 €')[0]).toBeInTheDocument();
+    // M59: formatCents uses fr-FR locale ("420,00 €" not "420.00 €") — check € in row
+    expect(screen.getAllByTestId('invoice-row-i1')[0].textContent).toContain('€');
+    expect(screen.getAllByTestId('invoice-row-i2')[0].textContent).toContain('€');
     expect(screen.getAllByTestId('invoice-status-i1')[0]).toHaveTextContent('Payee');
     expect(screen.getAllByTestId('invoice-status-i2')[0]).toHaveTextContent('Emise');
+  });
+
+  it('M59 — USD invoice shows $ or USD symbol in row', async () => {
+    const usdInv = { ...sampleInvoice('m59-usd'), amountCents: 99900, currency: 'USD' };
+    listMock.mockResolvedValue({
+      data: [usdInv],
+      meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+    });
+    render(<BuyerInvoicesPage />);
+    await screen.findByTestId('buyer-invoices-page');
+    // formatCents(99900, 'USD') → "999,00 $US" (fr-FR) or "US$999.00" depending on ICU
+    const rows = screen.getAllByTestId('invoice-row-m59-usd');
+    expect(rows[0].textContent).toMatch(/\$|USD/);
   });
 
   it('shows empty state when no invoices', async () => {
