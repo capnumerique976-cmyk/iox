@@ -26,11 +26,13 @@ Plateforme complète : catalogue structuré · RFQ + messagerie · paiement Stri
 
 | | |
 |---|---|
-| Backend (NestJS) | **1 003 tests · 0 failure · TSC clean** |
+| Backend (NestJS) | **1 016 tests · 0 failure · TSC clean** |
 | API | **186 endpoints · Swagger complet** |
 | Parcours validé | **RFQ → WON → Paiement → Facture PDF** |
 | Démo live | **9 sellers · 13 produits · seed idempotent** |
-| Frontend (Next.js) | **Catalogue · Buyer · Seller · Admin** |
+| Frontend (Next.js) | **Catalogue · Buyer · Seller · Admin · 508 tests** |
+| PWA | **Installable Android/iOS · manifest · icônes** |
+| Pages légales | **CGU · Confidentialité · Mentions légales** |
 
 ---
 
@@ -75,6 +77,8 @@ NestJS · Prisma · PostgreSQL · Redis · MeiliSearch · Next.js · Stripe Conn
 ✅ Conformité documentaire structurée (barrière à l'entrée forte)  
 ✅ DOM français — réglementation EU, Stripe disponible  
 ✅ Produit fonctionnel livré — pas de build à financer  
+✅ PWA installable (terrain, smartphone, sans app store)  
+✅ Pages légales intégrées (CGU, RGPD, mentions légales)  
 
 ---
 
