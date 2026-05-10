@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Store, ShoppingCart, Clock, FileText } from 'lucide-react';
+import { Store, ShoppingCart, Clock, FileText, MessageSquare } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 
 /* ------------------------------------------------------------------ */
@@ -15,6 +15,7 @@ interface MarketplaceAlerts {
   newQuotes: number;
   pendingPayment: number;
   pendingActions: number;
+  newMessages: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -106,12 +107,23 @@ export function MarketplaceBell() {
               <>
                 {alerts.newRfqs > 0 && (
                   <AlertRow
-                    href="/seller/rfqs"
+                    href="/seller/quote-requests"
                     icon={FileText}
                     iconCls="text-indigo-500"
                     bgCls="bg-indigo-50"
                     label="Nouvelle(s) demande(s) de devis reçue(s)"
                     count={alerts.newRfqs}
+                    onClick={() => setOpen(false)}
+                  />
+                )}
+                {alerts.newMessages > 0 && (
+                  <AlertRow
+                    href="/seller/quote-requests"
+                    icon={MessageSquare}
+                    iconCls="text-teal-500"
+                    bgCls="bg-teal-50"
+                    label="Nouveau(x) message(s) reçu(s)"
+                    count={alerts.newMessages}
                     onClick={() => setOpen(false)}
                   />
                 )}
@@ -139,7 +151,7 @@ export function MarketplaceBell() {
                 )}
                 {alerts.pendingActions > 0 && (
                   <AlertRow
-                    href="/seller/rfqs"
+                    href="/seller/quote-requests"
                     icon={FileText}
                     iconCls="text-orange-500"
                     bgCls="bg-orange-50"

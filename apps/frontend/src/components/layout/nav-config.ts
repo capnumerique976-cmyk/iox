@@ -323,7 +323,7 @@ export const SECTIONS: NavSection[] = [
     description: "Espace vendeur, demandes de devis, documents.",
     permission: '*',
     roles: [...STAFF_ROLES, UserRole.MARKETPLACE_SELLER],
-    pathPrefixes: ['/marketplace-hub', '/seller', '/quote-requests'],
+    pathPrefixes: ['/marketplace-hub', '/seller', '/seller/quote-requests'],
     items: [
       {
         label: 'Vue d\'ensemble',
@@ -342,7 +342,7 @@ export const SECTIONS: NavSection[] = [
       },
       {
         label: 'Demandes de devis',
-        href: '/quote-requests',
+        href: '/seller/quote-requests',
         permission: '*',
         icon: MessageSquareQuote,
         description: 'Demandes reçues et en cours',

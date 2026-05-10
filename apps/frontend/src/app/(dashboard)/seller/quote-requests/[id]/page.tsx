@@ -1,11 +1,11 @@
 'use client';
 
-// BUYER-DASHBOARD-1 — Détail RFQ côté buyer.
+// M58 — Page détail demande de devis côté vendeur.
 //
-// Vue dédiée acheteur : récap demande + offre, thread des messages
-// (sans les notes internes — l'API les filtre déjà côté backend pour
-// les rôles non-staff), formulaire d'envoi de message, et bouton
-// "Annuler la demande" si le statut est NEW ou QUALIFIED.
+// Le vendeur/agriculteur voit le détail de la demande et peut échanger
+// avec l'acheteur via la conversation attachée à la RFQ.
+// Les notes internes (isInternalNote=true) ne sont PAS affichées ici
+// (filtrées côté backend) — espace purement conversationnel.
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -19,14 +19,6 @@ import {
   QuoteRequestSummary,
   QuoteRequestMessage,
 } from '@/lib/quote-requests';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 
 const STATUS_LABELS: Record<QuoteRequestStatus, string> = {
   NEW: 'Nouvelle',
@@ -48,12 +40,21 @@ const STATUS_COLORS: Record<QuoteRequestStatus, string> = {
   CANCELLED: 'bg-red-100 text-red-700',
 };
 
-const CANCELLABLE_STATUSES: QuoteRequestStatus[] = [
-  QuoteRequestStatus.NEW,
-  QuoteRequestStatus.QUALIFIED,
+const TERMINAL_STATUSES: QuoteRequestStatus[] = [
+  QuoteRequestStatus.WON,
+  QuoteRequestStatus.LOST,
+  QuoteRequestStatus.CANCELLED,
 ];
 
-export default function BuyerQuoteRequestDetailPage() {
+const FUNNEL_STEPS: QuoteRequestStatus[] = [
+  QuoteRequestStatus.NEW,
+  QuoteRequestStatus.QUALIFIED,
+  QuoteRequestStatus.QUOTED,
+  QuoteRequestStatus.NEGOTIATING,
+  QuoteRequestStatus.WON,
+];
+
+export default function SellerQuoteRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { token } = useAuth();
   const [rfq, setRfq] = useState<QuoteRequestSummary | null>(null);
@@ -61,7 +62,6 @@ export default function BuyerQuoteRequestDetailPage() {
   const [newMsg, setNewMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -91,7 +91,7 @@ export default function BuyerQuoteRequestDetailPage() {
       const msg = await quoteRequestsApi.addMessage(rfq.id, token, newMsg.trim(), false);
       setMessages((prev) => [...prev, msg]);
       setNewMsg('');
-      toast.success('Message envoyé');
+      toast.success('Votre message a été envoyé.');
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : 'Erreur lors de l\'envoi';
       setErr(errMsg);
@@ -101,40 +101,13 @@ export default function BuyerQuoteRequestDetailPage() {
     }
   };
 
-  const onCancel = async () => {
-    if (!token || !rfq) return;
-    setCancelDialogOpen(true);
-  };
-
-  const onCancelConfirm = async () => {
-    if (!token || !rfq) return;
-    setCancelDialogOpen(false);
-    setBusy(true);
-    setErr(null);
-    try {
-      const updated = await quoteRequestsApi.updateStatus(
-        rfq.id,
-        QuoteRequestStatus.CANCELLED,
-        token,
-      );
-      setRfq(updated);
-      toast.success('Demande annulée avec succès');
-    } catch (e) {
-      const errMsg = e instanceof Error ? e.message : 'Erreur lors de l\'annulation';
-      setErr(errMsg);
-      toast.error(errMsg);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   if (err && !rfq) {
     return (
-      <div className="flex flex-col gap-3">
-        <Link href="/buyer/quote-requests" className="text-sm text-blue-700">
-          ← Retour à mes demandes
+      <div className="flex flex-col gap-3 p-6" data-testid="seller-rfq-detail-page">
+        <Link href="/seller/quote-requests" className="text-sm text-blue-700">
+          ← Retour aux demandes
         </Link>
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div role="alert" data-testid="seller-rfq-detail-error" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {err}
         </div>
       </div>
@@ -143,8 +116,8 @@ export default function BuyerQuoteRequestDetailPage() {
 
   if (!rfq) {
     return (
-      <div className="flex items-center justify-between">
-        <Link href="/buyer/quote-requests" className="text-sm text-blue-700">
+      <div className="flex items-center justify-between p-6" data-testid="seller-rfq-detail-page">
+        <Link href="/seller/quote-requests" className="text-sm text-blue-700">
           ← Retour
         </Link>
         <div className="text-sm text-gray-500">Chargement…</div>
@@ -152,45 +125,42 @@ export default function BuyerQuoteRequestDetailPage() {
     );
   }
 
-  const canCancel = CANCELLABLE_STATUSES.includes(rfq.status);
-  const canMessage =
-    rfq.status !== QuoteRequestStatus.CANCELLED &&
-    rfq.status !== QuoteRequestStatus.LOST &&
-    rfq.status !== QuoteRequestStatus.WON;
+  const isTerminal = TERMINAL_STATUSES.includes(rfq.status);
+  const canMessage = !isTerminal;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 p-6" data-testid="seller-rfq-detail-page">
       <div className="flex items-center justify-between">
-        <Link href="/buyer/quote-requests" className="text-sm text-blue-700 hover:text-blue-800">
-          ← Retour à mes demandes
+        <Link href="/seller/quote-requests" className="text-sm text-blue-700 hover:text-blue-800">
+          ← Retour aux demandes
         </Link>
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[rfq.status]}`}>
           {STATUS_LABELS[rfq.status]}
         </span>
       </div>
 
+      {/* En-tête demande */}
       <header className="rounded-xl border border-gray-200 bg-white p-5">
         <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
           {rfq.marketplaceOffer.title}
         </h1>
         <div className="mt-1 text-sm text-gray-600">
-          {rfq.marketplaceOffer.sellerProfile?.publicDisplayName ?? 'Vendeur'}
-          {rfq.marketplaceOffer.marketplaceProduct &&
-            ` · ${rfq.marketplaceOffer.marketplaceProduct.commercialName}`}
+          Demande de {rfq.buyerCompany?.name ?? `${rfq.buyerUser.firstName} ${rfq.buyerUser.lastName}`}
         </div>
         <div className="mt-1 text-xs text-gray-500">
-          Créée le {new Date(rfq.createdAt).toLocaleDateString('fr-FR')}
+          Reçue le {new Date(rfq.createdAt).toLocaleDateString('fr-FR')}
         </div>
       </header>
 
-      {/* Status Timeline */}
-      <RfqTimeline status={rfq.status} />
+      {/* Progression */}
+      <SellerRfqTimeline status={rfq.status} />
 
+      {/* Détail demande */}
       <section className="rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Votre demande</h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-900">Détail de la demande</h2>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs md:grid-cols-4">
           <div>
-            <dt className="text-gray-500">Quantité</dt>
+            <dt className="text-gray-500">Quantité demandée</dt>
             <dd className="text-gray-800">
               {rfq.requestedQuantity
                 ? `${rfq.requestedQuantity}${rfq.requestedUnit ? ` ${rfq.requestedUnit}` : ''}`
@@ -217,21 +187,23 @@ export default function BuyerQuoteRequestDetailPage() {
         )}
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4" data-testid="buyer-rfq-messages-section">
+      {/* Conversation */}
+      <section className="rounded-lg border border-gray-200 bg-white p-4" data-testid="seller-rfq-messages-section">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">
-          Échanges ({messages.length})
+          Conversation avec l&apos;acheteur ({messages.length})
         </h2>
+
         {messages.length === 0 ? (
           <div
             className="rounded border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-xs text-gray-500"
-            data-testid="buyer-rfq-empty-state"
+            data-testid="seller-rfq-empty-state"
           >
-            Aucun message pour le moment. Vous pouvez poser une question au vendeur.
+            Aucun message pour le moment. Vous pouvez répondre si vous avez besoin d&apos;une précision.
           </div>
         ) : (
-          <ul className="flex flex-col gap-3" data-testid="buyer-rfq-messages-list">
+          <ul className="flex flex-col gap-3" data-testid="seller-rfq-messages-list">
             {messages.map((m) => (
-              <li key={m.id} className="rounded border border-gray-100 bg-gray-50 p-3" data-testid="buyer-rfq-message-item">
+              <li key={m.id} className="rounded border border-gray-100 bg-gray-50 p-3" data-testid="seller-rfq-message-item">
                 <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
                   <span className="font-medium text-gray-700">
                     {m.authorUser.firstName} {m.authorUser.lastName}
@@ -245,104 +217,55 @@ export default function BuyerQuoteRequestDetailPage() {
         )}
 
         {canMessage ? (
-          <form onSubmit={onSend} className="mt-4 flex flex-col gap-2" data-testid="buyer-rfq-message-form">
-            <label htmlFor="rfq-message" className="text-xs font-medium text-gray-700">
-              Nouveau message
+          <form onSubmit={onSend} className="mt-4 flex flex-col gap-2" data-testid="seller-rfq-message-form">
+            <label htmlFor="seller-rfq-message" className="text-xs font-medium text-gray-700">
+              Votre réponse
             </label>
             <textarea
-              id="rfq-message"
+              id="seller-rfq-message"
               value={newMsg}
               onChange={(e) => setNewMsg(e.target.value)}
               rows={3}
-              placeholder="Écrire un message au vendeur…"
+              placeholder="Écrire un message à l'acheteur…"
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
               disabled={busy}
-              data-testid="buyer-rfq-message-input"
+              data-testid="seller-rfq-message-input"
             />
             <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={busy || !newMsg.trim()}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-                data-testid="buyer-rfq-send-btn"
+                data-testid="seller-rfq-send-btn"
               >
                 {busy ? 'Envoi…' : 'Envoyer'}
               </button>
             </div>
           </form>
         ) : (
-          <p className="mt-3 text-xs italic text-gray-500" data-testid="buyer-rfq-closed-notice">
-            Cette demande est terminée — les échanges sont fermés.
+          <p
+            className="mt-3 text-xs italic text-gray-500"
+            data-testid="seller-rfq-closed-notice"
+          >
+            Cette demande est terminée. La conversation est conservée pour historique.
           </p>
         )}
+
+        {err && (
+          <div role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            {err}
+          </div>
+        )}
       </section>
-
-      {err && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {err}
-        </div>
-      )}
-
-      {canCancel && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-          >
-            Annuler la demande
-          </button>
-        </div>
-      )}
-
-      {/* Dialog de confirmation d'annulation */}
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Annuler la demande de devis ?</DialogTitle>
-            <DialogDescription>Cette action est irréversible.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setCancelDialogOpen(false)}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Annuler
-            </button>
-            <button
-              type="button"
-              onClick={onCancelConfirm}
-              disabled={busy}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-            >
-              Confirmer
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
-// ─── RFQ Status Timeline ──────────────────────────────────────────────────────
+// ─── Timeline ─────────────────────────────────────────────────────────────────
 
-const FUNNEL_STEPS: QuoteRequestStatus[] = [
-  QuoteRequestStatus.NEW,
-  QuoteRequestStatus.QUALIFIED,
-  QuoteRequestStatus.QUOTED,
-  QuoteRequestStatus.NEGOTIATING,
-  QuoteRequestStatus.WON,
-];
-
-const TERMINAL_NEGATIVE: QuoteRequestStatus[] = [
-  QuoteRequestStatus.LOST,
-  QuoteRequestStatus.CANCELLED,
-];
-
-function RfqTimeline({ status }: { status: QuoteRequestStatus }) {
-  const isTerminalNeg = TERMINAL_NEGATIVE.includes(status);
+function SellerRfqTimeline({ status }: { status: QuoteRequestStatus }) {
+  const isTerminalNeg =
+    status === QuoteRequestStatus.LOST || status === QuoteRequestStatus.CANCELLED;
   const currentIdx = FUNNEL_STEPS.indexOf(status);
 
   return (
@@ -352,9 +275,8 @@ function RfqTimeline({ status }: { status: QuoteRequestStatus }) {
       </h2>
       <div className="flex items-center gap-1">
         {FUNNEL_STEPS.map((step, idx) => {
-          let state: 'done' | 'current' | 'future' | 'negative' = 'future';
+          let state: 'done' | 'current' | 'future' = 'future';
           if (isTerminalNeg) {
-            // All steps before current position are done, rest grayed
             const lastGoodIdx = FUNNEL_STEPS.indexOf(
               status === QuoteRequestStatus.CANCELLED
                 ? QuoteRequestStatus.NEW
@@ -366,17 +288,10 @@ function RfqTimeline({ status }: { status: QuoteRequestStatus }) {
           } else if (idx === currentIdx) {
             state = 'current';
           }
-
           return (
             <div key={step} className="flex items-center gap-1">
               {idx > 0 && (
-                <div
-                  className={`h-0.5 w-6 sm:w-10 ${
-                    state === 'done' || state === 'current'
-                      ? 'bg-blue-500'
-                      : 'bg-gray-200'
-                  }`}
-                />
+                <div className={`h-0.5 w-6 sm:w-10 ${state === 'done' || state === 'current' ? 'bg-blue-500' : 'bg-gray-200'}`} />
               )}
               <div className="flex flex-col items-center gap-0.5">
                 {state === 'done' ? (
@@ -386,19 +301,13 @@ function RfqTimeline({ status }: { status: QuoteRequestStatus }) {
                 ) : (
                   <Circle className="h-5 w-5 text-gray-300" />
                 )}
-                <span
-                  className={`text-[10px] leading-tight ${
-                    state === 'future' ? 'text-gray-400' : 'text-gray-700 font-medium'
-                  }`}
-                >
+                <span className={`text-[10px] leading-tight ${state === 'future' ? 'text-gray-400' : 'text-gray-700 font-medium'}`}>
                   {STATUS_LABELS[step]}
                 </span>
               </div>
             </div>
           );
         })}
-
-        {/* Terminal negative badge */}
         {isTerminalNeg && (
           <div className="ml-2 flex items-center gap-1">
             <div className="h-0.5 w-6 bg-red-300" />

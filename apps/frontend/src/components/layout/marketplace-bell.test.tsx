@@ -38,6 +38,7 @@ function makeAlerts(overrides: Record<string, number> = {}) {
     newQuotes: 0,
     pendingPayment: 0,
     pendingActions: 0,
+    newMessages: 0,
     ...overrides,
   };
 }
@@ -74,5 +75,17 @@ describe('MarketplaceBell (B2)', () => {
       expect(screen.getByTestId('marketplace-bell-badge')).toBeInTheDocument();
     });
     expect(screen.getByTestId('marketplace-bell-badge')).toHaveTextContent('3');
+  });
+
+  it('M58 — affiche badge avec newMessages dans le total', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => makeAlerts({ total: 2, newMessages: 2 }),
+    });
+    render(<MarketplaceBell />);
+    await waitFor(() => {
+      expect(screen.getByTestId('marketplace-bell-badge')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('marketplace-bell-badge')).toHaveTextContent('2');
   });
 });
