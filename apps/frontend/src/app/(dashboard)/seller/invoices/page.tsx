@@ -8,10 +8,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Receipt } from 'lucide-react';
+import { Receipt } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
 import { invoicesApi, type InvoiceSummary, type InvoiceListResponse } from '@/lib/invoices';
-import { formatCents } from '@/lib/money';
 import { PageHeader } from '@/components/ui/page-header';
 
 const PAGE_LIMIT = 20;
@@ -33,6 +32,10 @@ const STATUS_CLS: Record<InvoiceSummary['status'], string> = {
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('fr-FR');
+}
+
+function formatAmount(cents: number): string {
+  return `${(cents / 100).toFixed(2)} €`;
 }
 
 export default function SellerInvoicesPage() {
@@ -70,16 +73,8 @@ export default function SellerInvoicesPage() {
     <div className="flex flex-col gap-6" data-testid="seller-invoices-page">
       <PageHeader
         icon={<Receipt className="h-5 w-5" aria-hidden />}
-        title="Mes factures"
-        subtitle={`${meta.total} facture${meta.total > 1 ? 's' : ''} — suivez vos paiements`}
-        actions={
-          <Link
-            href="/seller/dashboard"
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowLeft className="h-3 w-3" /> Tableau de bord
-          </Link>
-        }
+        title="Factures vendeur"
+        subtitle={`${meta.total} facture${meta.total > 1 ? 's' : ''}`}
       />
 
       {err && (
@@ -119,7 +114,7 @@ export default function SellerInvoicesPage() {
                     {inv.invoiceNumber}
                   </td>
                   <td className="px-4 py-2 text-gray-700 tabular-nums">
-                    {formatCents(inv.amountCents, inv.currency)}
+                    {formatAmount(inv.amountCents)}
                   </td>
                   <td className="px-4 py-2 text-gray-500 uppercase">
                     {inv.currency}
@@ -188,27 +183,17 @@ export default function SellerInvoicesPage() {
 function EmptyState() {
   return (
     <div
-      className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center"
+      className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-gray-200 bg-white p-10 text-center"
       data-testid="invoices-empty"
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-        <Receipt className="h-7 w-7 text-gray-400" />
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-700">
-          Vous n'avez pas encore de facture
-        </p>
-        <p className="mt-1 max-w-sm text-xs text-gray-500">
-          Vos factures apparaîtront ici après la confirmation de vos premières ventes.
-          Pour commencer, publiez vos produits et répondez aux demandes de devis.
-        </p>
-      </div>
-      <Link
-        href="/seller/marketplace-products"
-        className="inline-flex items-center gap-2 rounded-md bg-premium-accent px-4 py-2 text-sm font-semibold text-white shadow-premium-sm hover:bg-premium-primary"
-      >
-        Voir mes produits
-      </Link>
+      <Receipt className="h-8 w-8 text-blue-500" />
+      <p className="text-sm font-medium text-gray-800">
+        Aucune facture pour le moment.
+      </p>
+      <p className="max-w-sm text-xs text-gray-500">
+        Les factures apparaitront ici lorsque des paiements seront
+        confirm&eacute;s sur vos offres.
+      </p>
     </div>
   );
 }

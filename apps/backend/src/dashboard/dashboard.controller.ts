@@ -102,6 +102,7 @@ export class DashboardController {
     return this.dashboardService.getMarketplaceAlerts(actor);
   }
 
+  // MARKETPLACE-ADMIN-STATS — KPIs marketplace (sellers, catalog, RFQ pipeline)
   @Get('marketplace')
   @Roles(UserRole.ADMIN, UserRole.COORDINATOR, UserRole.QUALITY_MANAGER)
   @ApiOperation({

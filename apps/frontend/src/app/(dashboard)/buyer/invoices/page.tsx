@@ -9,10 +9,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Receipt } from 'lucide-react';
-import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
 import { invoicesApi, type InvoiceSummary, type InvoiceListResponse } from '@/lib/invoices';
-import { formatCents } from '@/lib/money';
 import { PageHeader } from '@/components/ui/page-header';
 
 const PAGE_LIMIT = 20;
@@ -34,6 +32,10 @@ const STATUS_CLS: Record<InvoiceSummary['status'], string> = {
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('fr-FR');
+}
+
+function formatAmount(cents: number): string {
+  return `${(cents / 100).toFixed(2)} €`;
 }
 
 export default function BuyerInvoicesPage() {
@@ -72,15 +74,7 @@ export default function BuyerInvoicesPage() {
       <PageHeader
         icon={<Receipt className="h-5 w-5" aria-hidden />}
         title="Mes factures"
-        subtitle={`${meta.total} facture${meta.total > 1 ? 's' : ''} — telechargez vos justificatifs`}
-        actions={
-          <Link
-            href="/buyer"
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowLeft className="h-3 w-3" /> Mon espace acheteur
-          </Link>
-        }
+        subtitle={`${meta.total} facture${meta.total > 1 ? 's' : ''}`}
       />
 
       {err && (
@@ -97,98 +91,59 @@ export default function BuyerInvoicesPage() {
       ) : items.length === 0 ? (
         <EmptyState />
       ) : (
-        <>
-          {/* Mobile: cards */}
-          <div className="flex flex-col gap-3 md:hidden" data-testid="invoices-table">
-            {items.map((inv) => (
-              <div
-                key={inv.id}
-                data-testid={`invoice-row-${inv.id}`}
-                className="rounded-xl border border-gray-200/70 bg-white p-4 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-gray-900">{inv.invoiceNumber}</p>
-                    <p className="text-xs text-gray-500">{formatDate(inv.issuedAt)}</p>
-                  </div>
-                  <span
-                    data-testid={`invoice-status-${inv.id}`}
-                    className={`flex-shrink-0 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLS[inv.status]}`}
-                  >
-                    {STATUS_LABEL[inv.status]}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-900 tabular-nums">
-                    {formatCents(inv.amountCents, inv.currency)}
-                  </span>
-                  <Link
-                    href={`/buyer/invoices/${inv.id}`}
-                    className="text-xs font-medium text-blue-700 hover:text-blue-800"
-                    data-testid={`invoice-link-${inv.id}`}
-                  >
-                    Telecharger →
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop: table */}
-          <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm md:block" data-testid="invoices-table-desktop">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th className="px-4 py-2 text-left">N° facture</th>
-                  <th className="px-4 py-2 text-left">Montant</th>
-                  <th className="px-4 py-2 text-left">Devise</th>
-                  <th className="px-4 py-2 text-left">Statut</th>
-                  <th className="px-4 py-2 text-left">Date emission</th>
-                  <th className="px-4 py-2"></th>
+        <div className="iox-table-wrap" data-testid="invoices-table">
+          <table>
+            <thead>
+              <tr>
+                <th>N&deg; facture</th>
+                <th>Montant</th>
+                <th>Devise</th>
+                <th>Statut</th>
+                <th>Date &eacute;mission</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((inv) => (
+                <tr
+                  key={inv.id}
+                  data-testid={`invoice-row-${inv.id}`}
+                  className="hover:bg-gray-50"
+                >
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    {inv.invoiceNumber}
+                  </td>
+                  <td className="px-4 py-2 text-gray-700 tabular-nums">
+                    {formatAmount(inv.amountCents)}
+                  </td>
+                  <td className="px-4 py-2 text-gray-500 uppercase">
+                    {inv.currency}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span
+                      data-testid={`invoice-status-${inv.id}`}
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLS[inv.status]}`}
+                    >
+                      {STATUS_LABEL[inv.status]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-gray-500">
+                    {formatDate(inv.issuedAt)}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <Link
+                      href={`/buyer/invoices/${inv.id}`}
+                      className="text-blue-700 hover:text-blue-800"
+                      data-testid={`invoice-link-${inv.id}`}
+                    >
+                      Voir &rarr;
+                    </Link>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {items.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    data-testid={`invoice-row-${inv.id}`}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-2 font-medium text-gray-900">
-                      {inv.invoiceNumber}
-                    </td>
-                    <td className="px-4 py-2 text-gray-700 tabular-nums">
-                      {formatCents(inv.amountCents, inv.currency)}
-                    </td>
-                    <td className="px-4 py-2 text-gray-500 uppercase">
-                      {inv.currency}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        data-testid={`invoice-status-${inv.id}`}
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLS[inv.status]}`}
-                      >
-                        {STATUS_LABEL[inv.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500">
-                      {formatDate(inv.issuedAt)}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <Link
-                        href={`/buyer/invoices/${inv.id}`}
-                        className="text-blue-700 hover:text-blue-800"
-                        data-testid={`invoice-link-${inv.id}`}
-                      >
-                        Telecharger →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* Pagination */}
@@ -233,18 +188,12 @@ function EmptyState() {
     >
       <Receipt className="h-8 w-8 text-blue-500" />
       <p className="text-sm font-medium text-gray-800">
-        Aucune facture pour le moment
+        Aucune facture pour le moment.
       </p>
       <p className="max-w-sm text-xs text-gray-500">
-        Vos factures apparaissent ici apres chaque paiement confirme.
-        Commencez par trouver un produit et envoyer une demande de devis.
+        Les factures apparaitront ici une fois vos paiements
+        confirm&eacute;s.
       </p>
-      <Link
-        href="/buyer/quote-requests"
-        className="mt-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-      >
-        Voir mes demandes de devis
-      </Link>
     </div>
   );
 }

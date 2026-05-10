@@ -50,6 +50,7 @@ const WON_RFQ_COUNT = DEMO_DATASET.quoteRequests.filter(
 // Nombre de documents de conformité seedés pour le smoke-seller.
 const COMPLIANCE_DOCS_COUNT = 3;
 
+
 function makePrismaMock(opts: {
   offerExists?: boolean;
   mediaAssetExists?: boolean;

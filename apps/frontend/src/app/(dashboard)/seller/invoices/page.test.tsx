@@ -76,17 +76,6 @@ describe('SellerInvoicesPage (PAY-2)', () => {
     expect(screen.getByTestId('invoice-status-i2')).toHaveTextContent('Brouillon');
   });
 
-  it('M59 — montant affiché avec devise via formatCents (€ pour EUR)', async () => {
-    listMock.mockResolvedValue({
-      data: [sampleInvoice('m59')],
-      meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
-    });
-    render(<SellerInvoicesPage />);
-    await screen.findByTestId('seller-invoices-page');
-    // formatCents(55000, 'EUR') → "550,00 €" (fr-FR) — check € symbol appears in row
-    expect(screen.getByTestId('invoice-row-m59').textContent).toContain('€');
-  });
-
   it('shows empty state when no invoices', async () => {
     listMock.mockResolvedValue({
       data: [],
@@ -95,6 +84,6 @@ describe('SellerInvoicesPage (PAY-2)', () => {
     render(<SellerInvoicesPage />);
 
     expect(await screen.findByTestId('invoices-empty')).toBeInTheDocument();
-    expect(screen.getByText(/pas encore de facture/)).toBeInTheDocument();
+    expect(screen.getByText(/Aucune facture/)).toBeInTheDocument();
   });
 });

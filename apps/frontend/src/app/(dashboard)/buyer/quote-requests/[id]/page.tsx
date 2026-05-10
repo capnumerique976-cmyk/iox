@@ -11,7 +11,6 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, Circle, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
 import { QuoteRequestStatus } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import {
@@ -19,14 +18,6 @@ import {
   QuoteRequestSummary,
   QuoteRequestMessage,
 } from '@/lib/quote-requests';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 
 const STATUS_LABELS: Record<QuoteRequestStatus, string> = {
   NEW: 'Nouvelle',
@@ -61,7 +52,6 @@ export default function BuyerQuoteRequestDetailPage() {
   const [newMsg, setNewMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -91,11 +81,8 @@ export default function BuyerQuoteRequestDetailPage() {
       const msg = await quoteRequestsApi.addMessage(rfq.id, token, newMsg.trim(), false);
       setMessages((prev) => [...prev, msg]);
       setNewMsg('');
-      toast.success('Message envoyé');
     } catch (e) {
-      const errMsg = e instanceof Error ? e.message : 'Erreur lors de l\'envoi';
-      setErr(errMsg);
-      toast.error(errMsg);
+      setErr((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -103,12 +90,7 @@ export default function BuyerQuoteRequestDetailPage() {
 
   const onCancel = async () => {
     if (!token || !rfq) return;
-    setCancelDialogOpen(true);
-  };
-
-  const onCancelConfirm = async () => {
-    if (!token || !rfq) return;
-    setCancelDialogOpen(false);
+    if (!window.confirm('Annuler définitivement cette demande de devis ?')) return;
     setBusy(true);
     setErr(null);
     try {
@@ -118,11 +100,8 @@ export default function BuyerQuoteRequestDetailPage() {
         token,
       );
       setRfq(updated);
-      toast.success('Demande annulée avec succès');
     } catch (e) {
-      const errMsg = e instanceof Error ? e.message : 'Erreur lors de l\'annulation';
-      setErr(errMsg);
-      toast.error(errMsg);
+      setErr((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -217,21 +196,18 @@ export default function BuyerQuoteRequestDetailPage() {
         )}
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4" data-testid="buyer-rfq-messages-section">
+      <section className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">
           Échanges ({messages.length})
         </h2>
         {messages.length === 0 ? (
-          <div
-            className="rounded border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-xs text-gray-500"
-            data-testid="buyer-rfq-empty-state"
-          >
-            Aucun message pour le moment. Vous pouvez poser une question au vendeur.
+          <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-xs text-gray-500">
+            Aucun message pour le moment.
           </div>
         ) : (
-          <ul className="flex flex-col gap-3" data-testid="buyer-rfq-messages-list">
+          <ul className="flex flex-col gap-3">
             {messages.map((m) => (
-              <li key={m.id} className="rounded border border-gray-100 bg-gray-50 p-3" data-testid="buyer-rfq-message-item">
+              <li key={m.id} className="rounded border border-gray-100 bg-gray-50 p-3">
                 <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
                   <span className="font-medium text-gray-700">
                     {m.authorUser.firstName} {m.authorUser.lastName}
@@ -245,7 +221,7 @@ export default function BuyerQuoteRequestDetailPage() {
         )}
 
         {canMessage ? (
-          <form onSubmit={onSend} className="mt-4 flex flex-col gap-2" data-testid="buyer-rfq-message-form">
+          <form onSubmit={onSend} className="mt-4 flex flex-col gap-2">
             <label htmlFor="rfq-message" className="text-xs font-medium text-gray-700">
               Nouveau message
             </label>
@@ -254,24 +230,22 @@ export default function BuyerQuoteRequestDetailPage() {
               value={newMsg}
               onChange={(e) => setNewMsg(e.target.value)}
               rows={3}
-              placeholder="Écrire un message au vendeur…"
+              placeholder="Posez une question ou apportez des précisions…"
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
               disabled={busy}
-              data-testid="buyer-rfq-message-input"
             />
             <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={busy || !newMsg.trim()}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-                data-testid="buyer-rfq-send-btn"
               >
                 {busy ? 'Envoi…' : 'Envoyer'}
               </button>
             </div>
           </form>
         ) : (
-          <p className="mt-3 text-xs italic text-gray-500" data-testid="buyer-rfq-closed-notice">
+          <p className="mt-3 text-xs italic text-gray-500">
             Cette demande est terminée — les échanges sont fermés.
           </p>
         )}
@@ -295,33 +269,6 @@ export default function BuyerQuoteRequestDetailPage() {
           </button>
         </div>
       )}
-
-      {/* Dialog de confirmation d'annulation */}
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Annuler la demande de devis ?</DialogTitle>
-            <DialogDescription>Cette action est irréversible.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setCancelDialogOpen(false)}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Annuler
-            </button>
-            <button
-              type="button"
-              onClick={onCancelConfirm}
-              disabled={busy}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-            >
-              Confirmer
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

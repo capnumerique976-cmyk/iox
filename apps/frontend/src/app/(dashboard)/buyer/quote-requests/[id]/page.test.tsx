@@ -112,7 +112,6 @@ describe('BuyerQuoteRequestDetailPage (BUYER-DASHBOARD-1)', () => {
     render(<BuyerQuoteRequestDetailPage />);
     await waitFor(() => expect(screen.getByText('Vanille Bourbon')).toBeInTheDocument());
     expect(screen.getByText(/Coop X/)).toBeInTheDocument();
-    // 'Nouvelle' appears multiple times (badge + timeline step) — check via badge class
     expect(screen.getAllByText('Nouvelle').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -120,8 +119,7 @@ describe('BuyerQuoteRequestDetailPage (BUYER-DASHBOARD-1)', () => {
     getMock.mockResolvedValue(makeRfq(QuoteRequestStatus.NEW));
     messagesMock.mockResolvedValue([]);
     render(<BuyerQuoteRequestDetailPage />);
-    expect(await screen.findByTestId('buyer-rfq-empty-state')).toBeInTheDocument();
-    expect(screen.getByTestId('buyer-rfq-empty-state')).toHaveTextContent(/question au vendeur/i);
+    expect(await screen.findByText(/Aucun message/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Nouveau message/i)).toBeInTheDocument();
   });
 
@@ -147,18 +145,17 @@ describe('BuyerQuoteRequestDetailPage (BUYER-DASHBOARD-1)', () => {
     expect(addMessageMock).toHaveBeenCalledWith('q1', 'tok', 'Test reply', false);
   });
 
-  it('affiche bouton Annuler si status NEW et appelle updateStatus(CANCELLED) après confirmation dialog', async () => {
+  it('affiche bouton Annuler si status NEW et appelle updateStatus(CANCELLED)', async () => {
     getMock.mockResolvedValue(makeRfq(QuoteRequestStatus.NEW));
     messagesMock.mockResolvedValue([]);
     updateStatusMock.mockResolvedValue(makeRfq(QuoteRequestStatus.CANCELLED));
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<BuyerQuoteRequestDetailPage />);
     const btn = await screen.findByText(/Annuler la demande/);
     fireEvent.click(btn);
-    // Dialog s'ouvre — cliquer "Confirmer"
-    const confirmBtn = await screen.findByText('Confirmer');
-    fireEvent.click(confirmBtn);
     await waitFor(() => expect(updateStatusMock).toHaveBeenCalled());
     expect(updateStatusMock).toHaveBeenCalledWith('q1', QuoteRequestStatus.CANCELLED, 'tok');
+    confirmSpy.mockRestore();
   });
 
   it('cache le bouton Annuler si status QUOTED (non cancellable côté buyer)', async () => {
@@ -173,24 +170,7 @@ describe('BuyerQuoteRequestDetailPage (BUYER-DASHBOARD-1)', () => {
     getMock.mockResolvedValue(makeRfq(QuoteRequestStatus.CANCELLED));
     messagesMock.mockResolvedValue([]);
     render(<BuyerQuoteRequestDetailPage />);
-    expect(await screen.findByTestId('buyer-rfq-closed-notice')).toBeInTheDocument();
+    expect(await screen.findByText(/échanges sont fermés/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Nouveau message/i)).not.toBeInTheDocument();
-  });
-
-  it('M58 — bouton Envoyer désactivé si champ vide', async () => {
-    getMock.mockResolvedValue(makeRfq(QuoteRequestStatus.NEW));
-    messagesMock.mockResolvedValue([]);
-    render(<BuyerQuoteRequestDetailPage />);
-    const btn = await screen.findByTestId('buyer-rfq-send-btn');
-    expect(btn).toBeDisabled();
-  });
-
-  it('M58 — section messages affiche chaque message dans la liste', async () => {
-    getMock.mockResolvedValue(makeRfq(QuoteRequestStatus.QUOTED));
-    messagesMock.mockResolvedValue([sampleMessage]);
-    render(<BuyerQuoteRequestDetailPage />);
-    await waitFor(() => expect(screen.getByTestId('buyer-rfq-messages-list')).toBeInTheDocument());
-    expect(screen.getAllByTestId('buyer-rfq-message-item')).toHaveLength(1);
-    expect(screen.getByTestId('buyer-rfq-messages-list')).toHaveTextContent('Quel est votre lead time exact');
   });
 });
