@@ -14,6 +14,8 @@ import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog';
 import { Logo } from '@/components/brand/logo';
 import { LocaleSwitcher } from '@/components/ui/locale-switcher';
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
+import { getMobileNavConfig } from '@/components/layout/mobile-nav-config';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -55,7 +57,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-6">
           {/* Gauche : burger mobile + logo */}
           <div className="flex min-w-0 items-center gap-2">
-            <MobileSidebar />
+            {/*
+             * Hamburger masqué sur mobile pour les rôles marketplace :
+             * la barre bottom nav prend le relais. Sur desktop (≥lg) la
+             * sidebar contextuelle est affichée directement.
+             */}
+            {!getMobileNavConfig(user.role) && <MobileSidebar />}
             <Link
               href="/dashboard"
               className="group flex min-w-0 items-center gap-3 transition-opacity hover:opacity-90"
@@ -102,11 +109,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <ConfirmDialogProvider>
         <div className="relative flex">
           <Sidebar />
-          <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
+          {/*
+           * pb-[5rem] sur mobile : compense la barre bottom nav fixe (4rem)
+           * pour que le contenu ne soit pas masqué. Réinitialisé à partir de md.
+           */}
+          <main className="flex-1 min-w-0 p-4 pb-[5.5rem] sm:p-6 sm:pb-[5.5rem] md:pb-6 lg:p-8">
             <SellerOnboardingBanner />
             <ErrorBoundary>{children}</ErrorBoundary>
           </main>
         </div>
+        {/* Navigation mobile bottom bar (seller/buyer uniquement) */}
+        <MobileBottomNav />
       </ConfirmDialogProvider>
     </div>
   );

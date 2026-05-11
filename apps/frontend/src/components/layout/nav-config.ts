@@ -279,6 +279,13 @@ export const SECTIONS: NavSection[] = [
         hideOnDashboard: true,
       },
       {
+        label: 'Mes demandes de devis',
+        href: '/buyer/quote-requests',
+        permission: '*',
+        icon: MessageSquareQuote,
+        description: 'Devis soumis et en cours de négociation',
+      },
+      {
         label: 'Mes commandes',
         href: '/buyer/orders',
         permission: '*',
@@ -291,13 +298,6 @@ export const SECTIONS: NavSection[] = [
         permission: '*',
         icon: Receipt,
         description: 'Historique des factures',
-      },
-      {
-        label: 'Paiements',
-        href: '/buyer/payments',
-        permission: '*',
-        icon: CreditCard,
-        description: 'Suivi des paiements',
       },
       {
         label: 'Préférences',

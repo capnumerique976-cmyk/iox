@@ -39,6 +39,12 @@ describe('nav-config', () => {
     expect(buyer!.items).toHaveLength(6);
   });
 
+  it('buyer section includes /buyer/quote-requests', () => {
+    const buyer = SECTIONS.find((s) => s.id === 'buyer');
+    const item = buyer!.items.find((i) => i.href === '/buyer/quote-requests');
+    expect(item).toBeDefined();
+  });
+
   it('all sections have unique ids', () => {
     const ids = [HOME_SECTION.id, ...SECTIONS.map((s) => s.id)];
     expect(new Set(ids).size).toBe(ids.length);
