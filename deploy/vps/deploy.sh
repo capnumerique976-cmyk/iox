@@ -19,8 +19,8 @@ set -euo pipefail
 
 # ── Paramètres configurables par env ─────────────────────
 VPS_HOST="${IOX_VPS_HOST:-rahiss-vps}"
-VPS_REMOTE="${IOX_VPS_REMOTE:-/opt/apps/iox}"
-VPS_COMPOSE="${IOX_VPS_COMPOSE:-docker-compose.vps.yml}"
+VPS_REMOTE="${IOX_VPS_REMOTE:-/opt/iox}"
+VPS_COMPOSE="${IOX_VPS_COMPOSE:-deploy/vps/docker-compose.pilot.yml}"
 VPS_DOMAIN="${IOX_VPS_DOMAIN:-iox.mycloud.yt}"
 TARGET="${1:-frontend}"   # frontend | backend | all
 

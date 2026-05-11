@@ -10,7 +10,7 @@ FROM node:20-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV COREPACK_ENABLE_PROJECT_SPEC=0
-RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
 # ── 1. deps (monorepo complet, lockfile gelé) ─────────────
