@@ -30,7 +30,7 @@ RUN pnpm --filter @iox/shared build \
  && pnpm --filter @iox/backend build
 
 # Dépendances prod only pour l'image finale
-RUN pnpm --filter @iox/backend --prod --config.inject-workspace-packages=true deploy --legacy /prod/backend \
+RUN pnpm --filter @iox/backend --prod deploy /prod/backend \
  && PRISMA_SRC=$(find /app -type d -path '*/.prisma/client' ! -path '*/prod/*' | head -1) \
  && echo "Prisma client source: $PRISMA_SRC" \
  && mkdir -p /prod/backend/node_modules/.prisma \
