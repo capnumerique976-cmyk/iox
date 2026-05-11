@@ -63,9 +63,10 @@ describe('MediaAssetsService', () => {
       updateMany: jest.Mock;
       delete: jest.Mock;
       count: jest.Mock;
+      aggregate: jest.Mock;
     };
     sellerProfile: { findUnique: jest.Mock };
-    marketplaceProduct: { findUnique: jest.Mock };
+    marketplaceProduct: { findUnique: jest.Mock; updateMany: jest.Mock };
     marketplaceOffer: { findUnique: jest.Mock };
     productBatch: { findUnique: jest.Mock };
     $transaction: jest.Mock;
@@ -88,9 +89,15 @@ describe('MediaAssetsService', () => {
         updateMany: jest.fn(),
         delete: jest.fn().mockResolvedValue({}),
         count: jest.fn(),
+        // Quota 30 GB : retourne 0 par défaut → aucun test existant ne dépasse le quota.
+        aggregate: jest.fn().mockResolvedValue({ _sum: { sizeBytes: 0 } }),
       },
       sellerProfile: { findUnique: jest.fn() },
-      marketplaceProduct: { findUnique: jest.fn() },
+      marketplaceProduct: {
+        findUnique: jest.fn(),
+        // Cascade clear mainMediaId après delete.
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
       marketplaceOffer: { findUnique: jest.fn() },
       productBatch: { findUnique: jest.fn() },
       $transaction: jest.fn(),
@@ -926,6 +933,109 @@ describe('MediaAssetsService', () => {
       );
       // Branche updateMany (rétrogradage PRIMARY) ne doit PAS être appelée pour GALLERY
       expect(tx.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Quota 30 GB ───────────────────────────────────────────────────────────
+
+  describe('upload — quota 30 GB', () => {
+    const GB = 1024 * 1024 * 1024;
+    const QUOTA = 30 * GB;
+
+    it('upload accepté si usedBytes + file.size ≤ quota', async () => {
+      // usedBytes = 29 GB, file = 512 KB → total < 30 GB
+      prisma.mediaAsset.aggregate.mockResolvedValue({ _sum: { sizeBytes: 29 * GB } });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: 'p-quota' });
+      const tx = getTxMocks();
+      tx.create.mockResolvedValue({
+        id: 'media-q-ok',
+        relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+        relatedId: 'p-quota',
+      });
+      await expect(
+        service.upload(
+          {
+            relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+            relatedId: 'p-quota',
+          },
+          mockFile({ size: 512 * 1024 }), // 512 KB
+          'actor-q',
+        ),
+      ).resolves.not.toThrow();
+    });
+
+    it('upload rejeté si usedBytes + file.size > quota (BadRequestException)', async () => {
+      // usedBytes = quota exact, file = 1 byte → dépasse
+      prisma.mediaAsset.aggregate.mockResolvedValue({ _sum: { sizeBytes: QUOTA } });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: 'p-over' });
+      await expect(
+        service.upload(
+          {
+            relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+            relatedId: 'p-over',
+          },
+          mockFile({ size: 1 }),
+          'actor-q',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('aggregate appelé avec where.relatedType = MARKETPLACE_PRODUCT', async () => {
+      prisma.mediaAsset.aggregate.mockResolvedValue({ _sum: { sizeBytes: 0 } });
+      prisma.marketplaceProduct.findUnique.mockResolvedValue({ id: 'p-agg' });
+      const tx = getTxMocks();
+      tx.create.mockResolvedValue({
+        id: 'm-agg',
+        relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+        relatedId: 'p-agg',
+      });
+      await service.upload(
+        {
+          relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          relatedId: 'p-agg',
+        },
+        mockFile(),
+        'actor-agg',
+      );
+      expect(prisma.mediaAsset.aggregate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+          }),
+        }),
+      );
+    });
+  });
+
+  // ── Delete cascade mainMediaId ────────────────────────────────────────────
+
+  describe('delete — cascade clear mainMediaId', () => {
+    it('efface mainMediaId sur MarketplaceProduct si ce média était référencé', async () => {
+      const mediaId = 'media-primary-1';
+      prisma.mediaAsset.findUnique.mockResolvedValue({
+        id: mediaId,
+        storageKey: 'marketplace/media/marketplace_product/p1/xxx',
+        relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
+        relatedId: 'p1',
+        role: MediaAssetRole.PRIMARY,
+      });
+      await service.delete(mediaId, 'u1');
+      expect(prisma.marketplaceProduct.updateMany).toHaveBeenCalledWith({
+        where: { id: 'p1', mainMediaId: mediaId },
+        data: { mainMediaId: null },
+      });
+    });
+
+    it('ne tente PAS de clear mainMediaId si relatedType = SELLER_PROFILE', async () => {
+      prisma.mediaAsset.findUnique.mockResolvedValue({
+        id: 'media-sp',
+        storageKey: 'marketplace/media/seller_profile/sp1/yyy',
+        relatedType: MarketplaceRelatedEntityType.SELLER_PROFILE,
+        relatedId: 'sp1',
+        role: MediaAssetRole.GALLERY,
+      });
+      await service.delete('media-sp', 'u1');
+      expect(prisma.marketplaceProduct.updateMany).not.toHaveBeenCalled();
     });
   });
 });

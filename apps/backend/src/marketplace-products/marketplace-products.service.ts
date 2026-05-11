@@ -288,6 +288,14 @@ export class MarketplaceProductsService {
       if (!cat) throw new NotFoundException('Catégorie introuvable');
     }
 
+    // MP-EDIT-PRODUCT.3-light — si mainMediaId fourni, vérifier qu'il appartient à ce produit.
+    if (dto.mainMediaId) {
+      const media = await this.prisma.mediaAsset.findFirst({
+        where: { id: dto.mainMediaId, relatedId: id },
+      });
+      if (!media) throw new BadRequestException('Média introuvable pour ce produit');
+    }
+
     // Les champs qui impactent la vitrine : si produit APPROVED ou PUBLISHED,
     // toute modif de vitrine repasse en IN_REVIEW (garantit la modération).
     const vitrine: (keyof UpdateMarketplaceProductDto)[] = [

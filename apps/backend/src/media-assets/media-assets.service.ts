@@ -179,6 +179,22 @@ export class MediaAssetsService {
       );
     }
 
+    // Quota stockage global marketplace : 30 Go (pilot V1).
+    // Agrège tous les médias MARKETPLACE_PRODUCT pour éviter de dépasser la capacité MinIO réservée.
+    const QUOTA_BYTES = 30 * 1024 * 1024 * 1024; // 30 GB
+    const { _sum } = await this.prisma.mediaAsset.aggregate({
+      _sum: { sizeBytes: true },
+      where: { relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT },
+    });
+    const usedBytes = Number(_sum.sizeBytes ?? 0);
+    if (usedBytes + file.size > QUOTA_BYTES) {
+      const usedMb = Math.round(usedBytes / 1_048_576);
+      const totalMb = Math.round(QUOTA_BYTES / 1_048_576);
+      throw new BadRequestException(
+        `Quota stockage dépassé (${usedMb} Mo utilisés sur ${totalMb} Mo). Supprimez des médias avant d'en ajouter.`,
+      );
+    }
+
     await this.assertRelatedEntityUploadable(dto.relatedType, dto.relatedId, actor);
 
     const role = dto.role ?? MediaAssetRole.GALLERY;
@@ -531,6 +547,14 @@ export class MediaAssetsService {
 
     await this.prisma.mediaAsset.delete({ where: { id } });
     await this.storage.delete(existing.storageKey);
+
+    // Supprime la référence mainMediaId si ce média était l'image principale d'un produit.
+    if (existing.relatedType === MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT) {
+      await this.prisma.marketplaceProduct.updateMany({
+        where: { id: existing.relatedId, mainMediaId: id },
+        data: { mainMediaId: null },
+      });
+    }
 
     await this.auditService.log({
       action: 'MEDIA_ASSET_DELETED',

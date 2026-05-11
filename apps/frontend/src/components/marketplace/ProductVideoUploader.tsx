@@ -118,11 +118,7 @@ export function ProductVideoUploader({
     try {
       const token = authStorage.getAccessToken() ?? '';
 
-      // Si vidéo existante : DELETE old en séquentiel avant upload.
-      if (currentVideo) {
-        await marketplaceMediaAssetsApi.delete(currentVideo.id, token);
-      }
-
+      // Upload en premier — si ça échoue, l'ancienne vidéo reste intacte.
       await marketplaceMediaAssetsApi.upload(
         file,
         {
@@ -133,6 +129,12 @@ export function ProductVideoUploader({
         },
         token,
       );
+
+      // Suppression de l'ancienne vidéo APRÈS upload réussi (évite la perte en cas d'échec).
+      if (currentVideo) {
+        await marketplaceMediaAssetsApi.delete(currentVideo.id, token);
+      }
+
       await onUploaded();
       URL.revokeObjectURL(objectUrl);
       setPhase({ kind: 'success' });
