@@ -81,6 +81,7 @@ echo "== Étape 1/5 : rsync =="
 rsync -av --delete \
   --exclude='.git' \
   --exclude='.github' \
+  --exclude='.claude/worktrees' \
   --exclude='node_modules' \
   --exclude='.next' \
   --exclude='dist' \
