@@ -22,7 +22,7 @@ import {
   MEDIA_GALLERY_MAX_PER_PRODUCT_UI,
   type MediaAsset,
 } from '@/lib/marketplace-media-assets';
-import { MarketplaceRelatedEntityType } from '@iox/shared';
+import { MarketplaceRelatedEntityType, MediaModerationStatus } from '@iox/shared';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface Props {
@@ -286,6 +286,21 @@ export function ProductGalleryUploader({
                   <GripVertical className="h-3 w-3" aria-hidden />
                   {idx + 1}
                 </div>
+                {/* Badge modération (absent si APPROVED) */}
+                {m.moderationStatus !== MediaModerationStatus.APPROVED && (
+                  <div
+                    className={`absolute bottom-1 left-1 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide backdrop-blur-sm ${
+                      m.moderationStatus === MediaModerationStatus.REJECTED
+                        ? 'bg-red-600/90 text-white'
+                        : 'bg-amber-500/90 text-white'
+                    }`}
+                    data-testid={`${testId}-moderation-${m.id}`}
+                  >
+                    {m.moderationStatus === MediaModerationStatus.REJECTED
+                      ? 'Rejetée'
+                      : 'En attente'}
+                  </div>
+                )}
                 {!disabled && (
                   <button
                     type="button"

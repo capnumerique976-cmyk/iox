@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/react';
 import {
   MarketplaceRelatedEntityType,
   MediaAssetRole,
@@ -82,7 +83,63 @@ describe('ProductVideoUploader (MP-MEDIA-1 LOT 2)', () => {
     expect(screen.getByTestId('product-video-uploader-pick')).toHaveTextContent(
       /Choisir une vidéo/,
     );
-    expect(screen.getByText(/Aucune vidéo/)).toBeInTheDocument();
+    // Nouvel état vide pédagogique
+    const emptyBox = screen.getByTestId('product-video-uploader-empty');
+    expect(emptyBox).toHaveTextContent(/Aucune vidéo/);
+    expect(within(emptyBox).getByText(/MP4, WebM, MOV/)).toBeInTheDocument();
+    expect(within(emptyBox).getByText(/Visible après validation/)).toBeInTheDocument();
+  });
+
+  it('affiche le nom et la taille du fichier en état preview', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProductVideoUploader
+        productId="p-1"
+        currentVideo={null}
+        onUploaded={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+    const input = screen.getByTestId('product-video-uploader-input') as HTMLInputElement;
+    const file = makeVideoFile('ma-video.mp4', 'video/mp4', 2 * 1024 * 1024); // 2 Mo
+    await user.upload(input, file);
+    await waitFor(() => {
+      expect(screen.getByTestId('product-video-uploader-file-info')).toBeInTheDocument();
+      expect(screen.getByTestId('product-video-uploader-file-name')).toHaveTextContent(
+        'ma-video.mp4',
+      );
+      expect(screen.getByTestId('product-video-uploader-file-size')).toHaveTextContent(/Mo/);
+    });
+  });
+
+  it('erreur quota dépassé (serveur) affichée proprement', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('@/lib/api');
+    uploadMock.mockRejectedValue(
+      new ApiError(
+        'QUOTA_EXCEEDED',
+        'Quota stockage dépassé (28 000 Mo utilisés sur 30 720 Mo). Supprimez des médias avant d\'en ajouter.',
+        undefined,
+        'rid',
+        400,
+      ),
+    );
+    render(
+      <ProductVideoUploader
+        productId="p-1"
+        currentVideo={null}
+        onUploaded={vi.fn()}
+        onDeleted={vi.fn()}
+      />,
+    );
+    const input = screen.getByTestId('product-video-uploader-input') as HTMLInputElement;
+    await user.upload(input, makeVideoFile());
+    await user.click(screen.getByTestId('product-video-uploader-submit'));
+    await waitFor(() => {
+      expect(screen.getByTestId('product-video-uploader-error')).toHaveTextContent(
+        /Quota stockage dépassé/,
+      );
+    });
   });
 
   it('preview après sélection mp4 valide', async () => {
