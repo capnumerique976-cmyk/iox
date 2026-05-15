@@ -45,6 +45,9 @@ import {
   Receipt,
   Bell,
   CreditCard,
+  BarChart3,
+  Image,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -446,7 +449,7 @@ export const SECTIONS: NavSection[] = [
     icon: ShieldCheck,
     description: 'Gestion plateforme, utilisateurs, revue marketplace, diagnostics.',
     permission: 'users:read',
-    pathPrefixes: ['/admin'],
+    pathPrefixes: ['/admin/marketplace', '/admin'],
     items: [
       {
         label: 'Tableau admin',
@@ -518,6 +521,27 @@ export const SECTIONS: NavSection[] = [
         permission: 'users:read',
         icon: Bell,
         description: 'Logs et statistiques emails',
+      },
+      {
+        label: 'KPIs',
+        href: '/admin/kpi',
+        permission: 'users:read',
+        icon: BarChart3,
+        description: 'Indicateurs clés de performance plateforme',
+      },
+      {
+        label: 'Modération médias',
+        href: '/admin/media-moderation',
+        permission: 'marketplace:review',
+        icon: Image,
+        description: 'Révision et modération des médias soumis',
+      },
+      {
+        label: 'Catégories',
+        href: '/admin/marketplace/categories',
+        permission: 'marketplace:review',
+        icon: Layers,
+        description: 'Catégories et taxonomie du catalogue',
       },
     ],
   },

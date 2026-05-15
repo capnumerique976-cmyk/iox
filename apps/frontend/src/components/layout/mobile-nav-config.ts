@@ -2,12 +2,15 @@
  * IOX — Configuration navigation mobile (bottom nav)
  *
  * Navigation progressive par rôle :
- *   - Onglets primaires : 3 destinations clés + bouton "Plus"
+ *   - Onglets primaires : jusqu'à 4 destinations clés + bouton "Plus" implicite
  *   - Items secondaires : révélés via sheet "Plus" (progressive disclosure)
  *   - Actions contextuelles : affichées au-dessus de la barre selon la route
  *
- * Uniquement pour MARKETPLACE_SELLER et MARKETPLACE_BUYER.
- * Les rôles staff conservent le drawer hamburger existant.
+ * Rôles couverts :
+ *   MARKETPLACE_SELLER → 4 tabs (Accueil, Produits, Demandes, Messages[futur])
+ *   MARKETPLACE_BUYER  → 4 tabs (Accueil, Rechercher, Demandes, Messages[futur])
+ *   ADMIN              → 4 tabs (Tableau, Revue, Vendeurs, Utilisateurs)
+ *   Staff autres       → hamburger drawer existant (null retourné)
  */
 import { UserRole } from '@iox/shared';
 import {
@@ -24,6 +27,15 @@ import {
   Bell,
   Building2,
   Plus,
+  Search,
+  LayoutDashboard,
+  MessageCircle,
+  ClipboardList,
+  UserCog,
+  BarChart3,
+  Image,
+  Layers,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -40,6 +52,11 @@ export interface MobileTab {
   pathPrefix: string;
   /** Si true, comparaison exacte (pas de préfixe). */
   exactMatch?: boolean;
+  /**
+   * Onglet présent dans la barre mais non encore disponible.
+   * Rendu grisé, non cliquable. Communique la roadmap produit.
+   */
+  disabled?: boolean;
 }
 
 export interface MobileContextAction {
@@ -50,7 +67,7 @@ export interface MobileContextAction {
 }
 
 export interface MobileNavConfig {
-  /** Onglets toujours visibles (3 max + le bouton "Plus" implicite). */
+  /** Onglets toujours visibles (4 max + le bouton "Plus" implicite). */
   primaryTabs: MobileTab[];
   /** Items révélés dans le sheet "Plus". */
   secondaryItems: MobileTab[];
@@ -73,6 +90,14 @@ export interface MobileNavConfig {
 export const SELLER_MOBILE_NAV: MobileNavConfig = {
   primaryTabs: [
     {
+      id: 'home',
+      label: 'Accueil',
+      href: '/seller/dashboard',
+      icon: Store,
+      pathPrefix: '/seller/dashboard',
+      exactMatch: true,
+    },
+    {
       id: 'products',
       label: 'Produits',
       href: '/seller/marketplace-products',
@@ -81,34 +106,36 @@ export const SELLER_MOBILE_NAV: MobileNavConfig = {
     },
     {
       id: 'quotes',
-      label: 'Devis',
+      label: 'Demandes',
       href: '/seller/quote-requests',
       icon: MessageSquareQuote,
       pathPrefix: '/seller/quote-requests',
     },
     {
-      id: 'dashboard',
-      label: 'Tableau',
-      href: '/seller/dashboard',
-      icon: Store,
-      pathPrefix: '/seller/dashboard',
-      exactMatch: true,
+      // Onglet futur — messaging non encore implémenté.
+      // Visible mais non cliquable : communique la roadmap.
+      id: 'messages',
+      label: 'Messages',
+      href: '/messages',
+      icon: MessageCircle,
+      pathPrefix: '/__messages_seller__',
+      disabled: true,
     },
   ],
   secondaryItems: [
-    {
-      id: 'offers',
-      label: 'Mes offres',
-      href: '/seller/marketplace-offers',
-      icon: Tag,
-      pathPrefix: '/seller/marketplace-offers',
-    },
     {
       id: 'analytics',
       label: 'Analytique',
       href: '/seller/analytics',
       icon: Activity,
       pathPrefix: '/seller/analytics',
+    },
+    {
+      id: 'offers',
+      label: 'Mes offres',
+      href: '/seller/marketplace-offers',
+      icon: Tag,
+      pathPrefix: '/seller/marketplace-offers',
     },
     {
       id: 'documents',
@@ -176,12 +203,38 @@ export const SELLER_MOBILE_NAV: MobileNavConfig = {
 export const BUYER_MOBILE_NAV: MobileNavConfig = {
   primaryTabs: [
     {
+      id: 'home',
+      label: 'Accueil',
+      href: '/buyer',
+      icon: LayoutDashboard,
+      pathPrefix: '/buyer',
+      exactMatch: true,
+    },
+    {
+      id: 'search',
+      label: 'Rechercher',
+      href: '/marketplace-hub',
+      icon: Search,
+      pathPrefix: '/marketplace-hub',
+    },
+    {
       id: 'quotes',
-      label: 'Devis',
+      label: 'Demandes',
       href: '/buyer/quote-requests',
       icon: MessageSquareQuote,
       pathPrefix: '/buyer/quote-requests',
     },
+    {
+      // Onglet futur — messaging non encore implémenté.
+      id: 'messages',
+      label: 'Messages',
+      href: '/messages',
+      icon: MessageCircle,
+      pathPrefix: '/__messages_buyer__',
+      disabled: true,
+    },
+  ],
+  secondaryItems: [
     {
       id: 'orders',
       label: 'Commandes',
@@ -196,8 +249,6 @@ export const BUYER_MOBILE_NAV: MobileNavConfig = {
       icon: Receipt,
       pathPrefix: '/buyer/invoices',
     },
-  ],
-  secondaryItems: [
     {
       id: 'preferences',
       label: 'Préférences',
@@ -217,13 +268,118 @@ export const BUYER_MOBILE_NAV: MobileNavConfig = {
 };
 
 /* ------------------------------------------------------------------ */
+/*  Config ADMIN                                                        */
+/* ------------------------------------------------------------------ */
+
+export const ADMIN_MOBILE_NAV: MobileNavConfig = {
+  primaryTabs: [
+    {
+      id: 'dashboard',
+      label: 'Tableau',
+      href: '/admin',
+      icon: ShieldCheck,
+      pathPrefix: '/admin',
+      exactMatch: true,
+    },
+    {
+      id: 'review',
+      label: 'Revue',
+      href: '/admin/review-queue',
+      icon: ClipboardList,
+      pathPrefix: '/admin/review-queue',
+    },
+    {
+      id: 'sellers',
+      label: 'Vendeurs',
+      href: '/admin/sellers',
+      icon: Store,
+      pathPrefix: '/admin/sellers',
+    },
+    {
+      id: 'users',
+      label: 'Utilisateurs',
+      href: '/admin/users',
+      icon: UserCog,
+      pathPrefix: '/admin/users',
+    },
+  ],
+  secondaryItems: [
+    {
+      id: 'kpi',
+      label: 'KPIs',
+      href: '/admin/kpi',
+      icon: BarChart3,
+      pathPrefix: '/admin/kpi',
+    },
+    {
+      id: 'compliance',
+      label: 'Conformité',
+      href: '/admin/compliance',
+      icon: ShieldCheck,
+      pathPrefix: '/admin/compliance',
+    },
+    {
+      id: 'media',
+      label: 'Médias',
+      href: '/admin/media-moderation',
+      icon: Image,
+      pathPrefix: '/admin/media-moderation',
+    },
+    {
+      id: 'categories',
+      label: 'Catégories',
+      href: '/admin/marketplace/categories',
+      icon: Layers,
+      pathPrefix: '/admin/marketplace/categories',
+    },
+    {
+      id: 'rfq',
+      label: 'Devis admin',
+      href: '/admin/rfq',
+      icon: MessageSquareQuote,
+      pathPrefix: '/admin/rfq',
+    },
+    {
+      id: 'memberships',
+      label: 'Rattachements',
+      href: '/admin/memberships',
+      icon: Building2,
+      pathPrefix: '/admin/memberships',
+    },
+    {
+      id: 'emails',
+      label: 'Emails',
+      href: '/admin/notif-email/logs',
+      icon: Bell,
+      pathPrefix: '/admin/notif-email',
+    },
+    {
+      id: 'audit',
+      label: 'Journal',
+      href: '/admin/audit-logs',
+      icon: ScrollText,
+      pathPrefix: '/admin/audit-logs',
+    },
+    {
+      id: 'diagnostics',
+      label: 'Diagnostics',
+      href: '/admin/diagnostics',
+      icon: Activity,
+      pathPrefix: '/admin/diagnostics',
+    },
+  ],
+  contextualActions: [],
+};
+
+/* ------------------------------------------------------------------ */
 /*  Helper                                                             */
 /* ------------------------------------------------------------------ */
 
 export function getMobileNavConfig(role: UserRole): MobileNavConfig | null {
   if (role === UserRole.MARKETPLACE_SELLER) return SELLER_MOBILE_NAV;
   if (role === UserRole.MARKETPLACE_BUYER) return BUYER_MOBILE_NAV;
-  return null; // staff → hamburger drawer existant
+  if (role === UserRole.ADMIN) return ADMIN_MOBILE_NAV;
+  return null; // autres rôles staff → hamburger drawer
 }
 
 /** Vérifie si un pathname correspond à un préfixe de tab. */

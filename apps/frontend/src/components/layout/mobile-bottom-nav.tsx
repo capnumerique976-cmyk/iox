@@ -104,6 +104,24 @@ export function MobileBottomNav() {
           {config.primaryTabs.map((tab) => {
             const Icon = tab.icon;
             const active = isTabActive(tab);
+
+            // Onglet désactivé (feature future) — non cliquable, visuellement grisé
+            if (tab.disabled) {
+              return (
+                <span
+                  key={tab.id}
+                  aria-disabled="true"
+                  title="Bientôt disponible"
+                  className="flex flex-1 flex-col items-center justify-center gap-1 px-1 text-white/25 cursor-not-allowed select-none"
+                >
+                  <Icon className="h-[1.25rem] w-[1.25rem]" aria-hidden />
+                  <span className="text-[11px] font-medium leading-none tracking-[0.01em]">
+                    {tab.label}
+                  </span>
+                </span>
+              );
+            }
+
             return (
               <Link
                 key={tab.id}
