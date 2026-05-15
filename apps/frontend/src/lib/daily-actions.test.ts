@@ -163,6 +163,34 @@ describe('getSellerDailyActions', () => {
     const ids = actions.map((a) => a.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  // M104 — newMessages
+  it('newMessages > 0 → action urgente "new-messages-seller"', () => {
+    const actions = getSellerDailyActions({ ...sellerBase, newMessages: 3 });
+    const a = actions.find((x) => x.id === 'new-messages-seller');
+    expect(a).toBeDefined();
+    expect(a?.priority).toBe('urgent');
+    expect(a?.title).toContain('3');
+    expect(a?.badge).toBe('3 nouveaux');
+    expect(a?.href).toBe('/seller/quote-requests');
+  });
+
+  it('newMessages = 1 → badge singulier "Nouveau"', () => {
+    const actions = getSellerDailyActions({ ...sellerBase, newMessages: 1 });
+    const a = actions.find((x) => x.id === 'new-messages-seller');
+    expect(a?.badge).toBe('Nouveau');
+    expect(a?.title).toContain('1');
+  });
+
+  it('newMessages absent → pas de "new-messages-seller"', () => {
+    const actions = getSellerDailyActions(sellerBase);
+    expect(actions.some((x) => x.id === 'new-messages-seller')).toBe(false);
+  });
+
+  it('newMessages = 0 → pas de "new-messages-seller"', () => {
+    const actions = getSellerDailyActions({ ...sellerBase, newMessages: 0 });
+    expect(actions.some((x) => x.id === 'new-messages-seller')).toBe(false);
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -223,6 +251,66 @@ describe('getBuyerDailyActions', () => {
 
   it('tous les ids uniques', () => {
     const actions = getBuyerDailyActions({ quotedRfq: 1, activeRfq: 2, totalRfq: 0 });
+    const ids = actions.map((a) => a.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  // M104 — pendingPayment
+  it('pendingPayment > 0 → action urgente "pending-payment"', () => {
+    const actions = getBuyerDailyActions({ ...buyerBase, pendingPayment: 2 });
+    const a = actions.find((x) => x.id === 'pending-payment');
+    expect(a).toBeDefined();
+    expect(a?.priority).toBe('urgent');
+    expect(a?.title).toContain('2');
+    expect(a?.href).toBe('/buyer/payments');
+    expect(a?.badge).toBe('2 en attente');
+  });
+
+  it('pendingPayment = 1 → badge "À payer"', () => {
+    const actions = getBuyerDailyActions({ ...buyerBase, pendingPayment: 1 });
+    const a = actions.find((x) => x.id === 'pending-payment');
+    expect(a?.badge).toBe('À payer');
+  });
+
+  it('pendingPayment absent → pas de "pending-payment"', () => {
+    const actions = getBuyerDailyActions(buyerBase);
+    expect(actions.some((x) => x.id === 'pending-payment')).toBe(false);
+  });
+
+  it('pendingPayment = 0 → pas de "pending-payment"', () => {
+    const actions = getBuyerDailyActions({ ...buyerBase, pendingPayment: 0 });
+    expect(actions.some((x) => x.id === 'pending-payment')).toBe(false);
+  });
+
+  it('pendingPayment prioritaire sur quotedRfq', () => {
+    const actions = getBuyerDailyActions({ ...buyerBase, pendingPayment: 1, quotedRfq: 2 });
+    expect(actions[0].id).toBe('pending-payment');
+    expect(actions[1].id).toBe('quoted-rfq');
+  });
+
+  // M104 — newMessages buyer
+  it('newMessages > 0 → action urgente "new-messages-buyer"', () => {
+    const actions = getBuyerDailyActions({ ...buyerBase, newMessages: 2 });
+    const a = actions.find((x) => x.id === 'new-messages-buyer');
+    expect(a).toBeDefined();
+    expect(a?.priority).toBe('urgent');
+    expect(a?.title).toContain('2');
+    expect(a?.href).toBe('/buyer/quote-requests');
+  });
+
+  it('newMessages absent → pas de "new-messages-buyer"', () => {
+    const actions = getBuyerDailyActions(buyerBase);
+    expect(actions.some((x) => x.id === 'new-messages-buyer')).toBe(false);
+  });
+
+  it('tous les ids uniques avec pendingPayment + newMessages', () => {
+    const actions = getBuyerDailyActions({
+      quotedRfq: 1,
+      activeRfq: 2,
+      totalRfq: 5,
+      pendingPayment: 1,
+      newMessages: 3,
+    });
     const ids = actions.map((a) => a.id);
     expect(new Set(ids).size).toBe(ids.length);
   });

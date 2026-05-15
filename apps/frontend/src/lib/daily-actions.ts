@@ -24,6 +24,8 @@ import {
   Store,
   ClipboardList,
   Clock,
+  MessageCircle,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -75,6 +77,11 @@ export interface SellerDailyData {
   rejectedProducts: number;
   /** Offres avec publicationStatus REJECTED. */
   rejectedOffers: number;
+  /**
+   * Messages non lus sur les RFQ (depuis /api/v1/dashboard/marketplace-alerts).
+   * Optionnel : absent si l'endpoint n'a pas encore répondu.
+   */
+  newMessages?: number;
 }
 
 /** Données buyer extraites des API déjà chargées sur /buyer. */
@@ -85,6 +92,17 @@ export interface BuyerDailyData {
   activeRfq: number;
   /** Total toutes RFQ. */
   totalRfq: number;
+  /**
+   * Commandes gagnées avec paiement en attente
+   * (depuis /api/v1/dashboard/marketplace-alerts → pendingPayment).
+   * Optionnel : absent si l'endpoint n'a pas encore répondu.
+   */
+  pendingPayment?: number;
+  /**
+   * Messages non lus sur les RFQ (depuis /api/v1/dashboard/marketplace-alerts).
+   * Optionnel : absent si l'endpoint n'a pas encore répondu.
+   */
+  newMessages?: number;
 }
 
 /** Données admin extraites des API déjà chargées sur /admin. */
@@ -200,7 +218,21 @@ export function getSellerDailyActions(data: SellerDailyData): DailyAction[] {
     });
   }
 
-  // 8. Demandes en négociation — info seulement
+  // 8. Messages non lus — urgent si présents
+  if (data.newMessages && data.newMessages > 0) {
+    const n = data.newMessages;
+    actions.push({
+      id: 'new-messages-seller',
+      title: `${n} message${n > 1 ? 's' : ''} non lu${n > 1 ? 's' : ''}`,
+      description: 'Des acheteurs vous ont envoyé des messages sur vos demandes de devis.',
+      href: '/seller/quote-requests',
+      priority: 'urgent',
+      icon: MessageCircle,
+      badge: n > 1 ? `${n} nouveaux` : 'Nouveau',
+    });
+  }
+
+  // 9. Demandes en négociation — info seulement
   if (data.negotiatingRfq > 0 && data.newRfq === 0) {
     const n = data.negotiatingRfq;
     actions.push({
@@ -226,7 +258,21 @@ export function getSellerDailyActions(data: SellerDailyData): DailyAction[] {
 export function getBuyerDailyActions(data: BuyerDailyData): DailyAction[] {
   const actions: DailyAction[] = [];
 
-  // 1. Devis reçus — action immédiate requise
+  // 1. Paiement en attente — bloquant sur le cycle d'achat
+  if (data.pendingPayment && data.pendingPayment > 0) {
+    const n = data.pendingPayment;
+    actions.push({
+      id: 'pending-payment',
+      title: `${n} commande${n > 1 ? 's' : ''} à payer`,
+      description: 'Finalisez le paiement pour confirmer vos commandes.',
+      href: '/buyer/payments',
+      priority: 'urgent',
+      icon: CreditCard,
+      badge: n > 1 ? `${n} en attente` : 'À payer',
+    });
+  }
+
+  // 2. Devis reçus — action immédiate requise
   if (data.quotedRfq > 0) {
     const n = data.quotedRfq;
     actions.push({
@@ -240,7 +286,21 @@ export function getBuyerDailyActions(data: BuyerDailyData): DailyAction[] {
     });
   }
 
-  // 2. Demandes actives en cours
+  // 3. Messages non lus sur les RFQ
+  if (data.newMessages && data.newMessages > 0) {
+    const n = data.newMessages;
+    actions.push({
+      id: 'new-messages-buyer',
+      title: `${n} message${n > 1 ? 's' : ''} non lu${n > 1 ? 's' : ''}`,
+      description: 'Des vendeurs ont répondu à vos messages sur les demandes de devis.',
+      href: '/buyer/quote-requests',
+      priority: 'urgent',
+      icon: MessageCircle,
+      badge: n > 1 ? `${n} nouveaux` : 'Nouveau',
+    });
+  }
+
+  // 4. Demandes actives en cours
   if (data.activeRfq > 0 && data.quotedRfq === 0) {
     const n = data.activeRfq;
     actions.push({
@@ -253,7 +313,7 @@ export function getBuyerDailyActions(data: BuyerDailyData): DailyAction[] {
     });
   }
 
-  // 3. Aucune demande — inciter à chercher
+  // 5. Aucune demande — inciter à chercher
   if (data.totalRfq === 0) {
     actions.push({
       id: 'search-products',

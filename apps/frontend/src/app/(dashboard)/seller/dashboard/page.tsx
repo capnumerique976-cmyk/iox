@@ -125,6 +125,10 @@ function completionCriteria(p: SellerProfileRow): CompletionCriterion[] {
   ];
 }
 
+interface MarketplaceAlerts {
+  newMessages: number;
+}
+
 export default function SellerDashboardPage() {
   const { user } = useAuth();
 
@@ -133,6 +137,8 @@ export default function SellerDashboardPage() {
   const [rfq, setRfq] = useState<LoadState<QuoteRequestSummary[]>>({ status: 'loading' });
   const [docs, setDocs] = useState<LoadState<DocumentRow[]>>({ status: 'loading' });
   const [profile, setProfile] = useState<LoadState<SellerProfileRow | null>>({ status: 'loading' });
+  /** Alertes marketplace — chargées en parallèle, enrichit les daily actions. */
+  const [marketplaceAlerts, setMarketplaceAlerts] = useState<MarketplaceAlerts | null>(null);
 
   const load = useCallback(async () => {
     const token = authStorage.getAccessToken() ?? '';
@@ -141,6 +147,16 @@ export default function SellerDashboardPage() {
     setRfq({ status: 'loading' });
     setDocs({ status: 'loading' });
     setProfile({ status: 'loading' });
+
+    // M104 — Alertes marketplace (messages non lus) — silencieux si indisponible.
+    fetch('/api/v1/dashboard/marketplace-alerts', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json) setMarketplaceAlerts(json.data ?? json);
+      })
+      .catch(() => { /* silencieux */ });
 
     api
       .get<ListResponse<OfferRow>>('/marketplace/offers?limit=100', token)
@@ -238,7 +254,7 @@ export default function SellerDashboardPage() {
     return { expiring, pending };
   }, [docs]);
 
-  // M103 — Daily actions : données dérivées des états déjà chargés, zéro appel API supplémentaire.
+  // M103/M104 — Daily actions : données dérivées des états déjà chargés + marketplace-alerts.
   const sellerDailyData = useMemo<SellerDailyData | null>(() => {
     if (
       products.status !== 'ok' ||
@@ -267,8 +283,10 @@ export default function SellerDashboardPage() {
       rejectedOffers: offers.value.filter(
         (o) => o.publicationStatus === MarketplacePublicationStatus.REJECTED,
       ).length,
+      // M104 — enrichi si marketplace-alerts a répondu (optionnel)
+      newMessages: marketplaceAlerts?.newMessages ?? 0,
     };
-  }, [products, offers, rfq, docs, profile]);
+  }, [products, offers, rfq, docs, profile, marketplaceAlerts]);
 
   const sellerDailyActions = useMemo(
     () => (sellerDailyData ? getSellerDailyActions(sellerDailyData) : []),
