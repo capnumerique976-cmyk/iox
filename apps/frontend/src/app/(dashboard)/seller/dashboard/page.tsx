@@ -23,6 +23,8 @@ import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
 import { PageHeader } from '@/components/ui/page-header';
 import { GuidedDashboardHeader } from '@/components/onboarding/guided-dashboard-header';
 import { publicationStatusLabel, sellerProfileStatusLabel, rfqStatusLabel, verificationStatusLabel } from '@/lib/status-labels';
+import { DailyActionsPanel } from '@/components/dashboard/daily-actions-panel';
+import { getSellerDailyActions, type SellerDailyData } from '@/lib/daily-actions';
 
 /**
  * Cockpit vendeur marketplace — vue synthétique 1 écran.
@@ -236,6 +238,43 @@ export default function SellerDashboardPage() {
     return { expiring, pending };
   }, [docs]);
 
+  // M103 — Daily actions : données dérivées des états déjà chargés, zéro appel API supplémentaire.
+  const sellerDailyData = useMemo<SellerDailyData | null>(() => {
+    if (
+      products.status !== 'ok' ||
+      offers.status !== 'ok' ||
+      rfq.status !== 'ok' ||
+      docs.status !== 'ok' ||
+      profile.status !== 'ok'
+    ) {
+      return null; // données pas encore chargées
+    }
+    const crits = profile.value ? completionCriteria(profile.value) : [];
+    const done = crits.filter((c) => c.done).length;
+    const pct = crits.length > 0 ? Math.round((done / crits.length) * 100) : 100;
+    return {
+      rejectedDocs: docs.value.filter((d) => d.verificationStatus === 'REJECTED').length,
+      pendingDocs: docs.value.filter((d) => d.verificationStatus === 'PENDING').length,
+      newRfq: rfq.value.filter((q) => q.status === QuoteRequestStatus.NEW).length,
+      negotiatingRfq: rfq.value.filter((q) => q.status === QuoteRequestStatus.NEGOTIATING).length,
+      profileCompletionPct: pct,
+      hasProducts: products.value.length > 0,
+      hasOffers: offers.value.length > 0,
+      hasDocuments: docs.value.length > 0,
+      rejectedProducts: products.value.filter(
+        (p) => p.publicationStatus === MarketplacePublicationStatus.REJECTED,
+      ).length,
+      rejectedOffers: offers.value.filter(
+        (o) => o.publicationStatus === MarketplacePublicationStatus.REJECTED,
+      ).length,
+    };
+  }, [products, offers, rfq, docs, profile]);
+
+  const sellerDailyActions = useMemo(
+    () => (sellerDailyData ? getSellerDailyActions(sellerDailyData) : []),
+    [sellerDailyData],
+  );
+
   if (user && !CAN_VIEW.includes(user.role as (typeof CAN_VIEW)[number])) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -248,6 +287,15 @@ export default function SellerDashboardPage() {
     <div className="space-y-6">
       {/* Guided journey header — visible for marketplace sellers */}
       {user?.role === UserRole.MARKETPLACE_SELLER && <GuidedDashboardHeader />}
+
+      {/* M103 — Panneau actions quotidiennes */}
+      <DailyActionsPanel
+        actions={sellerDailyActions}
+        isLoading={sellerDailyData === null}
+        title="À faire aujourd'hui"
+        emptyMessage="Tout est à jour"
+        emptyDescription="Aucune action urgente pour aujourd'hui. Continuez à développer votre activité."
+      />
 
       <PageHeader
         icon={<Store className="h-5 w-5" aria-hidden />}

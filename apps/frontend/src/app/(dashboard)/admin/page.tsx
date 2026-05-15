@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertCircle,
@@ -23,6 +23,8 @@ import { sellerProfilesApi } from '@/lib/seller-profiles';
 import { quoteRequestsApi } from '@/lib/quote-requests';
 import { SellerProfileStatus, QuoteRequestStatus } from '@iox/shared';
 import { PageHeader } from '@/components/ui/page-header';
+import { DailyActionsPanel } from '@/components/dashboard/daily-actions-panel';
+import { getAdminDailyActions, type AdminDailyData } from '@/lib/daily-actions';
 
 /**
  * Tableau de bord administrateur.
@@ -269,6 +271,22 @@ export default function AdminDashboardPage() {
     load();
   }, [load]);
 
+  // M103 — Daily actions (dérivées des états déjà chargés)
+  const adminDailyData = useMemo<AdminDailyData | null>(() => {
+    if (reviews.status !== 'ok' || sellers.status !== 'ok') return null;
+    return {
+      pendingReviews: reviews.value.total,
+      agedReviews: risks.status === 'ok' ? risks.value.agedReviews.length : 0,
+      pendingSellerProfiles: sellers.value.pendingReview,
+      expiringDocs30: risks.status === 'ok' ? risks.value.expiringDocs.length : 0,
+    };
+  }, [reviews, sellers, risks]);
+
+  const adminDailyActions = useMemo(
+    () => (adminDailyData ? getAdminDailyActions(adminDailyData) : []),
+    [adminDailyData],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -291,6 +309,15 @@ export default function AdminDashboardPage() {
             Rafraîchir
           </button>
         }
+      />
+
+      {/* M103 — Panneau actions quotidiennes */}
+      <DailyActionsPanel
+        actions={adminDailyActions}
+        isLoading={adminDailyData === null}
+        title="À traiter"
+        emptyMessage="Aucune urgence"
+        emptyDescription="La plateforme est dans un état nominal. Aucune action immédiate requise."
       />
 
       {/* Cartes principales — chaque bloc tolère une erreur locale. */}
