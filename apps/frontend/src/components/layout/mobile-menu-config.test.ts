@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { UserRole } from '@iox/shared';
 import {
   getMobileMenuSections,
+  getBusinessModuleForPath,
   SELLER_MENU_SECTIONS,
   BUYER_MENU_SECTIONS,
   ADMIN_MENU_SECTIONS,
@@ -144,6 +145,16 @@ describe('structure sections', () => {
       expect(item.disabledNote).toBeTruthy();
     }
   });
+
+  it('tous les ids items sont uniques dans chaque config rôle', () => {
+    const checkUnique = (sections: MobileMenuSection[], role: string) => {
+      const ids = allItems(sections).map((i) => i.id);
+      expect(new Set(ids).size, `ids items dupliqués pour ${role}`).toBe(ids.length);
+    };
+    checkUnique(SELLER_MENU_SECTIONS, 'seller');
+    checkUnique(BUYER_MENU_SECTIONS, 'buyer');
+    checkUnique(ADMIN_MENU_SECTIONS, 'admin');
+  });
 });
 
 /* ─── Module Accueil ─────────────────────────────────────────────────── */
@@ -178,13 +189,16 @@ describe('module Accueil', () => {
     const hrefs = allHrefs(ADMIN_MENU_SECTIONS.filter((s) => s.id === 'home'));
     expect(hrefs).toContain('/admin');
   });
+
+  it('admin — Accueil contient aussi /dashboard (tableau général)', () => {
+    const hrefs = allHrefs(ADMIN_MENU_SECTIONS.filter((s) => s.id === 'home'));
+    expect(hrefs).toContain('/dashboard');
+  });
 });
 
 /* ─── Isolation admin : seller/buyer ne voient jamais routes admin ──── */
 
 describe('isolation routes admin', () => {
-  const ADMIN_ROUTE_PATTERNS = ['/admin/', '/admin'];
-
   it('seller — aucune route admin exposée', () => {
     const hrefs = allHrefs(SELLER_MENU_SECTIONS);
     for (const href of hrefs) {
@@ -211,7 +225,25 @@ describe('isolation routes admin', () => {
   });
 });
 
-/* ─── Couverture routes seller ───────────────────────────────────────── */
+/* ─── Isolation seller/buyer ─────────────────────────────────────────── */
+
+describe('isolation routes seller vs buyer', () => {
+  it('buyer — aucune route seller exposée', () => {
+    const hrefs = allHrefs(BUYER_MENU_SECTIONS);
+    for (const href of hrefs) {
+      expect(href.startsWith('/seller')).toBe(false);
+    }
+  });
+
+  it('seller — aucune route /buyer exposée', () => {
+    const hrefs = allHrefs(SELLER_MENU_SECTIONS);
+    for (const href of hrefs) {
+      expect(href.startsWith('/buyer')).toBe(false);
+    }
+  });
+});
+
+/* ─── Couverture routes seller (parité desktop M117) ────────────────── */
 
 describe('couverture routes seller', () => {
   const hrefs = allHrefs(SELLER_MENU_SECTIONS);
@@ -248,12 +280,20 @@ describe('couverture routes seller', () => {
     expect(hrefs).toContain('/seller/quote-requests');
   });
 
+  it('contient /marketplace-hub (Catalogue — parité desktop M117)', () => {
+    expect(hrefs).toContain('/marketplace-hub');
+  });
+
   it('contient /seller/marketplace-offers (Catalogue)', () => {
     expect(hrefs).toContain('/seller/marketplace-offers');
   });
 
   it('contient /seller/marketplace-offers/new (Catalogue)', () => {
     expect(hrefs).toContain('/seller/marketplace-offers/new');
+  });
+
+  it('contient /seller/analytics (Catalogue)', () => {
+    expect(hrefs).toContain('/seller/analytics');
   });
 
   it('contient /seller/invoices (Distribution)', () => {
@@ -273,7 +313,7 @@ describe('couverture routes seller', () => {
   });
 });
 
-/* ─── Couverture routes buyer ────────────────────────────────────────── */
+/* ─── Couverture routes buyer (parité desktop M117) ─────────────────── */
 
 describe('couverture routes buyer', () => {
   const hrefs = allHrefs(BUYER_MENU_SECTIONS);
@@ -302,6 +342,10 @@ describe('couverture routes buyer', () => {
     expect(hrefs).toContain('/buyer/quote-requests');
   });
 
+  it('contient /buyer/payments (Achats — paiements à finaliser)', () => {
+    expect(hrefs).toContain('/buyer/payments');
+  });
+
   it('contient /marketplace-hub (Catalogue)', () => {
     expect(hrefs).toContain('/marketplace-hub');
   });
@@ -314,10 +358,6 @@ describe('couverture routes buyer', () => {
     expect(hrefs).toContain('/marketplace/favorites');
   });
 
-  it('contient /buyer/payments (Distribution)', () => {
-    expect(hrefs).toContain('/buyer/payments');
-  });
-
   it('contient /buyer/orders (Distribution)', () => {
     expect(hrefs).toContain('/buyer/orders');
   });
@@ -327,65 +367,199 @@ describe('couverture routes buyer', () => {
   });
 });
 
-/* ─── Couverture routes admin ────────────────────────────────────────── */
+/* ─── Couverture routes admin (parité desktop complète M117) ─────────── */
 
 describe('couverture routes admin', () => {
   const hrefs = allHrefs(ADMIN_MENU_SECTIONS);
 
-  it('contient /admin (Accueil)', () => {
-    expect(hrefs).toContain('/admin');
-  });
+  // Routes admin spécifiques
+  it('contient /admin (Accueil)', () => expect(hrefs).toContain('/admin'));
+  it('contient /admin/users (Référentiel)', () => expect(hrefs).toContain('/admin/users'));
+  it('contient /admin/sellers (Référentiel)', () => expect(hrefs).toContain('/admin/sellers'));
+  it('contient /admin/memberships (Référentiel)', () => expect(hrefs).toContain('/admin/memberships'));
+  it('contient /admin/review-queue (Production)', () => expect(hrefs).toContain('/admin/review-queue'));
+  it('contient /admin/media-moderation (Production)', () => expect(hrefs).toContain('/admin/media-moderation'));
+  it('contient /admin/rfq (Achats)', () => expect(hrefs).toContain('/admin/rfq'));
+  it('contient /admin/marketplace/categories (Catalogue)', () => expect(hrefs).toContain('/admin/marketplace/categories'));
+  it('contient /admin/compliance (Distribution)', () => expect(hrefs).toContain('/admin/compliance'));
+  it('contient /admin/kpi (Distribution)', () => expect(hrefs).toContain('/admin/kpi'));
+  it('contient /admin/audit-logs (Administration)', () => expect(hrefs).toContain('/admin/audit-logs'));
+  it('contient /admin/diagnostics (Administration)', () => expect(hrefs).toContain('/admin/diagnostics'));
+  it('contient /admin/notif-email/logs (Administration)', () => expect(hrefs).toContain('/admin/notif-email/logs'));
 
-  it('contient /admin/users (Référentiel)', () => {
-    expect(hrefs).toContain('/admin/users');
-  });
-
-  it('contient /admin/sellers (Référentiel)', () => {
-    expect(hrefs).toContain('/admin/sellers');
-  });
-
-  it('contient /admin/memberships (Référentiel)', () => {
-    expect(hrefs).toContain('/admin/memberships');
-  });
-
-  it('contient /admin/review-queue (Production)', () => {
-    expect(hrefs).toContain('/admin/review-queue');
-  });
-
-  it('contient /admin/media-moderation (Production)', () => {
-    expect(hrefs).toContain('/admin/media-moderation');
-  });
-
-  it('contient /admin/rfq (Achats)', () => {
-    expect(hrefs).toContain('/admin/rfq');
-  });
-
-  it('contient /admin/marketplace/categories (Catalogue)', () => {
-    expect(hrefs).toContain('/admin/marketplace/categories');
-  });
-
-  it('contient /admin/compliance (Distribution)', () => {
-    expect(hrefs).toContain('/admin/compliance');
-  });
-
-  it('contient /admin/kpi (Distribution)', () => {
-    expect(hrefs).toContain('/admin/kpi');
-  });
-
-  it('contient /admin/audit-logs (Administration)', () => {
-    expect(hrefs).toContain('/admin/audit-logs');
-  });
-
-  it('contient /admin/diagnostics (Administration)', () => {
-    expect(hrefs).toContain('/admin/diagnostics');
-  });
-
-  it('contient /admin/notif-email/logs (Administration)', () => {
-    expect(hrefs).toContain('/admin/notif-email/logs');
-  });
+  // Routes staff (parité desktop M117 — admin voit toutes sections sur desktop)
+  it('contient /dashboard (Accueil — tableau général M117)', () => expect(hrefs).toContain('/dashboard'));
+  it('contient /beneficiaries (Référentiel staff M117)', () => expect(hrefs).toContain('/beneficiaries'));
+  it('contient /companies (Référentiel staff M117)', () => expect(hrefs).toContain('/companies'));
+  it('contient /supply-contracts (Référentiel staff M117)', () => expect(hrefs).toContain('/supply-contracts'));
+  it('contient /products (Référentiel staff M117)', () => expect(hrefs).toContain('/products'));
+  it('contient /inbound-batches (Production staff M117)', () => expect(hrefs).toContain('/inbound-batches'));
+  it('contient /transformation-operations (Production staff M117)', () => expect(hrefs).toContain('/transformation-operations'));
+  it('contient /product-batches (Production staff M117)', () => expect(hrefs).toContain('/product-batches'));
+  it('contient /label-validations (Production staff M117)', () => expect(hrefs).toContain('/label-validations'));
+  it('contient /traceability (Production staff M117)', () => expect(hrefs).toContain('/traceability'));
+  it('contient /market-release-decisions (Production staff M117)', () => expect(hrefs).toContain('/market-release-decisions'));
+  it('contient /distributions (Distribution staff M117)', () => expect(hrefs).toContain('/distributions'));
+  it('contient /incidents (Distribution staff M117)', () => expect(hrefs).toContain('/incidents'));
+  it('contient /documents (Distribution staff M117)', () => expect(hrefs).toContain('/documents'));
 
   it('module Administration fermé par défaut', () => {
     expect(sectionById(ADMIN_MENU_SECTIONS, 'administration')?.defaultCollapsed).toBe(true);
+  });
+});
+
+/* ─── getBusinessModuleForPath ───────────────────────────────────────── */
+
+describe('getBusinessModuleForPath', () => {
+  describe('seller', () => {
+    it('/seller/dashboard → home', () => {
+      expect(getBusinessModuleForPath('/seller/dashboard', SELLER_MENU_SECTIONS)).toBe('home');
+    });
+
+    it('/seller/documents → referentiel', () => {
+      expect(getBusinessModuleForPath('/seller/documents', SELLER_MENU_SECTIONS)).toBe('referentiel');
+    });
+
+    it('/seller/profile/certifications → referentiel', () => {
+      expect(getBusinessModuleForPath('/seller/profile/certifications', SELLER_MENU_SECTIONS)).toBe('referentiel');
+    });
+
+    it('/seller/marketplace-products → production', () => {
+      expect(getBusinessModuleForPath('/seller/marketplace-products', SELLER_MENU_SECTIONS)).toBe('production');
+    });
+
+    it('/seller/marketplace-products/new → production', () => {
+      expect(getBusinessModuleForPath('/seller/marketplace-products/new', SELLER_MENU_SECTIONS)).toBe('production');
+    });
+
+    it('/seller/marketplace-products/42/certifications → production (sous-route)', () => {
+      expect(getBusinessModuleForPath('/seller/marketplace-products/42/certifications', SELLER_MENU_SECTIONS)).toBe('production');
+    });
+
+    it('/seller/quote-requests → achats', () => {
+      expect(getBusinessModuleForPath('/seller/quote-requests', SELLER_MENU_SECTIONS)).toBe('achats');
+    });
+
+    it('/marketplace-hub → catalogue', () => {
+      expect(getBusinessModuleForPath('/marketplace-hub', SELLER_MENU_SECTIONS)).toBe('catalogue');
+    });
+
+    it('/seller/marketplace-offers → catalogue', () => {
+      expect(getBusinessModuleForPath('/seller/marketplace-offers', SELLER_MENU_SECTIONS)).toBe('catalogue');
+    });
+
+    it('/seller/invoices → distribution', () => {
+      expect(getBusinessModuleForPath('/seller/invoices', SELLER_MENU_SECTIONS)).toBe('distribution');
+    });
+
+    it('/seller/payments → distribution', () => {
+      expect(getBusinessModuleForPath('/seller/payments', SELLER_MENU_SECTIONS)).toBe('distribution');
+    });
+
+    it('route inconnue → null', () => {
+      expect(getBusinessModuleForPath('/unknown/route', SELLER_MENU_SECTIONS)).toBeNull();
+    });
+  });
+
+  describe('buyer', () => {
+    it('/buyer → home', () => {
+      expect(getBusinessModuleForPath('/buyer', BUYER_MENU_SECTIONS)).toBe('home');
+    });
+
+    it('/buyer/profile → referentiel', () => {
+      expect(getBusinessModuleForPath('/buyer/profile', BUYER_MENU_SECTIONS)).toBe('referentiel');
+    });
+
+    it('/buyer/quote-requests → achats', () => {
+      expect(getBusinessModuleForPath('/buyer/quote-requests', BUYER_MENU_SECTIONS)).toBe('achats');
+    });
+
+    it('/marketplace-hub → catalogue', () => {
+      expect(getBusinessModuleForPath('/marketplace-hub', BUYER_MENU_SECTIONS)).toBe('catalogue');
+    });
+
+    it('/buyer/invoices → distribution', () => {
+      expect(getBusinessModuleForPath('/buyer/invoices', BUYER_MENU_SECTIONS)).toBe('distribution');
+    });
+
+    it('/buyer/orders → distribution', () => {
+      expect(getBusinessModuleForPath('/buyer/orders', BUYER_MENU_SECTIONS)).toBe('distribution');
+    });
+  });
+
+  describe('admin', () => {
+    it('/admin → home', () => {
+      expect(getBusinessModuleForPath('/admin', ADMIN_MENU_SECTIONS)).toBe('home');
+    });
+
+    it('/dashboard → home', () => {
+      expect(getBusinessModuleForPath('/dashboard', ADMIN_MENU_SECTIONS)).toBe('home');
+    });
+
+    it('/admin/users → referentiel', () => {
+      expect(getBusinessModuleForPath('/admin/users', ADMIN_MENU_SECTIONS)).toBe('referentiel');
+    });
+
+    it('/beneficiaries → referentiel', () => {
+      expect(getBusinessModuleForPath('/beneficiaries', ADMIN_MENU_SECTIONS)).toBe('referentiel');
+    });
+
+    it('/admin/review-queue → production', () => {
+      expect(getBusinessModuleForPath('/admin/review-queue', ADMIN_MENU_SECTIONS)).toBe('production');
+    });
+
+    it('/admin/media-moderation → production', () => {
+      expect(getBusinessModuleForPath('/admin/media-moderation', ADMIN_MENU_SECTIONS)).toBe('production');
+    });
+
+    it('/inbound-batches → production', () => {
+      expect(getBusinessModuleForPath('/inbound-batches', ADMIN_MENU_SECTIONS)).toBe('production');
+    });
+
+    it('/traceability → production', () => {
+      expect(getBusinessModuleForPath('/traceability', ADMIN_MENU_SECTIONS)).toBe('production');
+    });
+
+    it('/admin/rfq → achats', () => {
+      expect(getBusinessModuleForPath('/admin/rfq', ADMIN_MENU_SECTIONS)).toBe('achats');
+    });
+
+    it('/admin/marketplace/categories → catalogue', () => {
+      expect(getBusinessModuleForPath('/admin/marketplace/categories', ADMIN_MENU_SECTIONS)).toBe('catalogue');
+    });
+
+    it('/admin/compliance → distribution', () => {
+      expect(getBusinessModuleForPath('/admin/compliance', ADMIN_MENU_SECTIONS)).toBe('distribution');
+    });
+
+    it('/distributions → distribution', () => {
+      expect(getBusinessModuleForPath('/distributions', ADMIN_MENU_SECTIONS)).toBe('distribution');
+    });
+
+    it('/incidents → distribution', () => {
+      expect(getBusinessModuleForPath('/incidents', ADMIN_MENU_SECTIONS)).toBe('distribution');
+    });
+
+    it('/admin/audit-logs → administration', () => {
+      expect(getBusinessModuleForPath('/admin/audit-logs', ADMIN_MENU_SECTIONS)).toBe('administration');
+    });
+
+    it('/admin/diagnostics → administration', () => {
+      expect(getBusinessModuleForPath('/admin/diagnostics', ADMIN_MENU_SECTIONS)).toBe('administration');
+    });
+  });
+
+  describe('cas limites', () => {
+    it('tableau vide → null', () => {
+      expect(getBusinessModuleForPath('/seller/dashboard', [])).toBeNull();
+    });
+
+    it('item disabled ignoré', () => {
+      // buyer-search est disabled et pointe vers /marketplace-hub
+      // buyer-catalog (non-disabled) pointe aussi vers /marketplace-hub
+      // le résultat doit être 'catalogue' (via buyer-catalog)
+      expect(getBusinessModuleForPath('/marketplace-hub', BUYER_MENU_SECTIONS)).toBe('catalogue');
+    });
   });
 });
 

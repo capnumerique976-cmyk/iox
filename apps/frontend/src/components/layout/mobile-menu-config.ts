@@ -1,10 +1,15 @@
 /**
- * IOX — Configuration Menu Principal Mobile (M116B)
+ * IOX — Configuration Menu Principal Mobile (M117)
  *
  * Architecture à 3 niveaux :
  *   Niveau 1 — Bottom nav (4 onglets primaires, inchangée)
  *   Niveau 2 — Menu principal mobile (ce fichier) — 7 modules métier
- *   Niveau 3 — Sous-menus par module (accordéon dans le drawer)
+ *   Niveau 3 — Navigation progressive : Modules → Sous-menus → Page
+ *
+ * Desktop parity (M117) :
+ *   - MARKETPLACE_SELLER : parité avec section `marketplace` desktop + routes seller spécifiques
+ *   - MARKETPLACE_BUYER  : parité avec section `buyer` desktop + catalogue marketplace
+ *   - ADMIN              : parité avec TOUTES les sections desktop (admin + staff complet)
  *
  * Les 7 modules métier (structure commune par rôle) :
  *   1. Accueil      — tableau de bord et actions du jour
@@ -49,6 +54,15 @@ import {
   ScrollText,
   Network,
   Heart,
+  LayoutDashboard,
+  Inbox,
+  GitBranch,
+  Boxes,
+  CheckCircle2,
+  AlertTriangle,
+  FileArchive,
+  FileSignature,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -86,6 +100,7 @@ export interface MobileMenuSection {
 
 /* ------------------------------------------------------------------ */
 /*  Sections MARKETPLACE_SELLER (6 modules — Administration cachée)    */
+/*  Parité desktop : section `marketplace` + routes seller spécifiques */
 /* ------------------------------------------------------------------ */
 
 export const SELLER_MENU_SECTIONS: MobileMenuSection[] = [
@@ -189,6 +204,13 @@ export const SELLER_MENU_SECTIONS: MobileMenuSection[] = [
     defaultCollapsed: true,
     items: [
       {
+        id: 'seller-hub',
+        label: "Vue d'ensemble marché",
+        href: '/marketplace-hub',
+        icon: ShoppingBag,
+        description: 'Vue consolidée vendeur sur le marché',
+      },
+      {
         id: 'seller-offers',
         label: 'Mes offres',
         href: '/seller/marketplace-offers',
@@ -239,6 +261,7 @@ export const SELLER_MENU_SECTIONS: MobileMenuSection[] = [
 
 /* ------------------------------------------------------------------ */
 /*  Sections MARKETPLACE_BUYER (5 modules — Production + Admin cachés) */
+/*  Parité desktop : section `buyer` desktop + catalogue marketplace   */
 /* ------------------------------------------------------------------ */
 
 export const BUYER_MENU_SECTIONS: MobileMenuSection[] = [
@@ -310,6 +333,13 @@ export const BUYER_MENU_SECTIONS: MobileMenuSection[] = [
         icon: MessageSquareQuote,
         description: 'Suivi de toutes vos demandes',
       },
+      {
+        id: 'buyer-payments-pending',
+        label: 'Paiements à finaliser',
+        href: '/buyer/payments',
+        icon: CreditCard,
+        description: 'Commandes en attente de paiement',
+      },
     ],
   },
   {
@@ -376,7 +406,9 @@ export const BUYER_MENU_SECTIONS: MobileMenuSection[] = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Sections ADMIN (7 modules complets)                                */
+/*  Sections ADMIN (7 modules — parité desktop complète M117)         */
+/*  Inclut routes staff visibles sur desktop pour le rôle ADMIN       */
+/*  (getVisibleSections(ADMIN) retourne toutes les sections).         */
 /* ------------------------------------------------------------------ */
 
 export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
@@ -389,17 +421,24 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
     items: [
       {
         id: 'admin-dashboard',
-        label: 'Tableau de bord',
+        label: 'Tableau admin',
         href: '/admin',
-        icon: Home,
+        icon: ShieldCheck,
         description: 'Vue globale de la plateforme',
+      },
+      {
+        id: 'admin-general-dashboard',
+        label: 'Tableau de bord général',
+        href: '/dashboard',
+        icon: LayoutDashboard,
+        description: 'Vue consolidée toutes opérations',
       },
     ],
   },
   {
     id: 'referentiel',
     label: 'Référentiel',
-    description: 'Utilisateurs, vendeurs et rattachements.',
+    description: 'Utilisateurs, vendeurs, bénéficiaires et données de base.',
     icon: BookOpen,
     defaultCollapsed: true,
     items: [
@@ -424,12 +463,40 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
         icon: Network,
         description: 'Liens utilisateurs ↔ entreprises',
       },
+      {
+        id: 'admin-beneficiaries',
+        label: 'Bénéficiaires',
+        href: '/beneficiaries',
+        icon: Users,
+        description: 'Personnes habilitées à recevoir une aide',
+      },
+      {
+        id: 'admin-companies',
+        label: 'Entreprises',
+        href: '/companies',
+        icon: Building2,
+        description: 'Acteurs de la chaîne',
+      },
+      {
+        id: 'admin-supply-contracts',
+        label: "Contrats d'approvisionnement",
+        href: '/supply-contracts',
+        icon: FileSignature,
+        description: 'Engagements amont',
+      },
+      {
+        id: 'admin-products-ref',
+        label: 'Produits référentiel',
+        href: '/products',
+        icon: Package,
+        description: 'Catalogue produits et fiches techniques',
+      },
     ],
   },
   {
     id: 'production',
     label: 'Production',
-    description: 'Revue documentaire et modération.',
+    description: 'Revue documentaire, modération et chaîne de production.',
     icon: Package,
     defaultCollapsed: true,
     items: [
@@ -447,6 +514,48 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
         icon: Image,
         description: 'Photos et vidéos à modérer',
       },
+      {
+        id: 'admin-inbound-batches',
+        label: 'Lots entrants',
+        href: '/inbound-batches',
+        icon: Inbox,
+        description: 'Réception et qualification des matières',
+      },
+      {
+        id: 'admin-transformation-ops',
+        label: 'Transformations',
+        href: '/transformation-operations',
+        icon: GitBranch,
+        description: 'Opérations de transformation',
+      },
+      {
+        id: 'admin-product-batches',
+        label: 'Lots finis',
+        href: '/product-batches',
+        icon: Boxes,
+        description: 'Lots prêts à être validés',
+      },
+      {
+        id: 'admin-label-validations',
+        label: 'Étiquetage',
+        href: '/label-validations',
+        icon: Tag,
+        description: 'Validation conformité étiquetage',
+      },
+      {
+        id: 'admin-traceability',
+        label: 'Traçabilité',
+        href: '/traceability',
+        icon: Search,
+        description: 'Recherche end-to-end de la chaîne',
+      },
+      {
+        id: 'admin-market-release',
+        label: 'Mise en marché',
+        href: '/market-release-decisions',
+        icon: CheckCircle2,
+        description: 'Décisions de libération marché',
+      },
     ],
   },
   {
@@ -461,7 +570,7 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
         label: 'Demandes de devis',
         href: '/admin/rfq',
         icon: MessageSquareQuote,
-        description: 'Suivi global des RFQ plateforme',
+        description: 'Suivi global des demandes plateforme',
       },
     ],
   },
@@ -484,7 +593,7 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
   {
     id: 'distribution',
     label: 'Distribution',
-    description: 'Conformité et indicateurs.',
+    description: 'Conformité, indicateurs et opérations terrain.',
     icon: Truck,
     defaultCollapsed: true,
     items: [
@@ -501,6 +610,27 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
         href: '/admin/kpi',
         icon: BarChart3,
         description: 'Indicateurs de performance plateforme',
+      },
+      {
+        id: 'admin-distributions',
+        label: 'Distributions terrain',
+        href: '/distributions',
+        icon: Truck,
+        description: 'Distributions planifiées et réalisées',
+      },
+      {
+        id: 'admin-incidents',
+        label: 'Incidents',
+        href: '/incidents',
+        icon: AlertTriangle,
+        description: 'Incidents terrain à traiter',
+      },
+      {
+        id: 'admin-documents',
+        label: 'Documents distribution',
+        href: '/documents',
+        icon: FileArchive,
+        description: 'Pièces justificatives distribution',
       },
     ],
   },
@@ -537,7 +667,7 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Helper                                                             */
+/*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -546,11 +676,50 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
  *
  * seller → 6 modules (Administration cachée)
  * buyer  → 5 modules (Production + Administration cachées)
- * admin  → 7 modules complets
+ * admin  → 7 modules complets (parité desktop M117)
  */
 export function getMobileMenuSections(role: UserRole): MobileMenuSection[] | null {
   if (role === UserRole.MARKETPLACE_SELLER) return SELLER_MENU_SECTIONS;
   if (role === UserRole.MARKETPLACE_BUYER) return BUYER_MENU_SECTIONS;
   if (role === UserRole.ADMIN) return ADMIN_MENU_SECTIONS;
   return null;
+}
+
+/**
+ * Détecte le module métier actif à partir du pathname courant.
+ * Stratégie : cherche un item (non disabled) dont le href correspond au pathname.
+ * Retourne l'id du module parent ou null si aucune correspondance.
+ *
+ * Exemples :
+ *   /seller/marketplace-products/new → 'production'
+ *   /seller/documents                → 'referentiel'
+ *   /buyer/quote-requests            → 'achats'
+ *   /admin/media-moderation          → 'production'
+ *   /admin/audit-logs                → 'administration'
+ *   /distributions                   → 'distribution'
+ */
+export function getBusinessModuleForPath(
+  pathname: string,
+  sections: MobileMenuSection[],
+): string | null {
+  // Stratégie "longest match wins" : si plusieurs items matchent le pathname,
+  // on retient celui dont le href est le plus long (le plus spécifique).
+  // Exemple : /admin/compliance matche à la fois /admin (home) et
+  // /admin/compliance (distribution) → on retient /admin/compliance.
+  let bestSectionId: string | null = null;
+  let bestMatchLength = -1;
+
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (item.disabled) continue;
+      if (pathname === item.href || pathname.startsWith(item.href + '/')) {
+        if (item.href.length > bestMatchLength) {
+          bestMatchLength = item.href.length;
+          bestSectionId = section.id;
+        }
+      }
+    }
+  }
+
+  return bestSectionId;
 }

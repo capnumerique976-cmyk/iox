@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * IOX — MobileBottomNav (M115)
+ * IOX — MobileBottomNav (M117)
  *
  * Structure :
  *   ┌──────────────────────────────────────────────┐
@@ -10,22 +10,21 @@
  *   │ Onglet1 │ Onglet2 │ Onglet3 │ Onglet4 │ Menu │  ← toujours visible
  *   └──────────────────────────────────────────────┘
  *
- * Menu ouvre un drawer bottom sheet avec sections accordéon :
- *   Section 1 (ouverte par défaut)
- *     └ Item A / Item B / ...
- *   Section 2 (fermée)
- *   ...
+ * Menu ouvre un drawer bottom sheet avec navigation progressive (M117) :
+ *   Niveau 1 : liste des modules métier (cartes avec description + compteur)
+ *   Niveau 2 : sous-menus du module sélectionné (retour + items)
+ *   Auto-détection du module actif via pathname à l'ouverture.
  *
  * Règles :
  *   - primaryTabs : inchangés (4 max, tests existants verts)
- *   - "Menu" remplace "Plus" — même Sheet, contenu restructuré
- *   - Accordéon custom (pas de dep externe)
- *   - Visible uniquement sur mobile (<md)
+ *   - Navigation progressive : pas d'accordéons plats simultanés
+ *   - Auto-ouverture du bon module selon la route courante
+ *   - Visible uniquement sur mobile (<lg)
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, LogOut, UserCog, ChevronDown, ChevronRight } from 'lucide-react';
+import { Menu, LogOut, UserCog } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/auth.context';
 import { ROLE_LABELS } from '@/lib/auth';
@@ -37,122 +36,10 @@ import {
 } from './mobile-nav-config';
 import {
   getMobileMenuSections,
+  getBusinessModuleForPath,
   type MobileMenuSection,
 } from './mobile-menu-config';
-
-/* ------------------------------------------------------------------ */
-/*  Composant interne — Section accordéon                               */
-/* ------------------------------------------------------------------ */
-
-interface SectionProps {
-  section: MobileMenuSection;
-  isOpen: boolean;
-  onToggle: () => void;
-  pathname: string;
-  onItemClick: () => void;
-}
-
-function MenuSection({ section, isOpen, onToggle, pathname, onItemClick }: SectionProps) {
-  const Icon = section.icon;
-  const hasActive = section.items.some(
-    (item) => !item.disabled && isPathActive(pathname, item.href),
-  );
-
-  return (
-    <div className="rounded-xl overflow-hidden">
-      {/* En-tête section */}
-      <button
-        type="button"
-        onClick={onToggle}
-        className={cn(
-          'flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors',
-          isOpen ? 'bg-white/5' : 'hover:bg-white/5',
-          hasActive && 'text-[#00D4FF]',
-        )}
-        aria-expanded={isOpen}
-      >
-        <Icon
-          className={cn(
-            'h-5 w-5 flex-shrink-0',
-            hasActive ? 'text-[#00D4FF]' : 'text-white/50',
-          )}
-          aria-hidden
-        />
-        <div className="flex-1 min-w-0">
-          <span className={cn('text-sm font-semibold', !hasActive && 'text-white/85')}>
-            {section.label}
-          </span>
-          {section.description && (
-            <p className="text-xs text-white/35 leading-snug mt-0.5 truncate">
-              {section.description}
-            </p>
-          )}
-        </div>
-        {isOpen ? (
-          <ChevronDown className="h-4 w-4 text-white/30" aria-hidden />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-white/30" aria-hidden />
-        )}
-      </button>
-
-      {/* Items de la section */}
-      {isOpen && (
-        <div className="px-2 pb-2">
-          {section.items.map((item) => {
-            const ItemIcon = item.icon;
-            const active = !item.disabled && isPathActive(pathname, item.href);
-
-            if (item.disabled) {
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-white/25 cursor-not-allowed"
-                  title={item.disabledNote}
-                >
-                  <ItemIcon className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium leading-snug">{item.label}</p>
-                    {item.disabledNote && (
-                      <p className="text-xs text-white/20 leading-snug mt-0.5">{item.disabledNote}</p>
-                    )}
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                onClick={onItemClick}
-                className={cn(
-                  'flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors',
-                  active
-                    ? 'bg-[#00D4FF]/10 text-[#00D4FF] ring-1 ring-inset ring-[#00D4FF]/20'
-                    : 'text-white/75 hover:bg-white/5 hover:text-white',
-                )}
-              >
-                <ItemIcon
-                  className={cn(
-                    'mt-0.5 h-4 w-4 flex-shrink-0',
-                    active ? 'text-[#00D4FF]' : 'text-white/40',
-                  )}
-                  aria-hidden
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-snug">{item.label}</p>
-                  {item.description && (
-                    <p className="text-xs text-white/35 leading-snug mt-0.5">{item.description}</p>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+import { MobileProgressiveMenu } from './mobile-progressive-menu';
 
 /* ------------------------------------------------------------------ */
 /*  Composant principal                                                 */
@@ -163,13 +50,21 @@ export function MobileBottomNav() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
-  // Get sections for current user role (may be null for staff)
-  const sections = user ? getMobileMenuSections(user.role) : null;
+  // Sections du menu métier pour le rôle courant (null si rôle non couvert)
+  const sections: MobileMenuSection[] | null = user
+    ? getMobileMenuSections(user.role)
+    : null;
 
+  // Module sélectionné dans la navigation progressive
   // MUST be before any early return — React rules of hooks
-  const [openSections, setOpenSections] = useState<Set<string>>(
-    () => new Set((sections ?? []).filter((s) => !s.defaultCollapsed).map((s) => s.id)),
-  );
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+
+  // Re-sync le module sélectionné à chaque ouverture du drawer
+  useEffect(() => {
+    if (menuOpen) {
+      setSelectedModule(getBusinessModuleForPath(pathname, sections ?? []));
+    }
+  }, [menuOpen, pathname, sections]);
 
   if (!user) return null;
 
@@ -187,13 +82,11 @@ export function MobileBottomNav() {
     ? sections.some((s) => s.items.some((i) => !i.disabled && isPathActive(pathname, i.href)))
     : false;
 
-  function toggleSection(id: string) {
-    setOpenSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function handleMenuOpenChange(open: boolean) {
+    if (!open) {
+      setSelectedModule(null);
+    }
+    setMenuOpen(open);
   }
 
   return (
@@ -274,7 +167,7 @@ export function MobileBottomNav() {
             );
           })}
 
-          {/* Bouton Menu (remplace Plus) */}
+          {/* Bouton Menu */}
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -297,19 +190,19 @@ export function MobileBottomNav() {
         </div>
       </nav>
 
-      {/* ── Drawer Menu Principal ─────────────────────────────────────── */}
-      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+      {/* ── Drawer Menu Principal — Navigation Progressive ────────────── */}
+      <Sheet open={menuOpen} onOpenChange={handleMenuOpenChange}>
         <SheetContent
           side="bottom"
-          className="max-h-[90vh] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#0A0E1A]/98 p-0 text-white backdrop-blur-xl"
+          className="max-h-[90vh] flex flex-col rounded-t-2xl border-t border-white/10 bg-[#0A0E1A]/98 p-0 text-white backdrop-blur-xl"
         >
           {/* Poignée visuelle */}
-          <div className="flex justify-center pt-3 pb-1">
+          <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="h-1 w-10 rounded-full bg-white/20" aria-hidden />
           </div>
 
           {/* En-tête utilisateur */}
-          <div className="px-5 py-3 border-b border-white/10">
+          <div className="px-5 py-3 border-b border-white/10 flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-iox-neon text-sm font-semibold text-white shadow-glow-cyan-sm ring-1 ring-[#00D4FF]/30">
                 {(user.firstName?.[0] ?? '').toUpperCase()}
@@ -322,27 +215,26 @@ export function MobileBottomNav() {
                 <p className="truncate text-xs text-white/50">{ROLE_LABELS[user.role]}</p>
               </div>
             </div>
-            <p className="mt-2 text-xs text-white/40">Choisissez ce que vous voulez faire.</p>
+            {selectedModule === null && (
+              <p className="mt-2 text-xs text-white/40">Choisissez une rubrique.</p>
+            )}
           </div>
 
-          {/* Sections accordéon */}
+          {/* Navigation progressive */}
           {sections && (
-            <div className="px-2 py-2 space-y-0.5">
-              {sections.map((section) => (
-                <MenuSection
-                  key={section.id}
-                  section={section}
-                  isOpen={openSections.has(section.id)}
-                  onToggle={() => toggleSection(section.id)}
-                  pathname={pathname}
-                  onItemClick={() => setMenuOpen(false)}
-                />
-              ))}
+            <div className="flex-1 overflow-y-auto">
+              <MobileProgressiveMenu
+                sections={sections}
+                pathname={pathname}
+                selectedModule={selectedModule}
+                onSelectModule={setSelectedModule}
+                onClose={() => setMenuOpen(false)}
+              />
             </div>
           )}
 
           {/* Pied — profil + déconnexion */}
-          <div className="border-t border-white/10 px-3 py-3">
+          <div className="border-t border-white/10 px-3 py-3 flex-shrink-0">
             <Link
               href="/profile"
               onClick={() => setMenuOpen(false)}
