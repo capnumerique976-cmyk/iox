@@ -110,8 +110,13 @@ describe('CatalogFilters (MP-FILTERS-1 + I18N-8)', () => {
 
   it('pousse une URL contenant les 7 paramètres à la soumission', async () => {
     render(<CatalogFilters />);
+    // Attendre que le select soit peuplé (options async chargées depuis l'API)
     await waitFor(() => {
-      expect(screen.getByTestId('catalog-filter-categorySlug')).toBeTruthy();
+      const select = screen.getByTestId('catalog-filter-categorySlug') as HTMLSelectElement;
+      // Au moins l'option vide "Toutes les catégories" + 1 catégorie réelle (epices)
+      expect(select.options.length).toBeGreaterThanOrEqual(2);
+      const values = Array.from(select.options).map((o) => o.value);
+      expect(values).toContain('epices');
     });
     fireEvent.change(screen.getByTestId('catalog-filter-categorySlug'), {
       target: { value: 'epices' },

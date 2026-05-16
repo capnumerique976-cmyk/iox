@@ -194,7 +194,7 @@ export function MobileBottomNav() {
       {/* ── Action contextuelle flottante ────────────────────────────── */}
       {contextualActions.length > 0 && (
         <div
-          className="md:hidden fixed left-0 right-0 z-20 flex justify-center px-6"
+          className="lg:hidden fixed left-0 right-0 z-20 flex justify-center px-6"
           style={{ bottom: 'calc(4.25rem + env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#0A0E1A]/90 px-2 py-1.5 backdrop-blur-xl shadow-lg shadow-black/40">
@@ -217,7 +217,7 @@ export function MobileBottomNav() {
 
       {/* ── Barre de navigation principale ───────────────────────────── */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#0A0E1A]/95 backdrop-blur-xl"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#0A0E1A]/95 backdrop-blur-xl"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Navigation principale"
       >

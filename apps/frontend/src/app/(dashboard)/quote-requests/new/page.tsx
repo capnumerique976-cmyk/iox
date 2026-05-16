@@ -5,17 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/auth.context';
-import { api } from '@/lib/api';
+import { companiesApi, type CompanySummary } from '@/lib/companies';
 import { quoteRequestsApi } from '@/lib/quote-requests';
 import { UserRole } from '@iox/shared';
 import { PageHeader } from '@/components/ui/page-header';
-
-interface Company {
-  id: string;
-  code: string;
-  name: string;
-  country?: string | null;
-}
 
 const inputCls =
   'w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
@@ -26,7 +19,7 @@ export default function NewQuoteRequestPage() {
   const { user, token } = useAuth();
   const offerId = params.get('offerId') ?? '';
 
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [companies, setCompanies] = useState<CompanySummary[]>([]);
   const [form, setForm] = useState({
     buyerCompanyId: '',
     requestedQuantity: '',
@@ -40,10 +33,12 @@ export default function NewQuoteRequestPage() {
 
   useEffect(() => {
     if (!token) return;
-    api
-      .get<{ data: Company[] }>('/companies?limit=200', token)
-      .then((res) => {
-        const list = res.data ?? [];
+    // BUGFIX: use /companies/mine (scoped to current user's memberships).
+    // GET /companies?limit=200 requires ADMIN/COORDINATOR roles and returns 403
+    // for MARKETPLACE_BUYER, causing the company dropdown to be silently empty.
+    companiesApi
+      .findMine(token)
+      .then((list) => {
         setCompanies(list);
         // Pre-select if only one company
         if (list.length === 1) {

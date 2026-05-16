@@ -173,4 +173,35 @@ describe('BuyerQuoteRequestDetailPage (BUYER-DASHBOARD-1)', () => {
     expect(await screen.findByText(/échanges sont fermés/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Nouveau message/i)).not.toBeInTheDocument();
   });
+
+  it('affiche le CTA "Finaliser le paiement" quand status WON', async () => {
+    getMock.mockResolvedValue(makeRfq(QuoteRequestStatus.WON));
+    messagesMock.mockResolvedValue([]);
+    render(<BuyerQuoteRequestDetailPage />);
+    await waitFor(() =>
+      expect(screen.getByTestId('buyer-rfq-payment-cta')).toBeInTheDocument(),
+    );
+    const btn = screen.getByTestId('buyer-rfq-pay-button');
+    expect(btn).toBeInTheDocument();
+    expect(btn).toHaveAttribute('href', '/buyer/payments/checkout/q1');
+  });
+
+  it('n\'affiche pas le CTA paiement quand status n\'est pas WON', async () => {
+    for (const status of [
+      QuoteRequestStatus.NEW,
+      QuoteRequestStatus.QUOTED,
+      QuoteRequestStatus.NEGOTIATING,
+      QuoteRequestStatus.LOST,
+      QuoteRequestStatus.CANCELLED,
+    ]) {
+      getMock.mockResolvedValue(makeRfq(status));
+      messagesMock.mockResolvedValue([]);
+      const { unmount } = render(<BuyerQuoteRequestDetailPage />);
+      await waitFor(() =>
+        expect(screen.getByText('Vanille Bourbon')).toBeInTheDocument(),
+      );
+      expect(screen.queryByTestId('buyer-rfq-payment-cta')).not.toBeInTheDocument();
+      unmount();
+    }
+  });
 });

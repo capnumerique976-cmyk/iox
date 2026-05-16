@@ -465,7 +465,7 @@ export default function SellerDashboardPage() {
             ['Gagnées', rfqCounts.byStatus[QuoteRequestStatus.WON] ?? 0],
           ]}
           emptyHint="Aucune demande entrante."
-          cta={{ href: '/quote-requests', label: 'Voir les demandes' }}
+          cta={{ href: '/seller/quote-requests', label: 'Voir les demandes' }}
         />
       </section>
 
@@ -486,7 +486,7 @@ export default function SellerDashboardPage() {
                     <li key={p.id} className="flex items-center justify-between">
                       <span className="truncate font-medium">{p.commercialName}</span>
                       <Link
-                        href={`/products/${p.id}`}
+                        href={`/seller/marketplace-products/${p.id}`}
                         className="flex-shrink-0 underline hover:no-underline"
                       >
                         Corriger
@@ -509,7 +509,7 @@ export default function SellerDashboardPage() {
                     <li key={o.id} className="flex items-center justify-between">
                       <span className="truncate font-medium">{o.title}</span>
                       <Link
-                        href={`/marketplace/offers/${o.id}`}
+                        href={`/seller/marketplace-offers/${o.id}`}
                         className="flex-shrink-0 underline hover:no-underline"
                       >
                         Corriger

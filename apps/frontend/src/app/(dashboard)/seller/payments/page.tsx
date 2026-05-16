@@ -186,8 +186,8 @@ export default function SellerPaymentsPage() {
       )}
 
       <p className="text-[11px] text-gray-500">
-        <Link href="/dashboard" className="text-blue-600 hover:underline">
-          ← Retour dashboard
+        <Link href="/seller/dashboard" className="text-blue-600 hover:underline">
+          ← Retour tableau de bord
         </Link>
       </p>
     </div>

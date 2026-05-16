@@ -110,10 +110,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="relative flex">
           <Sidebar />
           {/*
-           * pb-[5rem] sur mobile : compense la barre bottom nav fixe (4rem)
-           * pour que le contenu ne soit pas masqué. Réinitialisé à partir de md.
+           * pb-[5.5rem] sur mobile/tablette (<lg) : compense la barre bottom nav fixe
+           * pour que le contenu ne soit pas masqué. La sidebar contextuelle prend le
+           * relais à partir de lg (≥1024px), la bottom nav disparaît (lg:hidden).
            */}
-          <main className="flex-1 min-w-0 p-4 pb-[5.5rem] sm:p-6 sm:pb-[5.5rem] md:pb-6 lg:p-8">
+          <main className="flex-1 min-w-0 p-4 pb-[5.5rem] sm:p-6 sm:pb-[5.5rem] lg:pb-6 lg:p-8">
             <SellerOnboardingBanner />
             <ErrorBoundary>{children}</ErrorBoundary>
           </main>
