@@ -1,22 +1,39 @@
 /**
- * IOX — Configuration Menu Principal Mobile (M115)
+ * IOX — Configuration Menu Principal Mobile (M116B)
  *
  * Architecture à 3 niveaux :
  *   Niveau 1 — Bottom nav (4 onglets primaires, inchangée)
- *   Niveau 2 — Menu principal mobile (ce fichier)
- *   Niveau 3 — Sous-menus par section (accordéon dans le drawer)
+ *   Niveau 2 — Menu principal mobile (ce fichier) — 7 modules métier
+ *   Niveau 3 — Sous-menus par module (accordéon dans le drawer)
  *
- * Ce fichier est une source de données pure — aucun hook React,
- * aucun import component. Testable en isolation totale.
+ * Les 7 modules métier (structure commune par rôle) :
+ *   1. Accueil      — tableau de bord et actions du jour
+ *   2. Référentiel  — profils, documents, certifications
+ *   3. Production   — produits, lots, médias (seller/admin)
+ *   4. Achats       — demandes, devis, paiements
+ *   5. Catalogue    — offres, recherche, catégories
+ *   6. Distribution — factures, commandes, suivi
+ *   7. Administration — supervision, modération (admin uniquement)
+ *
+ * Règles :
+ *   - Administration jamais exposée aux seller/buyer
+ *   - Production cachée pour buyer (aucune route pertinente)
+ *   - Aucun faux lien : seules les routes existantes sont référencées
+ *   - Ce fichier est une source de données pure — testable en isolation
  */
 import { UserRole } from '@iox/shared';
 import {
+  Home,
+  BookOpen,
   Package,
+  ShoppingCart,
+  Store,
+  Truck,
+  ShieldCheck,
   Plus,
   Tag,
   MessageSquareQuote,
   FolderLock,
-  ShieldCheck,
   CreditCard,
   Receipt,
   UserCog,
@@ -24,11 +41,9 @@ import {
   Activity,
   Search,
   ShoppingBag,
-  ShoppingCart,
   Bell,
   Building2,
   Layers,
-  Store,
   ClipboardList,
   Image,
   ScrollText,
@@ -59,8 +74,10 @@ export interface MobileMenuItem {
 
 export interface MobileMenuSection {
   id: string;
-  /** Titre de la section. */
+  /** Titre du module métier. */
   label: string;
+  /** Description courte affichée dans l'en-tête accordéon. */
+  description?: string;
   icon: LucideIcon;
   items: MobileMenuItem[];
   /** Si true, section fermée à l'ouverture du menu. Défaut : false (ouverte). */
@@ -68,143 +85,125 @@ export interface MobileMenuSection {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Sections MARKETPLACE_SELLER                                         */
+/*  Sections MARKETPLACE_SELLER (6 modules — Administration cachée)    */
 /* ------------------------------------------------------------------ */
 
 export const SELLER_MENU_SECTIONS: MobileMenuSection[] = [
   {
-    id: 'products',
-    label: 'Mes produits',
-    icon: Package,
+    id: 'home',
+    label: 'Accueil',
+    description: 'Vos actions du jour et votre tableau de bord.',
+    icon: Home,
+    defaultCollapsed: false,
     items: [
       {
-        id: 'products-list',
-        label: 'Voir mes produits',
-        href: '/seller/marketplace-products',
-        icon: Package,
-        description: 'Gérez vos fiches produit',
-      },
-      {
-        id: 'products-new',
-        label: 'Ajouter un produit',
-        href: '/seller/marketplace-products/new',
-        icon: Plus,
-        description: 'Créer une nouvelle fiche produit',
-      },
-      {
-        id: 'offers-list',
-        label: 'Mes offres',
-        href: '/seller/marketplace-offers',
-        icon: Tag,
-        description: 'Offres commerciales publiées',
-      },
-      {
-        id: 'offers-new',
-        label: 'Ajouter une offre',
-        href: '/seller/marketplace-offers/new',
-        icon: Plus,
-        description: 'Créer une nouvelle offre',
+        id: 'seller-dashboard',
+        label: 'Tableau de bord',
+        href: '/seller/dashboard',
+        icon: Home,
+        description: 'Alertes, tâches et résumé du jour',
       },
     ],
   },
   {
-    id: 'quotes',
-    label: 'Mes demandes',
-    icon: MessageSquareQuote,
+    id: 'referentiel',
+    label: 'Référentiel',
+    description: 'Vos profils, documents et données de base.',
+    icon: BookOpen,
     defaultCollapsed: true,
     items: [
       {
-        id: 'quote-requests',
-        label: 'Demandes reçues',
-        href: '/seller/quote-requests',
-        icon: MessageSquareQuote,
-        description: 'Demandes de devis à traiter',
+        id: 'seller-profile-edit',
+        label: 'Mon profil vendeur',
+        href: '/seller/profile/edit',
+        icon: UserCog,
+        description: 'Modifier vos informations de vitrine',
       },
       {
-        id: 'messages-note',
-        label: 'Messages',
-        href: '/seller/quote-requests',
-        icon: MessageSquareQuote,
-        description: 'Les messages sont dans chaque demande',
-        disabled: true,
-        disabledNote: 'Accessible dans chaque demande',
-      },
-    ],
-  },
-  {
-    id: 'documents',
-    label: 'Documents',
-    icon: FolderLock,
-    defaultCollapsed: true,
-    items: [
-      {
-        id: 'documents',
+        id: 'seller-documents',
         label: 'Mes documents',
         href: '/seller/documents',
         icon: FolderLock,
         description: 'Pièces justificatives et contrats',
       },
       {
-        id: 'certifications',
+        id: 'seller-certifications',
         label: 'Certifications',
         href: '/seller/profile/certifications',
         icon: ShieldCheck,
-        description: 'Vos certifications et labels',
+        description: 'Vos certifications et labels qualité',
       },
-    ],
-  },
-  {
-    id: 'compliance',
-    label: 'Conformité',
-    icon: ShieldCheck,
-    defaultCollapsed: true,
-    items: [
       {
-        id: 'compliance',
-        label: 'Ma conformité',
+        id: 'seller-compliance',
+        label: 'Conformité',
         href: '/seller/compliance',
         icon: ShieldCheck,
-        description: 'Statut et documents requis',
+        description: 'Statut réglementaire et documents requis',
       },
     ],
   },
   {
-    id: 'payments',
-    label: 'Paiements et factures',
-    icon: CreditCard,
+    id: 'production',
+    label: 'Production',
+    description: 'Vos produits, lots et médias.',
+    icon: Package,
     defaultCollapsed: true,
     items: [
       {
-        id: 'invoices',
-        label: 'Mes factures',
-        href: '/seller/invoices',
-        icon: Receipt,
-        description: 'Historique des factures émises',
+        id: 'seller-products',
+        label: 'Mes produits',
+        href: '/seller/marketplace-products',
+        icon: Package,
+        description: 'Gérez vos fiches produit',
       },
       {
-        id: 'payments',
-        label: 'Paiements reçus',
-        href: '/seller/payments',
-        icon: CreditCard,
-        description: 'Configuration des encaissements',
+        id: 'seller-products-new',
+        label: 'Ajouter un produit',
+        href: '/seller/marketplace-products/new',
+        icon: Plus,
+        description: 'Créer une nouvelle fiche produit',
       },
     ],
   },
   {
-    id: 'account',
-    label: 'Mon compte',
-    icon: UserCog,
+    id: 'achats',
+    label: 'Achats',
+    description: 'Demandes reçues et réponses.',
+    icon: ShoppingCart,
     defaultCollapsed: true,
     items: [
       {
-        id: 'profile-edit',
-        label: 'Mon profil vendeur',
-        href: '/seller/profile/edit',
-        icon: UserCog,
-        description: 'Modifier vos informations',
+        id: 'seller-quote-requests',
+        label: 'Demandes reçues',
+        href: '/seller/quote-requests',
+        icon: MessageSquareQuote,
+        description: 'Demandes de devis des acheteurs',
+      },
+    ],
+  },
+  {
+    id: 'catalogue',
+    label: 'Catalogue',
+    description: 'Vos offres publiées sur le marché.',
+    icon: Store,
+    defaultCollapsed: true,
+    items: [
+      {
+        id: 'seller-offers',
+        label: 'Mes offres',
+        href: '/seller/marketplace-offers',
+        icon: Tag,
+        description: 'Offres commerciales publiées',
       },
       {
-        id: 'analytics',
+        id: 'seller-offers-new',
+        label: 'Ajouter une offre',
+        href: '/seller/marketplace-offers/new',
+        icon: Plus,
+        description: 'Créer une nouvelle offre',
+      },
+      {
+        id: 'seller-analytics',
         label: 'Statistiques',
         href: '/seller/analytics',
         icon: BarChart3,
@@ -212,122 +211,76 @@ export const SELLER_MENU_SECTIONS: MobileMenuSection[] = [
       },
     ],
   },
+  {
+    id: 'distribution',
+    label: 'Distribution',
+    description: 'Factures, paiements et suivi commercial.',
+    icon: Truck,
+    defaultCollapsed: true,
+    items: [
+      {
+        id: 'seller-invoices',
+        label: 'Mes factures',
+        href: '/seller/invoices',
+        icon: Receipt,
+        description: 'Historique des factures émises',
+      },
+      {
+        id: 'seller-payments',
+        label: 'Paiements',
+        href: '/seller/payments',
+        icon: CreditCard,
+        description: 'Configuration des encaissements Stripe',
+      },
+    ],
+  },
+  // Administration : cachée pour seller — aucune route admin exposée
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Sections MARKETPLACE_BUYER                                          */
+/*  Sections MARKETPLACE_BUYER (5 modules — Production + Admin cachés) */
 /* ------------------------------------------------------------------ */
 
 export const BUYER_MENU_SECTIONS: MobileMenuSection[] = [
   {
-    id: 'search',
-    label: 'Rechercher',
-    icon: Search,
+    id: 'home',
+    label: 'Accueil',
+    description: 'Vos actions du jour et votre tableau de bord.',
+    icon: Home,
+    defaultCollapsed: false,
     items: [
       {
-        id: 'catalog',
-        label: 'Catalogue',
-        href: '/marketplace-hub',
-        icon: ShoppingBag,
-        description: 'Parcourir tous les produits',
-      },
-      {
-        id: 'favorites',
-        label: 'Mes favoris',
-        href: '/marketplace/favorites',
-        icon: Heart,
-        description: 'Produits sauvegardés',
-      },
-      {
-        id: 'categories',
-        label: 'Catégories',
-        href: '/marketplace/categories',
-        icon: Layers,
-        description: 'Parcourir par catégorie',
+        id: 'buyer-dashboard',
+        label: 'Tableau de bord',
+        href: '/buyer',
+        icon: Home,
+        description: 'Alertes, tâches et résumé du jour',
       },
     ],
   },
   {
-    id: 'quotes',
-    label: 'Mes demandes',
-    icon: MessageSquareQuote,
+    id: 'referentiel',
+    label: 'Référentiel',
+    description: 'Vos profils et données de base.',
+    icon: BookOpen,
     defaultCollapsed: true,
     items: [
       {
-        id: 'new-rfq',
-        label: 'Nouvelle demande',
-        href: '/quote-requests/new',
-        icon: Plus,
-        description: 'Demander un devis à un vendeur',
-      },
-      {
-        id: 'my-rfqs',
-        label: 'Toutes mes demandes',
-        href: '/buyer/quote-requests',
-        icon: MessageSquareQuote,
-        description: 'Suivi de toutes vos demandes',
-      },
-    ],
-  },
-  {
-    id: 'payments',
-    label: 'Paiements',
-    icon: CreditCard,
-    defaultCollapsed: true,
-    items: [
-      {
-        id: 'payments',
-        label: 'Paiements à finaliser',
-        href: '/buyer/payments',
-        icon: CreditCard,
-        description: 'Commandes en attente de paiement',
-      },
-      {
-        id: 'orders',
-        label: 'Mes commandes',
-        href: '/buyer/orders',
-        icon: ShoppingCart,
-        description: 'Historique des commandes',
-      },
-    ],
-  },
-  {
-    id: 'invoices',
-    label: 'Factures',
-    icon: Receipt,
-    defaultCollapsed: true,
-    items: [
-      {
-        id: 'invoices',
-        label: 'Mes factures',
-        href: '/buyer/invoices',
-        icon: Receipt,
-        description: 'Téléchargez vos factures',
-      },
-    ],
-  },
-  {
-    id: 'account',
-    label: 'Mon compte',
-    icon: UserCog,
-    defaultCollapsed: true,
-    items: [
-      {
-        id: 'profile',
+        id: 'buyer-profile',
         label: 'Mon profil acheteur',
         href: '/buyer/profile',
         icon: Building2,
         description: 'Informations de votre entreprise',
       },
       {
-        id: 'profile-edit',
+        id: 'buyer-profile-edit',
         label: 'Modifier le profil',
         href: '/buyer/profile/edit',
         icon: UserCog,
         description: 'Mettre à jour vos informations',
       },
       {
-        id: 'preferences',
+        id: 'buyer-preferences',
         label: 'Préférences',
         href: '/buyer/preferences',
         icon: Bell,
@@ -335,56 +288,137 @@ export const BUYER_MENU_SECTIONS: MobileMenuSection[] = [
       },
     ],
   },
-];
-
-/* ------------------------------------------------------------------ */
-/*  Sections ADMIN                                                      */
-/* ------------------------------------------------------------------ */
-
-export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
+  // Production : cachée pour buyer — aucune route pertinente
   {
-    id: 'review',
-    label: 'À traiter',
-    icon: ClipboardList,
+    id: 'achats',
+    label: 'Achats',
+    description: 'Demandes, devis et commandes.',
+    icon: ShoppingCart,
+    defaultCollapsed: true,
     items: [
       {
-        id: 'review-queue',
-        label: 'Documents à valider',
-        href: '/admin/review-queue',
-        icon: ClipboardList,
-        description: 'Soumissions vendeurs en attente',
+        id: 'buyer-rfq-new',
+        label: 'Nouvelle demande',
+        href: '/quote-requests/new',
+        icon: Plus,
+        description: 'Envoyer une demande de devis à un vendeur',
       },
       {
-        id: 'media-moderation',
-        label: 'Médias en attente',
-        href: '/admin/media-moderation',
-        icon: Image,
-        description: 'Photos et vidéos à modérer',
-      },
-      {
-        id: 'sellers-pending',
-        label: 'Vendeurs en attente',
-        href: '/admin/sellers',
-        icon: Store,
-        description: 'Profils à valider',
+        id: 'buyer-quote-requests',
+        label: 'Mes demandes',
+        href: '/buyer/quote-requests',
+        icon: MessageSquareQuote,
+        description: 'Suivi de toutes vos demandes',
       },
     ],
   },
   {
-    id: 'users',
-    label: 'Utilisateurs',
-    icon: UserCog,
+    id: 'catalogue',
+    label: 'Catalogue',
+    description: 'Recherche, offres et catégories.',
+    icon: Store,
     defaultCollapsed: true,
     items: [
       {
-        id: 'users',
+        id: 'buyer-catalog',
+        label: 'Catalogue',
+        href: '/marketplace-hub',
+        icon: ShoppingBag,
+        description: 'Parcourir tous les produits',
+      },
+      {
+        id: 'buyer-categories',
+        label: 'Catégories',
+        href: '/marketplace/categories',
+        icon: Layers,
+        description: 'Parcourir par catégorie',
+      },
+      {
+        id: 'buyer-favorites',
+        label: 'Mes favoris',
+        href: '/marketplace/favorites',
+        icon: Heart,
+        description: 'Produits sauvegardés',
+      },
+    ],
+  },
+  {
+    id: 'distribution',
+    label: 'Distribution',
+    description: 'Factures, commandes et suivi.',
+    icon: Truck,
+    defaultCollapsed: true,
+    items: [
+      {
+        id: 'buyer-payments',
+        label: 'Paiements',
+        href: '/buyer/payments',
+        icon: CreditCard,
+        description: 'Commandes en attente de paiement',
+      },
+      {
+        id: 'buyer-orders',
+        label: 'Mes commandes',
+        href: '/buyer/orders',
+        icon: ShoppingCart,
+        description: 'Historique des commandes passées',
+      },
+      {
+        id: 'buyer-invoices',
+        label: 'Mes factures',
+        href: '/buyer/invoices',
+        icon: Receipt,
+        description: 'Téléchargez vos factures',
+      },
+    ],
+  },
+  // Administration : cachée pour buyer — aucune route admin exposée
+];
+
+/* ------------------------------------------------------------------ */
+/*  Sections ADMIN (7 modules complets)                                */
+/* ------------------------------------------------------------------ */
+
+export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
+  {
+    id: 'home',
+    label: 'Accueil',
+    description: 'Tableau de bord et alertes plateforme.',
+    icon: Home,
+    defaultCollapsed: false,
+    items: [
+      {
+        id: 'admin-dashboard',
+        label: 'Tableau de bord',
+        href: '/admin',
+        icon: Home,
+        description: 'Vue globale de la plateforme',
+      },
+    ],
+  },
+  {
+    id: 'referentiel',
+    label: 'Référentiel',
+    description: 'Utilisateurs, vendeurs et rattachements.',
+    icon: BookOpen,
+    defaultCollapsed: true,
+    items: [
+      {
+        id: 'admin-users',
         label: 'Utilisateurs',
         href: '/admin/users',
         icon: UserCog,
         description: 'Comptes et rôles',
       },
       {
-        id: 'memberships',
+        id: 'admin-sellers',
+        label: 'Vendeurs',
+        href: '/admin/sellers',
+        icon: Store,
+        description: 'Profils vendeurs et statuts',
+      },
+      {
+        id: 'admin-memberships',
         label: 'Rattachements',
         href: '/admin/memberships',
         icon: Network,
@@ -393,63 +427,106 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
     ],
   },
   {
-    id: 'marketplace',
-    label: 'Marketplace',
-    icon: Store,
+    id: 'production',
+    label: 'Production',
+    description: 'Revue documentaire et modération.',
+    icon: Package,
     defaultCollapsed: true,
     items: [
       {
-        id: 'categories',
-        label: 'Catégories',
-        href: '/admin/marketplace/categories',
-        icon: Layers,
-        description: 'Taxonomie du catalogue',
+        id: 'admin-review-queue',
+        label: 'À valider',
+        href: '/admin/review-queue',
+        icon: ClipboardList,
+        description: 'Documents et soumissions en attente',
       },
       {
-        id: 'rfq',
-        label: 'Demandes de devis',
-        href: '/admin/rfq',
-        icon: MessageSquareQuote,
-        description: 'Suivi RFQ côté plateforme',
-      },
-      {
-        id: 'compliance-admin',
-        label: 'Conformité',
-        href: '/admin/compliance',
-        icon: ShieldCheck,
-        description: 'Documents et certifications',
+        id: 'admin-media-moderation',
+        label: 'Médias',
+        href: '/admin/media-moderation',
+        icon: Image,
+        description: 'Photos et vidéos à modérer',
       },
     ],
   },
   {
-    id: 'operations',
-    label: 'Exploitation',
-    icon: Activity,
+    id: 'achats',
+    label: 'Achats',
+    description: 'Suivi des demandes de la plateforme.',
+    icon: ShoppingCart,
     defaultCollapsed: true,
     items: [
       {
-        id: 'kpi',
+        id: 'admin-rfq',
+        label: 'Demandes de devis',
+        href: '/admin/rfq',
+        icon: MessageSquareQuote,
+        description: 'Suivi global des RFQ plateforme',
+      },
+    ],
+  },
+  {
+    id: 'catalogue',
+    label: 'Catalogue',
+    description: 'Catégories et taxonomie.',
+    icon: Store,
+    defaultCollapsed: true,
+    items: [
+      {
+        id: 'admin-categories',
+        label: 'Catégories',
+        href: '/admin/marketplace/categories',
+        icon: Layers,
+        description: 'Taxonomie du catalogue produit',
+      },
+    ],
+  },
+  {
+    id: 'distribution',
+    label: 'Distribution',
+    description: 'Conformité et indicateurs.',
+    icon: Truck,
+    defaultCollapsed: true,
+    items: [
+      {
+        id: 'admin-compliance',
+        label: 'Conformité',
+        href: '/admin/compliance',
+        icon: ShieldCheck,
+        description: 'Documents et certifications vendeurs',
+      },
+      {
+        id: 'admin-kpi',
         label: 'KPI',
         href: '/admin/kpi',
         icon: BarChart3,
-        description: 'Indicateurs de performance',
+        description: 'Indicateurs de performance plateforme',
       },
+    ],
+  },
+  {
+    id: 'administration',
+    label: 'Administration',
+    description: 'Contrôle, modération et exploitation.',
+    icon: ShieldCheck,
+    defaultCollapsed: true,
+    items: [
       {
-        id: 'audit',
+        id: 'admin-audit',
         label: "Journal d'audit",
         href: '/admin/audit-logs',
         icon: ScrollText,
-        description: 'Traçabilité des actions',
+        description: 'Traçabilité complète des actions',
       },
       {
-        id: 'diagnostics',
+        id: 'admin-diagnostics',
         label: 'Diagnostics',
         href: '/admin/diagnostics',
         icon: Activity,
-        description: 'Santé technique',
+        description: 'Santé technique de la plateforme',
       },
       {
-        id: 'emails',
+        id: 'admin-emails',
         label: 'Emails',
         href: '/admin/notif-email/logs',
         icon: Bell,
@@ -464,8 +541,12 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
 /* ------------------------------------------------------------------ */
 
 /**
- * Retourne les sections du menu principal mobile pour un rôle donné.
- * null si le rôle n'a pas de menu mobile (staff → hamburger existant).
+ * Retourne les sections du menu principal mobile (7 modules métier)
+ * pour un rôle donné. null si le rôle n'a pas de menu mobile.
+ *
+ * seller → 6 modules (Administration cachée)
+ * buyer  → 5 modules (Production + Administration cachées)
+ * admin  → 7 modules complets
  */
 export function getMobileMenuSections(role: UserRole): MobileMenuSection[] | null {
   if (role === UserRole.MARKETPLACE_SELLER) return SELLER_MENU_SECTIONS;

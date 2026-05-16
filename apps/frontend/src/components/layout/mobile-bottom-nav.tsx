@@ -78,9 +78,16 @@ function MenuSection({ section, isOpen, onToggle, pathname, onItemClick }: Secti
           )}
           aria-hidden
         />
-        <span className={cn('flex-1 text-sm font-semibold', !hasActive && 'text-white/85')}>
-          {section.label}
-        </span>
+        <div className="flex-1 min-w-0">
+          <span className={cn('text-sm font-semibold', !hasActive && 'text-white/85')}>
+            {section.label}
+          </span>
+          {section.description && (
+            <p className="text-xs text-white/35 leading-snug mt-0.5 truncate">
+              {section.description}
+            </p>
+          )}
+        </div>
         {isOpen ? (
           <ChevronDown className="h-4 w-4 text-white/30" aria-hidden />
         ) : (
