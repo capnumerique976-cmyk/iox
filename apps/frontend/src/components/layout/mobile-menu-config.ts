@@ -723,3 +723,40 @@ export function getBusinessModuleForPath(
 
   return bestSectionId;
 }
+
+/**
+ * Trouve l'item actif le plus spécifique parmi une liste d'items (longest match wins).
+ * Évite le double état actif quand un item parent et son enfant correspondent tous les deux
+ * au pathname courant via la règle startsWith.
+ *
+ * Exemples :
+ *   pathname = '/buyer/profile/edit'
+ *   items = ['/buyer/profile', '/buyer/profile/edit', '/buyer/preferences']
+ *   → retourne '/buyer/profile/edit'  (plus spécifique que '/buyer/profile')
+ *
+ *   pathname = '/buyer/profile'
+ *   → retourne '/buyer/profile'  ('/buyer/profile/edit' ne matche pas)
+ *
+ *   pathname = '/seller/marketplace-products/new'
+ *   items = ['/seller/marketplace-products', '/seller/marketplace-products/new']
+ *   → retourne '/seller/marketplace-products/new'
+ */
+export function getActiveItemHref(
+  pathname: string,
+  items: MobileMenuItem[],
+): string | null {
+  let best: string | null = null;
+  let bestLen = -1;
+
+  for (const item of items) {
+    if (item.disabled) continue;
+    if (pathname === item.href || pathname.startsWith(item.href + '/')) {
+      if (item.href.length > bestLen) {
+        best = item.href;
+        bestLen = item.href.length;
+      }
+    }
+  }
+
+  return best;
+}

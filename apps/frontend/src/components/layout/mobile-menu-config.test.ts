@@ -3,6 +3,7 @@ import { UserRole } from '@iox/shared';
 import {
   getMobileMenuSections,
   getBusinessModuleForPath,
+  getActiveItemHref,
   SELLER_MENU_SECTIONS,
   BUYER_MENU_SECTIONS,
   ADMIN_MENU_SECTIONS,
@@ -585,5 +586,54 @@ describe('labels sans jargon', () => {
         }
       }
     }
+  });
+});
+
+/* ─── getActiveItemHref (M123) ─────────────────────────────────────── */
+
+describe('getActiveItemHref', () => {
+  const buyerDossierItems = BUYER_MENU_SECTIONS.find((s) => s.id === 'referentiel')!.items;
+
+  it('buyer /buyer/profile/edit → retourne /buyer/profile/edit (plus spécifique)', () => {
+    expect(getActiveItemHref('/buyer/profile/edit', buyerDossierItems)).toBe('/buyer/profile/edit');
+  });
+
+  it('buyer /buyer/profile → retourne /buyer/profile (pas /buyer/profile/edit)', () => {
+    expect(getActiveItemHref('/buyer/profile', buyerDossierItems)).toBe('/buyer/profile');
+  });
+
+  it('buyer /buyer/preferences → retourne /buyer/preferences', () => {
+    expect(getActiveItemHref('/buyer/preferences', buyerDossierItems)).toBe('/buyer/preferences');
+  });
+
+  it('retourne null si aucun item ne correspond', () => {
+    expect(getActiveItemHref('/seller/some-unknown-route', buyerDossierItems)).toBeNull();
+  });
+
+  it('seller Production — /seller/marketplace-products/new → retourne /seller/marketplace-products/new', () => {
+    const sellerProductionItems = SELLER_MENU_SECTIONS.find((s) => s.id === 'production')!.items;
+    expect(
+      getActiveItemHref('/seller/marketplace-products/new', sellerProductionItems),
+    ).toBe('/seller/marketplace-products/new');
+  });
+
+  it('seller Production — /seller/marketplace-products → retourne /seller/marketplace-products (pas new)', () => {
+    const sellerProductionItems = SELLER_MENU_SECTIONS.find((s) => s.id === 'production')!.items;
+    expect(
+      getActiveItemHref('/seller/marketplace-products', sellerProductionItems),
+    ).toBe('/seller/marketplace-products');
+  });
+
+  it('items vides → retourne null', () => {
+    expect(getActiveItemHref('/buyer/profile', [])).toBeNull();
+  });
+
+  it('items disabled ignorés même si leur href correspond', () => {
+    const items = [
+      { id: 'a', label: 'A', href: '/buyer/profile', icon: {} as any, disabled: true },
+      { id: 'b', label: 'B', href: '/buyer/profile/edit', icon: {} as any },
+    ];
+    expect(getActiveItemHref('/buyer/profile', items)).toBeNull();
+    expect(getActiveItemHref('/buyer/profile/edit', items)).toBe('/buyer/profile/edit');
   });
 });

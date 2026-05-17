@@ -32,8 +32,12 @@
 import Link from 'next/link';
 import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isPathActive } from './mobile-nav-config';
-import { type MobileMenuSection, type MobileMenuItem } from './mobile-menu-config';
+import {
+  getBusinessModuleForPath,
+  getActiveItemHref,
+  type MobileMenuSection,
+  type MobileMenuItem,
+} from './mobile-menu-config';
 
 /* ------------------------------------------------------------------ */
 /*  Niveau 1 — Carte module                                            */
@@ -112,13 +116,14 @@ function ModuleCard({ section, isActive, onSelect }: ModuleCardProps) {
 
 interface SubItemProps {
   item: MobileMenuItem;
-  pathname: string;
+  /** Href de l'item actif (longest match wins) — seul cet item affiche le point bleu. */
+  activeItemHref: string | null;
   onNavigate: () => void;
 }
 
-function SubItem({ item, pathname, onNavigate }: SubItemProps) {
+function SubItem({ item, activeItemHref, onNavigate }: SubItemProps) {
   const ItemIcon = item.icon;
-  const active = !item.disabled && isPathActive(pathname, item.href);
+  const active = !item.disabled && item.href === activeItemHref;
 
   if (item.disabled) {
     return (
@@ -194,20 +199,17 @@ export function MobileProgressiveMenu({
   onSelectModule,
   onClose,
 }: MobileProgressiveMenuProps) {
-  const activeModuleId = (() => {
-    for (const section of sections) {
-      if (section.items.some((i) => !i.disabled && isPathActive(pathname, i.href))) {
-        return section.id;
-      }
-    }
-    return null;
-  })();
+  // Longest match wins : seul le module dont l'item est le plus spécifique est actif.
+  const activeModuleId = getBusinessModuleForPath(pathname, sections);
 
   /* ── Niveau 2 : sous-menus du module sélectionné ─────────────── */
   if (selectedModule !== null) {
     const section = sections.find((s) => s.id === selectedModule);
     if (!section) return null;
     const Icon = section.icon;
+
+    // Longest match wins parmi les items du module — un seul point bleu à la fois.
+    const activeItemHref = getActiveItemHref(pathname, section.items);
 
     return (
       <div className="flex flex-col h-full">
@@ -233,7 +235,7 @@ export function MobileProgressiveMenu({
             <SubItem
               key={item.id}
               item={item}
-              pathname={pathname}
+              activeItemHref={activeItemHref}
               onNavigate={onClose}
             />
           ))}

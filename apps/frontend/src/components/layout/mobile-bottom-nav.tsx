@@ -233,8 +233,8 @@ export function MobileBottomNav() {
             </div>
           )}
 
-          {/* Pied — profil + déconnexion */}
-          <div className="border-t border-white/10 px-3 py-3 flex-shrink-0">
+          {/* Pied — profil + déconnexion (séparé des modules métier) */}
+          <div className="border-t border-white/20 px-3 py-3 flex-shrink-0">
             <Link
               href="/profile"
               onClick={() => setMenuOpen(false)}
