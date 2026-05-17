@@ -252,19 +252,19 @@ describe('couverture routes seller', () => {
     expect(hrefs).toContain('/seller/dashboard');
   });
 
-  it('contient /seller/profile/edit (Référentiel)', () => {
+  it('contient /seller/profile/edit (Mon dossier)', () => {
     expect(hrefs).toContain('/seller/profile/edit');
   });
 
-  it('contient /seller/documents (Référentiel)', () => {
+  it('contient /seller/documents (Mon dossier)', () => {
     expect(hrefs).toContain('/seller/documents');
   });
 
-  it('contient /seller/profile/certifications (Référentiel)', () => {
+  it('contient /seller/profile/certifications (Mon dossier)', () => {
     expect(hrefs).toContain('/seller/profile/certifications');
   });
 
-  it('contient /seller/compliance (Référentiel)', () => {
+  it('contient /seller/compliance (Mon dossier)', () => {
     expect(hrefs).toContain('/seller/compliance');
   });
 
@@ -308,7 +308,7 @@ describe('couverture routes seller', () => {
     expect(sectionById(SELLER_MENU_SECTIONS, 'production')?.defaultCollapsed).toBe(true);
   });
 
-  it('module Référentiel fermé par défaut', () => {
+  it('module Mon dossier fermé par défaut', () => {
     expect(sectionById(SELLER_MENU_SECTIONS, 'referentiel')?.defaultCollapsed).toBe(true);
   });
 });
@@ -322,15 +322,15 @@ describe('couverture routes buyer', () => {
     expect(hrefs).toContain('/buyer');
   });
 
-  it('contient /buyer/profile (Référentiel)', () => {
+  it('contient /buyer/profile (Mon dossier)', () => {
     expect(hrefs).toContain('/buyer/profile');
   });
 
-  it('contient /buyer/profile/edit (Référentiel)', () => {
+  it('contient /buyer/profile/edit (Mon dossier)', () => {
     expect(hrefs).toContain('/buyer/profile/edit');
   });
 
-  it('contient /buyer/preferences (Référentiel)', () => {
+  it('contient /buyer/preferences (Mon dossier)', () => {
     expect(hrefs).toContain('/buyer/preferences');
   });
 
@@ -374,9 +374,9 @@ describe('couverture routes admin', () => {
 
   // Routes admin spécifiques
   it('contient /admin (Accueil)', () => expect(hrefs).toContain('/admin'));
-  it('contient /admin/users (Référentiel)', () => expect(hrefs).toContain('/admin/users'));
-  it('contient /admin/sellers (Référentiel)', () => expect(hrefs).toContain('/admin/sellers'));
-  it('contient /admin/memberships (Référentiel)', () => expect(hrefs).toContain('/admin/memberships'));
+  it('contient /admin/users (Mon dossier)', () => expect(hrefs).toContain('/admin/users'));
+  it('contient /admin/sellers (Mon dossier)', () => expect(hrefs).toContain('/admin/sellers'));
+  it('contient /admin/memberships (Mon dossier)', () => expect(hrefs).toContain('/admin/memberships'));
   it('contient /admin/review-queue (Production)', () => expect(hrefs).toContain('/admin/review-queue'));
   it('contient /admin/media-moderation (Production)', () => expect(hrefs).toContain('/admin/media-moderation'));
   it('contient /admin/rfq (Achats)', () => expect(hrefs).toContain('/admin/rfq'));
@@ -389,10 +389,10 @@ describe('couverture routes admin', () => {
 
   // Routes staff (parité desktop M117 — admin voit toutes sections sur desktop)
   it('contient /dashboard (Accueil — tableau général M117)', () => expect(hrefs).toContain('/dashboard'));
-  it('contient /beneficiaries (Référentiel staff M117)', () => expect(hrefs).toContain('/beneficiaries'));
-  it('contient /companies (Référentiel staff M117)', () => expect(hrefs).toContain('/companies'));
-  it('contient /supply-contracts (Référentiel staff M117)', () => expect(hrefs).toContain('/supply-contracts'));
-  it('contient /products (Référentiel staff M117)', () => expect(hrefs).toContain('/products'));
+  it('contient /beneficiaries (Mon dossier staff M117)', () => expect(hrefs).toContain('/beneficiaries'));
+  it('contient /companies (Mon dossier staff M117)', () => expect(hrefs).toContain('/companies'));
+  it('contient /supply-contracts (Mon dossier staff M117)', () => expect(hrefs).toContain('/supply-contracts'));
+  it('contient /products (Mon dossier staff M117)', () => expect(hrefs).toContain('/products'));
   it('contient /inbound-batches (Production staff M117)', () => expect(hrefs).toContain('/inbound-batches'));
   it('contient /transformation-operations (Production staff M117)', () => expect(hrefs).toContain('/transformation-operations'));
   it('contient /product-batches (Production staff M117)', () => expect(hrefs).toContain('/product-batches'));

@@ -13,7 +13,7 @@
  *
  * Les 7 modules métier (structure commune par rôle) :
  *   1. Accueil      — tableau de bord et actions du jour
- *   2. Référentiel  — profils, documents, certifications
+ *   2. Mon dossier  — profils, documents, certifications
  *   3. Production   — produits, lots, médias (seller/admin)
  *   4. Achats       — demandes, devis, paiements
  *   5. Catalogue    — offres, recherche, catégories
@@ -122,8 +122,8 @@ export const SELLER_MENU_SECTIONS: MobileMenuSection[] = [
   },
   {
     id: 'referentiel',
-    label: 'Référentiel',
-    description: 'Vos profils, documents et données de base.',
+    label: 'Mon dossier',
+    description: 'Votre profil, vos documents et votre conformité.',
     icon: BookOpen,
     defaultCollapsed: true,
     items: [
@@ -283,8 +283,8 @@ export const BUYER_MENU_SECTIONS: MobileMenuSection[] = [
   },
   {
     id: 'referentiel',
-    label: 'Référentiel',
-    description: 'Vos profils et données de base.',
+    label: 'Mon dossier',
+    description: 'Votre profil, vos documents et votre conformité.',
     icon: BookOpen,
     defaultCollapsed: true,
     items: [
@@ -437,8 +437,8 @@ export const ADMIN_MENU_SECTIONS: MobileMenuSection[] = [
   },
   {
     id: 'referentiel',
-    label: 'Référentiel',
-    description: 'Utilisateurs, vendeurs, bénéficiaires et données de base.',
+    label: 'Mon dossier',
+    description: 'Votre profil, vos documents et votre conformité.',
     icon: BookOpen,
     defaultCollapsed: true,
     items: [
