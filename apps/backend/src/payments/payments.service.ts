@@ -25,7 +25,10 @@ import {
 import {
   PAYMENT_PROVIDER,
   type PaymentProvider,
+  type CheckoutSessionResult,
+  type RefundResult,
 } from './provider/payment-provider.interface';
+import { PaymentProviderError } from './provider/payment-provider.errors';
 import type { RefundPaymentDto } from './dto/payments.dto';
 import { QuoteRequestFsm } from '../quote-requests/quote-request-fsm';
 
@@ -138,20 +141,28 @@ export class PaymentsService {
     });
 
     // 4. Crée Checkout Session via le provider
-    const sessionResult = await this.provider.createCheckoutSession({
-      amountCents: input.amountCents,
-      currency,
-      productName: rfq.marketplaceOffer.title ?? 'Commande IOX Marketplace',
-      applicationFeeCents,
-      destinationAccountId: stripeAccount.stripeAccountId,
-      successUrl: input.returnUrl,
-      cancelUrl: input.cancelUrl,
-      metadata: {
-        payment_id: payment.id,
-        quote_request_id: input.quoteRequestId,
-        marketplace_offer_id: input.marketplaceOfferId,
-      },
-    });
+    let sessionResult: CheckoutSessionResult;
+    try {
+      sessionResult = await this.provider.createCheckoutSession({
+        amountCents: input.amountCents,
+        currency,
+        productName: rfq.marketplaceOffer.title ?? 'Commande IOX Marketplace',
+        applicationFeeCents,
+        destinationAccountId: stripeAccount.stripeAccountId,
+        successUrl: input.returnUrl,
+        cancelUrl: input.cancelUrl,
+        metadata: {
+          payment_id: payment.id,
+          quote_request_id: input.quoteRequestId,
+          marketplace_offer_id: input.marketplaceOfferId,
+        },
+      });
+    } catch (err) {
+      if (err instanceof PaymentProviderError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
 
     // 5. Persist sessionId sur Payment row
     await this.prisma.payment.update({
@@ -249,10 +260,21 @@ export class PaymentsService {
       }
     }
 
-    const refundResult = await this.provider.createRefund({
-      paymentIntentId: payment.stripePaymentIntentId ?? '',
-      amountCents: dto.amountCents,
-    });
+    if (!payment.stripePaymentIntentId) {
+      throw new BadRequestException('Aucun paymentIntentId associé à ce paiement.');
+    }
+    let refundResult: RefundResult;
+    try {
+      refundResult = await this.provider.createRefund({
+        paymentIntentId: payment.stripePaymentIntentId,
+        amountCents: dto.amountCents,
+      });
+    } catch (err) {
+      if (err instanceof PaymentProviderError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
 
     const existingMeta =
       (payment.metadataJson as Record<string, unknown> | null) ?? {};

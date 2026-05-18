@@ -34,6 +34,7 @@ function makeProviderMock(opts: { configured?: boolean } = {}): PaymentProvider 
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
+  let providerMock: PaymentProvider;
   let prisma: {
     payment: {
       findUnique: jest.Mock;
@@ -69,13 +70,14 @@ describe('PaymentsService', () => {
     prisma.$transaction.mockImplementation(async (arr: unknown[]) =>
       Promise.all(arr as Promise<unknown>[]),
     );
+    providerMock = makeProviderMock();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PaymentsService,
         { provide: PrismaService, useValue: prisma },
         { provide: SellerOwnershipService, useValue: ownershipMock },
         { provide: AuditService, useValue: auditMock },
-        { provide: PAYMENT_PROVIDER, useValue: makeProviderMock() },
+        { provide: PAYMENT_PROVIDER, useValue: providerMock },
       ],
     }).compile();
     service = module.get(PaymentsService);
@@ -192,6 +194,13 @@ describe('PaymentsService', () => {
       expect(data.applicationFeeCents).toBe(5000);
       expect(data.currency).toBe('EUR');
       expect(data.status).toBe(PaymentStatus.PENDING);
+      expect(providerMock.createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amountCents: 100000,
+          currency: expect.any(String),
+          destinationAccountId: expect.any(String),
+        }),
+      );
     });
 
     it('RFQ pas WON → BadRequestException', async () => {
@@ -325,6 +334,31 @@ describe('PaymentsService', () => {
             marketplaceOfferId: 'o1',
             amountCents: 1000,
             currency: 'GBP',
+            returnUrl: 'r',
+            cancelUrl: 'c',
+          },
+          buyer,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when provider not configured', async () => {
+      const module = await Test.createTestingModule({
+        providers: [
+          PaymentsService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: SellerOwnershipService, useValue: ownershipMock },
+          { provide: AuditService, useValue: auditMock },
+          { provide: PAYMENT_PROVIDER, useValue: makeProviderMock({ configured: false }) },
+        ],
+      }).compile();
+      const svc = module.get(PaymentsService);
+      await expect(
+        svc.createCheckoutSession(
+          {
+            quoteRequestId: 'rfq1',
+            marketplaceOfferId: 'o1',
+            amountCents: 1000,
             returnUrl: 'r',
             cancelUrl: 'c',
           },
