@@ -22,7 +22,11 @@ import {
   RequestUser,
   SellerStripeAccountStatus,
 } from '@iox/shared';
-import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
+import {
+  PAYMENT_PROVIDER,
+  type PaymentProvider,
+} from './provider/payment-provider.interface';
+import { PaymentProviderError } from './provider/payment-provider.errors';
 
 @Injectable()
 export class StripeOnboardingService {
@@ -31,7 +35,7 @@ export class StripeOnboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ownership: SellerOwnershipService,
-    @Inject(STRIPE_CLIENT) private readonly stripeWrapper: StripeClientWrapper,
+    @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
   ) {}
 
   /**
@@ -54,36 +58,36 @@ export class StripeOnboardingService {
       return seller.stripeAccount;
     }
 
-    if (!this.stripeWrapper.isConfigured()) {
+    if (!this.provider.isConfigured()) {
       throw new BadRequestException(
         'Stripe non configuré côté serveur. Contacter l\'admin.',
       );
     }
 
-    const stripe = this.stripeWrapper.client();
-    const account = await stripe.accounts.create({
-      type: 'express',
-      country: seller.country ?? 'FR',
-      email: seller.company?.email ?? undefined,
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-      business_type: 'company',
-      metadata: {
-        seller_profile_id: sellerProfileId,
-        company_id: seller.companyId,
-      },
-    });
+    let accountId: string;
+    try {
+      const result = await this.provider.createConnectedAccount({
+        country: seller.country ?? 'FR',
+        email: seller.company?.email ?? undefined,
+        sellerProfileId,
+        companyId: seller.companyId,
+      });
+      accountId = result.accountId;
+    } catch (err) {
+      if (err instanceof PaymentProviderError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
 
     this.logger.log(
-      `Stripe Express account created sellerProfileId=${sellerProfileId} stripeAccountId=${account.id}`,
+      `Stripe Express account created sellerProfileId=${sellerProfileId} stripeAccountId=${accountId}`,
     );
 
     return this.prisma.sellerStripeAccount.create({
       data: {
         sellerProfileId,
-        stripeAccountId: account.id,
+        stripeAccountId: accountId,
         status: SellerStripeAccountStatus.PENDING_ONBOARDING,
         chargesEnabled: false,
         payoutsEnabled: false,
@@ -103,7 +107,7 @@ export class StripeOnboardingService {
     refreshUrl: string,
     actor?: RequestUser,
   ): Promise<{ url: string; expiresAt: number }> {
-    if (!this.stripeWrapper.isConfigured()) {
+    if (!this.provider.isConfigured()) {
       throw new BadRequestException(
         'Stripe non configuré côté serveur. Contacter l\'admin.',
       );
@@ -111,18 +115,24 @@ export class StripeOnboardingService {
 
     const account = await this.createOrGetStripeAccount(sellerProfileId, actor);
 
-    const stripe = this.stripeWrapper.client();
-    const link = await stripe.accountLinks.create({
-      account: account.stripeAccountId,
-      type: 'account_onboarding',
-      return_url: returnUrl,
-      refresh_url: refreshUrl,
-    });
+    let result: { url: string; expiresAt: number };
+    try {
+      result = await this.provider.generateOnboardingLink({
+        accountId: account.stripeAccountId,
+        returnUrl,
+        refreshUrl,
+      });
+    } catch (err) {
+      if (err instanceof PaymentProviderError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
 
     this.logger.log(
-      `Onboarding link generated sellerProfileId=${sellerProfileId} expiresAt=${link.expires_at}`,
+      `Onboarding link generated sellerProfileId=${sellerProfileId} expiresAt=${result.expiresAt}`,
     );
-    return { url: link.url, expiresAt: link.expires_at };
+    return result;
   }
 
   /**
@@ -134,7 +144,7 @@ export class StripeOnboardingService {
     if (actor) {
       await this.ownership.assertSellerProfileOwnership(actor, sellerProfileId);
     }
-    if (!this.stripeWrapper.isConfigured()) {
+    if (!this.provider.isConfigured()) {
       throw new BadRequestException(
         'Stripe non configuré côté serveur. Contacter l\'admin.',
       );
@@ -149,27 +159,27 @@ export class StripeOnboardingService {
       );
     }
 
-    const stripe = this.stripeWrapper.client();
-    const account = await stripe.accounts.retrieve(existing.stripeAccountId);
+    let flags: Awaited<ReturnType<PaymentProvider['retrieveAccountFlags']>>;
+    try {
+      flags = await this.provider.retrieveAccountFlags(existing.stripeAccountId);
+    } catch (err) {
+      if (err instanceof PaymentProviderError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
 
-    const status = this.computeStatus({
-      detailsSubmitted: account.details_submitted ?? false,
-      chargesEnabled: account.charges_enabled ?? false,
-      payoutsEnabled: account.payouts_enabled ?? false,
-      requirements: account.requirements,
-    });
+    const status = this.computeStatus(flags);
 
     return this.prisma.sellerStripeAccount.update({
       where: { sellerProfileId },
       data: {
         status,
-        chargesEnabled: account.charges_enabled ?? false,
-        payoutsEnabled: account.payouts_enabled ?? false,
-        detailsSubmitted: account.details_submitted ?? false,
-        capabilitiesJson: account.capabilities ? (account.capabilities as object) : null,
-        requirementsJson: account.requirements
-          ? (account.requirements as object)
-          : null,
+        chargesEnabled: flags.chargesEnabled,
+        payoutsEnabled: flags.payoutsEnabled,
+        detailsSubmitted: flags.detailsSubmitted,
+        capabilitiesJson: flags.capabilities ? (flags.capabilities as object) : null,
+        requirementsJson: flags.requirements ? (flags.requirements as object) : null,
       },
     });
   }

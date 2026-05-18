@@ -5,7 +5,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { StripeOnboardingService } from './stripe-onboarding.service';
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
-import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
+import { PAYMENT_PROVIDER, type PaymentProvider } from './provider/payment-provider.interface';
 import { SellerStripeAccountStatus } from '@iox/shared';
 
 const ownershipMock = {
@@ -13,30 +13,24 @@ const ownershipMock = {
   assertSellerProfileOwnership: jest.fn().mockResolvedValue(undefined),
 };
 
-function makeStripeMock(opts: { configured?: boolean } = {}): StripeClientWrapper {
-  const configured = opts.configured ?? true;
+function makeProviderMock(opts: { configured?: boolean } = {}): PaymentProvider {
   return {
-    isConfigured: () => configured,
-    client: () =>
-      ({
-        accounts: {
-          create: jest.fn().mockResolvedValue({ id: 'acct_test_123' }),
-          retrieve: jest.fn().mockResolvedValue({
-            id: 'acct_test_123',
-            details_submitted: true,
-            charges_enabled: true,
-            payouts_enabled: true,
-            capabilities: { transfers: 'active' },
-            requirements: { disabled_reason: null },
-          }),
-        },
-        accountLinks: {
-          create: jest.fn().mockResolvedValue({
-            url: 'https://stripe.com/onboarding/abc',
-            expires_at: 1234567890,
-          }),
-        },
-      }) as never,
+    isConfigured: jest.fn().mockReturnValue(opts.configured ?? true),
+    createConnectedAccount: jest.fn().mockResolvedValue({ accountId: 'acct_test_123' }),
+    generateOnboardingLink: jest.fn().mockResolvedValue({
+      url: 'https://stripe.com/onboarding/abc',
+      expiresAt: 1234567890,
+    }),
+    retrieveAccountFlags: jest.fn().mockResolvedValue({
+      detailsSubmitted: true,
+      chargesEnabled: true,
+      payoutsEnabled: true,
+      capabilities: { transfers: 'active' },
+      requirements: { disabled_reason: null },
+    }),
+    createCheckoutSession: jest.fn(),
+    createRefund: jest.fn(),
+    verifyWebhookEvent: jest.fn(),
   };
 }
 
@@ -65,7 +59,7 @@ describe('StripeOnboardingService (PAY-1 phase 1 LOT 1)', () => {
         StripeOnboardingService,
         { provide: PrismaService, useValue: prisma },
         { provide: SellerOwnershipService, useValue: ownershipMock },
-        { provide: STRIPE_CLIENT, useValue: makeStripeMock() },
+        { provide: PAYMENT_PROVIDER, useValue: makeProviderMock() },
       ],
     }).compile();
     service = module.get(StripeOnboardingService);
@@ -116,7 +110,7 @@ describe('StripeOnboardingService (PAY-1 phase 1 LOT 1)', () => {
   });
 
   describe('generateOnboardingLink', () => {
-    it('génère un AccountLink Stripe via SDK', async () => {
+    it('génère un AccountLink via PaymentProvider', async () => {
       prisma.sellerProfile.findUnique.mockResolvedValue({
         id: 'sp1',
         country: 'FR',
@@ -146,7 +140,7 @@ describe('StripeOnboardingService (PAY-1 phase 1 LOT 1)', () => {
           StripeOnboardingService,
           { provide: PrismaService, useValue: prisma },
           { provide: SellerOwnershipService, useValue: ownershipMock },
-          { provide: STRIPE_CLIENT, useValue: makeStripeMock({ configured: false }) },
+          { provide: PAYMENT_PROVIDER, useValue: makeProviderMock({ configured: false }) },
         ],
       }).compile();
       const localService = module.get(StripeOnboardingService);
@@ -157,7 +151,7 @@ describe('StripeOnboardingService (PAY-1 phase 1 LOT 1)', () => {
   });
 
   describe('syncAccountStatus', () => {
-    it('sync status depuis Stripe → PAYOUTS_ENABLED si tout OK', async () => {
+    it('sync status depuis provider → PAYOUTS_ENABLED si tout OK', async () => {
       prisma.sellerStripeAccount.findUnique.mockResolvedValue({
         id: 'ssa1',
         sellerProfileId: 'sp1',
