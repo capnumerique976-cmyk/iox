@@ -29,7 +29,7 @@ export interface ConnectedAccountParams {
 }
 
 export interface OnboardingLinkParams {
-  stripeAccountId: string;
+  accountId: string;
   returnUrl: string;
   refreshUrl: string;
 }
@@ -55,7 +55,7 @@ export interface AccountStatusFlags {
   detailsSubmitted: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
-  capabilities?: object | null;
+  capabilities?: Record<string, unknown> | null;
   requirements?: { disabled_reason?: string | null } | null;
 }
 
@@ -63,6 +63,11 @@ export interface PaymentEvent {
   id: string;
   type: string;
   data: { object: unknown };
+}
+
+export interface OnboardingLinkResult {
+  url: string;
+  expiresAt: number;
 }
 
 // ── Interface ─────────────────────────────────────────────────────────────────
@@ -81,7 +86,7 @@ export interface PaymentProvider {
   createConnectedAccount(p: ConnectedAccountParams): Promise<{ accountId: string }>;
 
   /** Génère un AccountLink d'onboarding (valide ~5 min côté PSP). */
-  generateOnboardingLink(p: OnboardingLinkParams): Promise<{ url: string; expiresAt: number }>;
+  generateOnboardingLink(p: OnboardingLinkParams): Promise<OnboardingLinkResult>;
 
   /** Récupère les flags de statut d'un compte connecté depuis le PSP. */
   retrieveAccountFlags(accountId: string): Promise<AccountStatusFlags>;
@@ -90,5 +95,5 @@ export interface PaymentProvider {
    * Vérifie la signature HMAC du webhook et retourne l'event parsé.
    * Throw WebhookSignatureError si la signature est invalide.
    */
-  verifyWebhookEvent(payload: Buffer, signature: string, secret: string): PaymentEvent;
+  verifyWebhookEvent(payload: Buffer, signature: string, secret: string): Promise<PaymentEvent>;
 }
