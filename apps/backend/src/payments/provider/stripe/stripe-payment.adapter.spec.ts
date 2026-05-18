@@ -7,7 +7,8 @@
 
 import { ConfigService } from '@nestjs/config';
 import { StripePaymentAdapter } from './stripe-payment.adapter';
-import Stripe from 'stripe';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import Stripe = require('stripe');
 import {
   PaymentDeclinedError,
   PaymentConfigError,
