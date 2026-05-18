@@ -7,7 +7,7 @@ import { APPLICATION_FEE_PERCENT, PaymentsService } from './payments.service';
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
 import { AuditService } from '../audit/audit.service';
-import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
+import { PAYMENT_PROVIDER, type PaymentProvider } from './provider/payment-provider.interface';
 import {
   PaymentStatus,
   QuoteRequestStatus,
@@ -15,25 +15,20 @@ import {
   RequestUser,
 } from '@iox/shared';
 
-const refundsCreateMock = jest.fn().mockResolvedValue({ id: 're_test_123' });
+const createRefundMock = jest.fn().mockResolvedValue({ refundId: 're_test_123' });
 
-function makeStripeMock(opts: { configured?: boolean } = {}): StripeClientWrapper {
+function makeProviderMock(opts: { configured?: boolean } = {}): PaymentProvider {
   return {
-    isConfigured: () => opts.configured ?? true,
-    client: () =>
-      ({
-        checkout: {
-          sessions: {
-            create: jest.fn().mockResolvedValue({
-              id: 'cs_test_abc',
-              url: 'https://checkout.stripe.com/c/pay/cs_test_abc',
-            }),
-          },
-        },
-        refunds: {
-          create: refundsCreateMock,
-        },
-      }) as never,
+    isConfigured: jest.fn().mockReturnValue(opts.configured ?? true),
+    createCheckoutSession: jest.fn().mockResolvedValue({
+      sessionId: 'cs_test_abc',
+      url: 'https://checkout.stripe.com/c/pay/cs_test_abc',
+    }),
+    createRefund: createRefundMock,
+    createConnectedAccount: jest.fn().mockResolvedValue({ accountId: 'acct_test' }),
+    generateOnboardingLink: jest.fn().mockResolvedValue({ url: 'https://stripe.com/ob', expiresAt: 9999 }),
+    retrieveAccountFlags: jest.fn().mockResolvedValue({ detailsSubmitted: true, chargesEnabled: true, payoutsEnabled: true }),
+    verifyWebhookEvent: jest.fn(),
   };
 }
 
@@ -80,7 +75,7 @@ describe('PaymentsService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: SellerOwnershipService, useValue: ownershipMock },
         { provide: AuditService, useValue: auditMock },
-        { provide: STRIPE_CLIENT, useValue: makeStripeMock() },
+        { provide: PAYMENT_PROVIDER, useValue: makeProviderMock() },
       ],
     }).compile();
     service = module.get(PaymentsService);
@@ -381,12 +376,10 @@ describe('PaymentsService', () => {
       const result = await service.refund('pay1', {}, admin);
 
       expect(result.status).toBe(PaymentStatus.REFUNDED);
-      expect(refundsCreateMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          payment_intent: 'pi_test',
-          reason: 'requested_by_customer',
-        }),
-      );
+      expect(createRefundMock).toHaveBeenCalledWith({
+        paymentIntentId: 'pi_test',
+        amountCents: undefined,
+      });
       expect(prisma.payment.update).toHaveBeenCalledWith({
         where: { id: 'pay1' },
         data: expect.objectContaining({
@@ -427,12 +420,10 @@ describe('PaymentsService', () => {
 
       await service.refund('pay1', { amountCents: 5000 }, admin);
 
-      expect(refundsCreateMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          payment_intent: 'pi_test',
-          amount: 5000,
-        }),
-      );
+      expect(createRefundMock).toHaveBeenCalledWith({
+        paymentIntentId: 'pi_test',
+        amountCents: 5000,
+      });
     });
 
     it('seller who does not own payment → ForbiddenException', async () => {
