@@ -124,8 +124,12 @@ test.describe('P13-A — Seller publishes product bundle', () => {
     ).toHaveLength(1);
 
     // Public page : offre non publiée + média non approuvé → 404
-    const pubResp = await page.request.get('/marketplace/products/huile-ylang-ylang-bio');
-    expect(pubResp.status()).toBe(404);
+    // Utiliser page.goto() plutôt que page.request.get() pour s'assurer que
+    // Next.js renvoie bien le statut HTTP 404 (notFound()) dans tous les environnements.
+    const pubResp = await page.goto('/marketplace/products/huile-ylang-ylang-bio', {
+      timeout: 30_000,
+    });
+    expect(pubResp?.status()).toBe(404);
   });
 });
 
@@ -448,7 +452,7 @@ test.describe('P13-D — Buyer creates RFQ from public product page', () => {
         (r) =>
           r.url().includes('/api/v1/marketplace/quote-requests') && r.request().method() === 'POST',
       ),
-      page.getByRole('button', { name: /Envoyer la demande/i }).click(),
+      page.getByRole('button', { name: /Envoyer ma demande/i }).click(),
     ]);
     expect(createResp.status()).toBe(201);
 
@@ -457,7 +461,12 @@ test.describe('P13-D — Buyer creates RFQ from public product page', () => {
     expect(rfq.requests).toHaveLength(1);
 
     const newRfqId = rfq.requests[0].id;
+    // MARKETPLACE_BUYER est redirigé vers /buyer/quote-requests/${id} — la regex
+    // sans ^ matche aussi ce chemin (buyer/… se termine par /quote-requests/${id}).
     await page.waitForURL(new RegExp(`/quote-requests/${newRfqId}$`), { timeout: 30_000 });
+    // Naviguer vers la page générale pour tester le fil de discussion ; la page
+    // /buyer/quote-requests/[id] utilise un placeholder différent ("Posez une question…").
+    await page.goto(`/quote-requests/${newRfqId}`, { timeout: 30_000 });
 
     // Le buyer envoie un message public
     await page.getByPlaceholder(/Répondre/i).fill('Quel est le prix pour 100 kg FOB ?');
@@ -526,8 +535,8 @@ test.describe('P13-E — No public leakage of non-validated content', () => {
         { ...offer, isPublished: true, publishedAt: new Date().toISOString(), status: 'ACTIVE' },
       ],
     });
-    const resp = await page.request.get(`/marketplace/products/${product.slug}`);
-    expect(resp.status()).toBe(404);
+    const resp = await page.goto(`/marketplace/products/${product.slug}`, { timeout: 30_000 });
+    expect(resp?.status()).toBe(404);
   });
 
   test('offre suspendue → fiche publique 404 + catalogue vide', async ({ page }) => {
@@ -539,8 +548,8 @@ test.describe('P13-E — No public leakage of non-validated content', () => {
         { ...offer, isPublished: true, publishedAt: new Date().toISOString(), status: 'SUSPENDED' },
       ],
     });
-    const detail = await page.request.get(`/marketplace/products/${product.slug}`);
-    expect(detail.status()).toBe(404);
+    const detail = await page.goto(`/marketplace/products/${product.slug}`, { timeout: 30_000 });
+    expect(detail?.status()).toBe(404);
 
     await page.goto('/marketplace', { timeout: 60_000 });
     await expect(page.getByText(product.commercialName)).toHaveCount(0);

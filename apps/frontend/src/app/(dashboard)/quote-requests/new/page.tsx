@@ -185,7 +185,7 @@ export default function NewQuoteRequestPage() {
               htmlFor="rfq-requestedQuantity"
               className="mb-1 block text-xs font-medium text-gray-700"
             >
-              Quantite souhaitee
+              Quantité souhaitée
             </label>
             <input
               id="rfq-requestedQuantity"
@@ -204,7 +204,7 @@ export default function NewQuoteRequestPage() {
               htmlFor="rfq-requestedUnit"
               className="mb-1 block text-xs font-medium text-gray-700"
             >
-              Unite
+              Unité
             </label>
             <input
               id="rfq-requestedUnit"

@@ -38,7 +38,7 @@ class MeiliSearchClientWrapperImpl implements MeiliSearchClientWrapper {
     if (host && host.length > 0) {
       // Dynamic require — meilisearch package exports `Meilisearch` (lowercase s)
       // when consumed via CJS require. Handles both named and default exports.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pkg = require('meilisearch');
       const MeiliCtor = pkg.Meilisearch ?? pkg.MeiliSearch ?? pkg.default?.Meilisearch ?? pkg.default;
       this.meili = new MeiliCtor({ host, apiKey: apiKey ?? '' }) as MeiliSearchClient;

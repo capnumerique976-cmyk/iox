@@ -10,7 +10,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const PDFDocument = require('pdfkit');
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
