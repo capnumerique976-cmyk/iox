@@ -25,6 +25,7 @@ import {
 import {
   PAYMENT_PROVIDER,
   type PaymentProvider,
+  type AccountStatusFlags,
 } from './provider/payment-provider.interface';
 import { PaymentProviderError } from './provider/payment-provider.errors';
 
@@ -205,12 +206,7 @@ export class StripeOnboardingService {
    *  - requirements.disabled_reason présent → RESTRICTED
    *  - sinon → PENDING_ONBOARDING
    */
-  computeStatus(flags: {
-    detailsSubmitted: boolean;
-    chargesEnabled: boolean;
-    payoutsEnabled: boolean;
-    requirements?: { disabled_reason?: string | null } | null;
-  }): SellerStripeAccountStatus {
+  computeStatus(flags: AccountStatusFlags): SellerStripeAccountStatus {
     if (flags.requirements?.disabled_reason) {
       return SellerStripeAccountStatus.RESTRICTED;
     }
