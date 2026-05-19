@@ -495,6 +495,30 @@ describe('QuoteRequestsService', () => {
       );
     });
 
+    it('M133 — WON auto-compute depuis NEGOTIATING (unitPrice × qty)', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...baseRfq,
+        status: QuoteRequestStatus.NEGOTIATING,
+        requestedQuantity: { toNumber: () => 3 },
+        marketplaceOffer: {
+          sellerProfileId: 'sp-1',
+          unitPrice: { toNumber: () => 500 },
+          currency: 'USD',
+        },
+      });
+      prisma.quoteRequest.update.mockResolvedValue({ ...baseRfq, status: QuoteRequestStatus.WON });
+      await service.updateStatus('rfq-1', { status: QuoteRequestStatus.WON }, SELLER);
+      // 500 USD × 3 = 1500 → 150 000 centimes
+      expect(prisma.quoteRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            agreedAmountCents: 150000,
+            agreedCurrency: 'USD',
+          }),
+        }),
+      );
+    });
+
     // ── MP-NOTIF-2 phase 2 — Notif transitions ─────────────────────────
 
     /**
@@ -857,6 +881,151 @@ describe('QuoteRequestsService', () => {
       await expect(service.findMessages('x', ADMIN)).rejects.toThrow(NotFoundException);
       await expect(service.addMessage('x', { message: 'y' }, ADMIN)).rejects.toThrow(
         NotFoundException,
+      );
+    });
+  });
+
+  // ── setAgreedAmount (M135) ─────────────────────────────────────────────────
+
+  describe('setAgreedAmount', () => {
+    const wonRfq = {
+      id: 'rfq-won',
+      status: QuoteRequestStatus.WON,
+      agreedAmountCents: null,
+      agreedCurrency: null,
+    };
+
+    it('admin fixe le montant sur une RFQ WON sans montant → OK + audit', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue(wonRfq);
+      prisma.quoteRequest.update.mockResolvedValue({
+        ...wonRfq,
+        agreedAmountCents: 250000,
+        agreedCurrency: 'EUR',
+      });
+      const out = await service.setAgreedAmount(
+        'rfq-won',
+        { agreedAmountCents: 250000, agreedCurrency: 'EUR', reason: 'Correction M133' },
+        ADMIN,
+      );
+      expect(out.agreedAmountCents).toBe(250000);
+      expect(out.agreedCurrency).toBe('EUR');
+      expect(prisma.quoteRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            agreedAmountCents: 250000,
+            agreedCurrency: 'EUR',
+          }),
+        }),
+      );
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'QUOTE_REQUEST_AGREED_AMOUNT_SET',
+          entityId: 'rfq-won',
+          notes: 'Correction M133',
+        }),
+      );
+    });
+
+    it('coordinator peut aussi corriger le montant', async () => {
+      const COORDINATOR = u(UserRole.COORDINATOR, 'coord-1');
+      prisma.quoteRequest.findUnique.mockResolvedValue(wonRfq);
+      prisma.quoteRequest.update.mockResolvedValue({
+        ...wonRfq,
+        agreedAmountCents: 80000,
+        agreedCurrency: 'USD',
+      });
+      const out = await service.setAgreedAmount(
+        'rfq-won',
+        { agreedAmountCents: 80000, agreedCurrency: 'usd' },
+        COORDINATOR,
+      );
+      expect(out.agreedAmountCents).toBe(80000);
+      // Devise normalisée en UPPERCASE dans l'update
+      expect(prisma.quoteRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ agreedCurrency: 'USD' }),
+        }),
+      );
+    });
+
+    it('seller → ForbiddenException', async () => {
+      await expect(
+        service.setAgreedAmount(
+          'rfq-won',
+          { agreedAmountCents: 10000, agreedCurrency: 'EUR' },
+          SELLER,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('buyer → ForbiddenException', async () => {
+      await expect(
+        service.setAgreedAmount(
+          'rfq-won',
+          { agreedAmountCents: 10000, agreedCurrency: 'EUR' },
+          BUYER,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('404 si RFQ introuvable', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue(null);
+      await expect(
+        service.setAgreedAmount('x', { agreedAmountCents: 1000, agreedCurrency: 'EUR' }, ADMIN),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('400 si RFQ pas en statut WON', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...wonRfq,
+        status: QuoteRequestStatus.QUOTED,
+      });
+      await expect(
+        service.setAgreedAmount(
+          'rfq-won',
+          { agreedAmountCents: 10000, agreedCurrency: 'EUR' },
+          ADMIN,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('400 si devise non supportée (GBP)', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue(wonRfq);
+      await expect(
+        service.setAgreedAmount(
+          'rfq-won',
+          { agreedAmountCents: 10000, agreedCurrency: 'GBP' },
+          ADMIN,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('écrase un montant existant (correction post-hoc)', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...wonRfq,
+        agreedAmountCents: 100,
+        agreedCurrency: 'EUR',
+      });
+      prisma.quoteRequest.update.mockResolvedValue({
+        ...wonRfq,
+        agreedAmountCents: 500000,
+        agreedCurrency: 'EUR',
+      });
+      await service.setAgreedAmount(
+        'rfq-won',
+        { agreedAmountCents: 500000, agreedCurrency: 'EUR', reason: 'Erreur initiale corrigée' },
+        ADMIN,
+      );
+      expect(prisma.quoteRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ agreedAmountCents: 500000 }),
+        }),
+      );
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          previousData: expect.objectContaining({ agreedAmountCents: 100 }),
+          newData: expect.objectContaining({ agreedAmountCents: 500000 }),
+        }),
       );
     });
   });

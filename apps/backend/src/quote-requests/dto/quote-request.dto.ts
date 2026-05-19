@@ -125,3 +125,33 @@ export class CreateQuoteRequestMessageDto {
   @IsBoolean()
   isInternalNote?: boolean;
 }
+
+// M135 — Correction admin du montant verrouillé sur RFQ WON pré-migration.
+export class SetAgreedAmountDto {
+  @ApiProperty({
+    description:
+      'Montant payable en centimes (ex: 250000 = 2500,00 EUR). Doit être > 0.',
+    minimum: 1,
+  })
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  agreedAmountCents: number;
+
+  @ApiProperty({
+    description: 'Devise ISO 4217 (EUR ou USD). Normalisée en UPPERCASE.',
+    example: 'EUR',
+  })
+  @IsString()
+  @MaxLength(10)
+  agreedCurrency: string;
+
+  @ApiPropertyOptional({
+    description: 'Raison de la correction (journalisée en audit log).',
+    example: 'Correction RFQ WON créée avant migration M133',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}

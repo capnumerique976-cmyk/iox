@@ -363,6 +363,45 @@ describe('PaymentsService', () => {
       ).rejects.toThrow(/montant payable n'a pas été verrouillé/);
     });
 
+    it('M133 — agreedAmountCents = 0 → BadRequestException (montant invalide)', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...validRfq,
+        agreedAmountCents: 0,
+        agreedCurrency: 'EUR',
+      });
+      await expect(
+        service.createCheckoutSession(
+          { quoteRequestId: 'rfq1', marketplaceOfferId: 'o1', returnUrl: 'r', cancelUrl: 'c' },
+          buyer,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('M133 — body amountCents ignoré, seul rfq.agreedAmountCents compte', async () => {
+      // Client envoie amountCents=1 (tentative de manipulation), serveur utilise 100000
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...validRfq,
+        agreedAmountCents: 100000,
+        agreedCurrency: 'EUR',
+      });
+      prisma.payment.create.mockResolvedValue({ id: 'pay-locked' });
+      await service.createCheckoutSession(
+        {
+          quoteRequestId: 'rfq1',
+          marketplaceOfferId: 'o1',
+          amountCents: 1, // doit être ignoré
+          returnUrl: 'r',
+          cancelUrl: 'c',
+        },
+        buyer,
+      );
+      const data = prisma.payment.create.mock.calls[0][0].data;
+      expect(data.amountCents).toBe(100000); // montant serveur, pas le body
+      expect(providerMock.createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({ amountCents: 100000 }),
+      );
+    });
+
     it('throws BadRequestException when provider not configured', async () => {
       const module = await Test.createTestingModule({
         providers: [

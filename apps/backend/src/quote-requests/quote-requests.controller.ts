@@ -31,6 +31,7 @@ import {
   UpdateQuoteRequestStatusDto,
   AssignQuoteRequestDto,
   CreateQuoteRequestMessageDto,
+  SetAgreedAmountDto,
 } from './dto/quote-request.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -160,6 +161,33 @@ export class QuoteRequestsController {
     @CurrentUser() actor: RequestUser,
   ) {
     return this.service.assign(id, dto, actor);
+  }
+
+  // ─── Correction admin montant (M135) ────────────────────────────────────
+
+  @Patch(':id/agreed-amount')
+  @Roles(UserRole.ADMIN, UserRole.COORDINATOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'M135 — Verrouiller le montant payable sur une RFQ WON (staff only)',
+    description:
+      'Permet à ADMIN/COORDINATOR de définir agreed_amount_cents + agreed_currency sur une RFQ ' +
+      'dont le statut est WON mais dont le montant est absent (RFQ créée avant la migration M133). ' +
+      'Action auditée. Rôles : ADMIN, COORDINATOR.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID de la demande de devis' })
+  @ApiOkResponse({ type: QuoteRequestResponseDto })
+  @ApiBadRequestResponse({
+    description: 'RFQ non WON / devise invalide / montant ≤ 0',
+  })
+  @ApiNotFoundResponse({ description: 'RFQ introuvable' })
+  @ApiForbiddenResponse({ description: 'Rôle ADMIN ou COORDINATOR requis' })
+  setAgreedAmount(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetAgreedAmountDto,
+    @CurrentUser() actor: RequestUser,
+  ) {
+    return this.service.setAgreedAmount(id, dto, actor);
   }
 
   // ─── Alerts (admin) ──────────────────────────────────────────────────────

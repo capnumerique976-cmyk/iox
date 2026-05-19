@@ -17,7 +17,9 @@ import {
   UpdateQuoteRequestStatusDto,
   AssignQuoteRequestDto,
   CreateQuoteRequestMessageDto,
+  SetAgreedAmountDto,
 } from './dto/quote-request.dto';
+import { normalizeCurrency } from '../common/money';
 import {
   EntityType,
   QuoteRequestStatus,
@@ -598,6 +600,84 @@ export class QuoteRequestsService {
       previousData: { assignedToUserId: rfq.assignedToUserId },
       newData: { assignedToUserId: updated.assignedToUserId },
     });
+
+    return updated;
+  }
+
+  // ─── Correction admin montant (M135) ─────────────────────────────────────
+
+  /**
+   * M135 — Permet à ADMIN/COORDINATOR de verrouiller le montant payable sur une
+   * RFQ déjà WON mais dont agreed_amount_cents est NULL (cas des RFQ créées
+   * avant la migration M133).
+   *
+   * Contraintes :
+   *   - Réservé au staff (ADMIN / COORDINATOR).
+   *   - La RFQ doit être en statut WON.
+   *   - Le montant fourni doit être > 0 et la devise supportée (EUR/USD).
+   *   - L'action est systématiquement auditée.
+   */
+  async setAgreedAmount(id: string, dto: SetAgreedAmountDto, actor: RequestUser) {
+    if (!this.isStaff(actor)) {
+      throw new ForbiddenException(
+        'Seul le staff IOX (ADMIN/COORDINATOR) peut corriger le montant d\'une RFQ',
+      );
+    }
+
+    const rfq = await this.prisma.quoteRequest.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        agreedAmountCents: true,
+        agreedCurrency: true,
+      },
+    });
+    if (!rfq) throw new NotFoundException('Demande de devis introuvable');
+
+    if (rfq.status !== QuoteRequestStatus.WON) {
+      throw new BadRequestException(
+        `Correction impossible : la RFQ est en statut ${rfq.status} (requis: WON)`,
+      );
+    }
+
+    let currency: string;
+    try {
+      currency = normalizeCurrency(dto.agreedCurrency);
+    } catch {
+      throw new BadRequestException(
+        'Devise non supportée. Devises acceptées : EUR, USD',
+      );
+    }
+
+    const updated = await this.prisma.quoteRequest.update({
+      where: { id },
+      data: {
+        agreedAmountCents: dto.agreedAmountCents,
+        agreedCurrency: currency,
+      },
+      include: RFQ_INCLUDE,
+    });
+
+    await this.auditService.log({
+      action: 'QUOTE_REQUEST_AGREED_AMOUNT_SET',
+      entityType: EntityType.QUOTE_REQUEST,
+      entityId: id,
+      userId: actor.id,
+      previousData: {
+        agreedAmountCents: rfq.agreedAmountCents,
+        agreedCurrency: rfq.agreedCurrency,
+      },
+      newData: {
+        agreedAmountCents: dto.agreedAmountCents,
+        agreedCurrency: currency,
+      },
+      notes: dto.reason,
+    });
+
+    this.logger.log(
+      `AGREED_AMOUNT_SET rfqId=${id} actorId=${actor.id} amountCents=${dto.agreedAmountCents} currency=${currency}`,
+    );
 
     return updated;
   }
