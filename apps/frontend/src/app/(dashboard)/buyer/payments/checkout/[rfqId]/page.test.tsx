@@ -89,17 +89,17 @@ describe('BuyerCheckoutPage (PAY-1 LOT 4)', () => {
     expect(screen.getByTestId('buyer-checkout-offer-id')).toBeInTheDocument();
   });
 
-  it('click Payer sans champs → erreur affichée', async () => {
-    // RFQ sans prix — champs vides
+  it('click Payer sans montant calculé → createCheckoutSession non appelé', async () => {
+    // RFQ sans prix — le montant reste vide (read-only, non éditable par le buyer)
     getMock.mockResolvedValue(makeRfq({ marketplaceOffer: { id: 'o1', title: 'T', priceMode: 'FIXED', unitPrice: null, currency: null, moq: null, incoterm: null, leadTimeDays: null, departureLocation: null, sellerProfile: null, marketplaceProduct: null } }));
     const user = userEvent.setup();
     render(<BuyerCheckoutPage />);
     await waitFor(() => expect(screen.getByTestId('buyer-checkout-pay')).toBeInTheDocument());
-    // Clear amount field to ensure it's empty
-    const amountInput = screen.getByTestId('buyer-checkout-amount');
-    await user.clear(amountInput);
+    // Le montant est affiché en lecture seule (p, non éditable)
+    const amountDisplay = screen.getByTestId('buyer-checkout-amount');
+    expect(amountDisplay.tagName.toLowerCase()).toBe('p');
     await user.click(screen.getByTestId('buyer-checkout-pay'));
-    // sonner toast is shown, no DOM error element — but createCheckoutSession is NOT called
+    // sonner toast est affiché, createCheckoutSession n'est PAS appelé
     await waitFor(() => {
       expect(createCheckoutSessionMock).not.toHaveBeenCalled();
     });
@@ -143,9 +143,10 @@ describe('BuyerCheckoutPage (PAY-1 LOT 4)', () => {
       const offerInput = screen.getByTestId('buyer-checkout-offer-id') as HTMLInputElement;
       expect(offerInput.value).toBe('offer-prefill-1');
     });
-    const amountInput = screen.getByTestId('buyer-checkout-amount') as HTMLInputElement;
+    // Le montant est affiché en read-only (p, non éditable par le buyer)
+    const amountDisplay = screen.getByTestId('buyer-checkout-amount');
     // 5.00 * 100 = 500.00
-    expect(amountInput.value).toBe('500.00');
+    expect(amountDisplay.textContent).toBe('500.00');
   });
 
   it('affiche un état d\'erreur si le fetch RFQ échoue (404)', async () => {

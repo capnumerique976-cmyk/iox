@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { NextIntlClientProvider } from 'next-intl';
@@ -8,6 +8,11 @@ import '@/styles/globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
+// M77 + Next.js 14 — themeColor doit être dans generateViewport, pas metadata.
+export const viewport: Viewport = {
+  themeColor: '#0a1f4d',
+};
+
 export const metadata: Metadata = {
   title: {
     default: 'IOX — Indian Ocean Xchange',
@@ -16,9 +21,6 @@ export const metadata: Metadata = {
   description:
     'Plateforme B2B pour producteurs, vendeurs et acheteurs professionnels de l\'océan Indien.',
   applicationName: 'IOX',
-  // themeColor : repris par le manifest PWA (manifest.ts). Déclaré ici aussi
-  // pour les navigateurs qui lisent la meta tag directement (Safari iOS).
-  themeColor: '#0a1f4d',
   // PWA / Mobile — M77
   // Les icônes sont gérées via app/icon.tsx (favicon PNG 32px) et
   // app/apple-icon.tsx (Apple Touch PNG 180px). Le manifest est dans app/manifest.ts.

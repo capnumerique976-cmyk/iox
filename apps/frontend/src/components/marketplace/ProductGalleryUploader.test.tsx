@@ -173,6 +173,65 @@ describe('ProductGalleryUploader (MP-MEDIA-1 LOT 1)', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
+  it('badge modération PENDING affiché sur la tuile correspondante', async () => {
+    const pendingMedia = {
+      ...sampleMedia('m-pending', 0),
+      moderationStatus: MediaModerationStatus.PENDING,
+    };
+    render(
+      <ProductGalleryUploader
+        productId="p1"
+        sellerProfileId="sp1"
+        existingMedia={[pendingMedia]}
+        onChange={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('product-gallery-uploader-tile-m-pending')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('product-gallery-uploader-moderation-m-pending')).toHaveTextContent(
+      /En attente/,
+    );
+  });
+
+  it('badge modération REJECTED affiché sur la tuile correspondante', async () => {
+    const rejectedMedia = {
+      ...sampleMedia('m-rejected', 0),
+      moderationStatus: MediaModerationStatus.REJECTED,
+    };
+    render(
+      <ProductGalleryUploader
+        productId="p1"
+        sellerProfileId="sp1"
+        existingMedia={[rejectedMedia]}
+        onChange={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('product-gallery-uploader-tile-m-rejected')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('product-gallery-uploader-moderation-m-rejected')).toHaveTextContent(
+      /Rejetée/,
+    );
+  });
+
+  it('aucun badge modération pour une image APPROVED', async () => {
+    render(
+      <ProductGalleryUploader
+        productId="p1"
+        sellerProfileId="sp1"
+        existingMedia={[sampleMedia('m-ok', 0)]}
+        onChange={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('product-gallery-uploader-tile-m-ok')).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByTestId('product-gallery-uploader-moderation-m-ok'),
+    ).not.toBeInTheDocument();
+  });
+
   it('cap UI atteinte (20 photos) → erreur si tentative ajout', async () => {
     const onChange = vi.fn().mockResolvedValue(undefined);
     const items = Array.from({ length: 20 }, (_, i) => sampleMedia(`m${i}`, i));

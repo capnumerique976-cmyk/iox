@@ -464,6 +464,7 @@ export function makeRfqState(): RfqState {
 
 export async function mockRfqRoutes(page: Page, state: RfqState, actor: MarketplaceUser) {
   // Companies list (pour new RFQ) — page utilise api.get qui unwrap .data, donc on enveloppe.
+  // /companies(\?...)? — endpoint staff/admin (liste paginée complète)
   await page.route(/\/api\/v1\/companies(\?.*)?$/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -476,6 +477,22 @@ export async function mockRfqRoutes(page: Page, state: RfqState, actor: Marketpl
           ],
           meta: { total: 2, page: 1, limit: 200, totalPages: 1 },
         }),
+      ),
+    });
+  });
+
+  // /companies/mine — endpoint MARKETPLACE_BUYER (companies liées aux memberships du user).
+  // GET /companies retourne 403 pour un buyer ; le formulaire de nouvelle RFQ utilise
+  // companiesApi.findMine() qui cible /companies/mine spécifiquement.
+  await page.route('**/api/v1/companies/mine', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        await wrap([
+          { id: 'company-buyer-1', code: 'BUY-01', name: 'Export Alpha', country: 'FR' },
+          { id: 'company-buyer-2', code: 'BUY-02', name: 'Export Beta', country: 'DE' },
+        ]),
       ),
     });
   });

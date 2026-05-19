@@ -10,7 +10,7 @@ FROM node:20-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 ENV COREPACK_ENABLE_PROJECT_SPEC=0
-RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 WORKDIR /app
 
 # ── 1. deps (monorepo complet, lockfile gelé) ─────────────
@@ -29,12 +29,15 @@ RUN pnpm --filter @iox/shared build \
  && pnpm db:generate \
  && pnpm --filter @iox/backend build
 
-# Dépendances prod only pour l'image finale
-RUN pnpm --filter @iox/backend --prod --config.inject-workspace-packages=true deploy --legacy /prod/backend \
- && PRISMA_SRC=$(find /app -type d -path '*/.prisma/client' ! -path '*/prod/*' | head -1) \
- && echo "Prisma client source: $PRISMA_SRC" \
- && mkdir -p /prod/backend/node_modules/.prisma \
- && cp -RL "$PRISMA_SRC" /prod/backend/node_modules/.prisma/client
+# Dépendances prod only pour l'image finale.
+# pnpm deploy copie les deps dans /prod/backend mais installe @prisma/client
+# sans le client généré (.prisma/client). On régénère directement dans le
+# répertoire déployé en pointant sur le schéma monorepo.
+RUN pnpm --filter @iox/backend --prod deploy /prod/backend \
+ && cp -r /app/prisma /prod/backend/prisma \
+ && cd /prod/backend \
+ && /app/node_modules/.bin/prisma generate --schema prisma/schema.prisma \
+ && rm -rf prisma
 
 # ── 3. runtime (minimal, non-root) ────────────────────────
 FROM node:20-slim AS runner

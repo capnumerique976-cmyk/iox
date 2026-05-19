@@ -58,10 +58,19 @@ if ! ssh -o BatchMode=yes -o ConnectTimeout=5 "$VPS_HOST" true 2>/dev/null; then
   exit 1
 fi
 
-# Espace disque distant — seuil plancher 3 GB libres
-DISK_FREE_GB=$(ssh "$VPS_HOST" "df -BG --output=avail $VPS_REMOTE 2>/dev/null | tail -1 | tr -d 'G '")
-if [ -z "$DISK_FREE_GB" ] || [ "$DISK_FREE_GB" -lt 3 ]; then
-  echo "ERR: espace disque insuffisant sur $VPS_HOST:$VPS_REMOTE (${DISK_FREE_GB:-?} GB)" >&2
+# Créer le dossier distant si absent (1er déploiement sur VPS non vierge).
+ssh "$VPS_HOST" "mkdir -p $VPS_REMOTE"
+
+# Espace disque distant — seuil plancher 3 GB libres.
+# On vérifie sur le parent si le dossier cible vient d'être créé (df sur dir
+# vide et dir parent retournent le même filesystem).
+DISK_CHECK_PATH="$VPS_REMOTE"
+DISK_FREE_RAW=$(ssh "$VPS_HOST" "df -Pk $DISK_CHECK_PATH 2>/dev/null | awk 'NR==2 {print \$4}'")
+DISK_FREE_GB=$(( ${DISK_FREE_RAW:-0} / 1024 / 1024 ))
+echo "  free space on $VPS_HOST:$DISK_CHECK_PATH = ${DISK_FREE_GB} GB (raw=${DISK_FREE_RAW:-?} kB)"
+if [ -z "$DISK_FREE_RAW" ] || [ "$DISK_FREE_GB" -lt 3 ]; then
+  echo "ERR: espace disque insuffisant sur $VPS_HOST:$VPS_REMOTE (${DISK_FREE_GB} GB libres, seuil 3 GB)" >&2
+  echo "     Sortie brute de df : $(ssh "$VPS_HOST" "df -Pk $DISK_CHECK_PATH 2>&1 || true")" >&2
   exit 1
 fi
 echo "✓ Disque distant : ${DISK_FREE_GB} GB libres"
@@ -72,6 +81,7 @@ echo "== Étape 1/5 : rsync =="
 rsync -av --delete \
   --exclude='.git' \
   --exclude='.github' \
+  --exclude='.claude/worktrees' \
   --exclude='node_modules' \
   --exclude='.next' \
   --exclude='dist' \
@@ -81,7 +91,7 @@ rsync -av --delete \
   --exclude='playwright-report' \
   --exclude='.env' \
   --exclude='.env.*' \
-  --exclude='docker-compose.vps.yml' \
+  --exclude='docker-compose.vps*.yml' \
   --exclude='tsconfig.tsbuildinfo' \
   --exclude='.DS_Store' \
   "$REPO_ROOT/" "${VPS_HOST}:${VPS_REMOTE}/"

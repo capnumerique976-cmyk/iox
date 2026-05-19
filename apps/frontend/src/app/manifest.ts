@@ -64,6 +64,12 @@ export default function manifest(): MetadataRoute.Manifest {
         description: 'Parcourir les produits disponibles',
       },
       {
+        name: 'Mes produits',
+        short_name: 'Produits',
+        url: '/seller/marketplace-products',
+        description: 'Gérer mes produits en vente',
+      },
+      {
         name: 'Mes devis',
         short_name: 'Devis',
         url: '/buyer/quote-requests',

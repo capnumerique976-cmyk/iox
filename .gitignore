@@ -64,3 +64,4 @@ uploads/
 
 # ── NOTE : les fichiers migration.sql DOIVENT être commités ───────
 # Ils sont la source de vérité en préprod/prod (`prisma migrate deploy`).
+.worktrees/

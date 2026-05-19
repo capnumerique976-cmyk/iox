@@ -1,0 +1,189 @@
+# ─────────────────────────────────────────────────────────────
+#  IOX — Docker Compose PILOTE (stack complète, self-contained)
+# ─────────────────────────────────────────────────────────────
+#  Usage :
+#    cp .env.pilot.example .env
+#    # Renseigner toutes les variables dans .env
+#    docker compose -f docker-compose.pilot.yml up -d
+#
+#  Tous les services sur un seul VPS. Nginx (hôte, non-Docker)
+#  fait la terminaison TLS et proxie vers 127.0.0.1:3000/3001.
+#
+#  Volumes persistants sur /opt/iox/data/* (ne jamais supprimer).
+# ─────────────────────────────────────────────────────────────
+
+version: '3.9'
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: '10m'
+      max-file: '3'
+
+services:
+
+  # ── Base de données ────────────────────────────────────────
+  postgres:
+    <<: [*restart, *logging]
+    image: postgres:15-alpine
+    container_name: iox_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-iox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
+      POSTGRES_DB: ${POSTGRES_DB:-iox_pilot}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-iox} -d ${POSTGRES_DB:-iox_pilot}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    # Pas d'exposition externe : réseau compose uniquement.
+
+  # ── Cache / Queues BullMQ ──────────────────────────────────
+  redis:
+    <<: [*restart, *logging]
+    image: redis:7-alpine
+    container_name: iox_redis
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Stockage objet (médias marketplace, 30 Go réservés) ───
+  minio:
+    <<: [*restart, *logging]
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: iox_minio
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER requis}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requis}
+    volumes:
+      - minio_data:/data
+    # Console admin MinIO accessible uniquement en interne (127.0.0.1:9001).
+    ports:
+      - '127.0.0.1:9001:9001'
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Backend NestJS ─────────────────────────────────────────
+  backend:
+    <<: [*restart, *logging]
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+    image: iox-backend:pilot
+    container_name: iox_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      APP_PORT: '3001'
+      NODE_ENV: production
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL requis (ex: https://iox.mycloud.yt)}
+      FRONTEND_URLS: ${FRONTEND_URLS:-}
+      DATABASE_URL: >-
+        postgresql://${POSTGRES_USER:-iox}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-iox_pilot}?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requis (min 64 chars)}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET requis (min 64 chars)}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET:-iox-pilot}
+      MINIO_USE_SSL: 'false'
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    ports:
+      - '127.0.0.1:3001:3001'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          require('http').get('http://127.0.0.1:3001/api/v1/health/live',(r)=>
+          process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  # ── Frontend Next.js ───────────────────────────────────────
+  frontend:
+    <<: [*restart, *logging]
+    build:
+      context: ../..
+      dockerfile: apps/frontend/Dockerfile
+    image: iox-frontend:pilot
+    container_name: iox_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      PORT: '3000'
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: '1'
+      # SSR interne : appels serveur → backend sans passer par Nginx.
+      BACKEND_INTERNAL_URL: http://backend:3001
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL requis (ex: https://iox.mycloud.yt/api/v1)}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL requis (ex: https://iox.mycloud.yt)}
+    ports:
+      - '127.0.0.1:3000:3000'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          require('http').get('http://127.0.0.1:3000/',(r)=>
+          process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/iox/data/postgres
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/iox/data/redis
+  minio_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/iox/data/minio

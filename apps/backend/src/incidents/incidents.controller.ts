@@ -10,12 +10,15 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IncidentsService } from './incidents.service';
 import { CreateIncidentDto, UpdateIncidentDto, ChangeIncidentStatusDto } from './dto/incident.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@iox/shared';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 const READ_ROLES = [
   UserRole.ADMIN,
@@ -34,8 +37,11 @@ const WRITE_ROLES = [
   UserRole.SUPPLY_MANAGER,
 ];
 
+// Défense en profondeur: @UseGuards au niveau classe — incidents sensibles
+// (chaque route a aussi son propre @Roles, le guard classe est un filet de sécurité)
 @ApiTags('incidents')
 @ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('incidents')
 export class IncidentsController {
   constructor(private readonly incidentsService: IncidentsService) {}

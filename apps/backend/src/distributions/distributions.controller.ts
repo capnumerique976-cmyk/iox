@@ -69,14 +69,16 @@ export class DistributionsController {
   @Roles(...WRITE_ROLES)
   @ApiOperation({ summary: 'Créer une distribution' })
   create(@Body() dto: CreateDistributionDto, @CurrentUser() user: any) {
-    return this.svc.create(dto, user.sub);
+    // Audit trail fix: user.id au lieu de user.sub (sub est undefined sur RequestUser)
+    return this.svc.create(dto, user.id);
   }
 
   @Patch(':id')
   @Roles(...WRITE_ROLES)
   @ApiOperation({ summary: 'Modifier une distribution' })
   update(@Param('id') id: string, @Body() dto: UpdateDistributionDto, @CurrentUser() user: any) {
-    return this.svc.update(id, dto, user.sub);
+    // Audit trail fix: user.id au lieu de user.sub
+    return this.svc.update(id, dto, user.id);
   }
 
   @Patch(':id/status')
@@ -87,7 +89,8 @@ export class DistributionsController {
     @Body() dto: ChangeDistributionStatusDto,
     @CurrentUser() user: any,
   ) {
-    return this.svc.changeStatus(id, dto, user.sub);
+    // Audit trail fix: user.id au lieu de user.sub
+    return this.svc.changeStatus(id, dto, user.id);
   }
 
   @Delete(':id')
@@ -95,6 +98,7 @@ export class DistributionsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Supprimer une distribution (admin/coord)' })
   remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.svc.remove(id, user.sub);
+    // Audit trail fix: user.id au lieu de user.sub
+    return this.svc.remove(id, user.id);
   }
 }

@@ -10,7 +10,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Circle, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, CreditCard } from 'lucide-react';
 import { QuoteRequestStatus } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
 import {
@@ -136,6 +136,7 @@ export default function BuyerQuoteRequestDetailPage() {
     rfq.status !== QuoteRequestStatus.CANCELLED &&
     rfq.status !== QuoteRequestStatus.LOST &&
     rfq.status !== QuoteRequestStatus.WON;
+  const canPay = rfq.status === QuoteRequestStatus.WON;
 
   return (
     <div className="flex flex-col gap-6">
@@ -254,6 +255,36 @@ export default function BuyerQuoteRequestDetailPage() {
       {err && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {err}
+        </div>
+      )}
+
+      {/* CTA paiement — visible uniquement si statut WON */}
+      {canPay && (
+        <div
+          className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5"
+          data-testid="buyer-rfq-payment-cta"
+        >
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            <div>
+              <p className="font-semibold text-emerald-900">
+                Votre demande a été acceptée !
+              </p>
+              <p className="mt-0.5 text-sm text-emerald-700">
+                Finalisez votre commande en procédant au paiement sécurisé via Stripe.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Link
+              href={`/buyer/payments/checkout/${rfq.id}`}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+              data-testid="buyer-rfq-pay-button"
+            >
+              <CreditCard className="h-4 w-4" />
+              Finaliser le paiement
+            </Link>
+          </div>
         </div>
       )}
 

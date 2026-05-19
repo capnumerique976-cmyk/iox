@@ -334,7 +334,9 @@ export class ComplianceService {
     if (p.pendingDocs > 0 || p.pendingCerts > 0) {
       return { status: 'PENDING_REVIEW', nextAction: 'Des documents sont en attente de vérification.' };
     }
-    if (p.profileStatus === 'APPROVED' && p.verifiedDocs + p.verifiedCerts >= 0) {
+    // B-006 fix: >= 0 était toujours vrai (même 0 doc + 0 cert → COMPLETE).
+    // Condition corrigée : au moins 1 doc OU 1 cert vérifié pour valider le profil.
+    if (p.profileStatus === 'APPROVED' && p.verifiedDocs + p.verifiedCerts > 0) {
       return { status: 'COMPLETE', nextAction: null };
     }
     return { status: 'INCOMPLETE', nextAction: 'Ajoutez vos documents et certifications.' };

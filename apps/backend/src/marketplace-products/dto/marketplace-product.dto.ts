@@ -241,6 +241,12 @@ export class UpdateMarketplaceProductDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(2) commercialName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @Matches(SLUG_REGEX) slug?: string;
 
+  /** MP-EDIT-PRODUCT.3-light — image principale : seller peut lier un MediaAsset existant. */
+  @ApiPropertyOptional({ description: 'ID du MediaAsset à utiliser comme image principale.' })
+  @IsOptional()
+  @IsUUID()
+  mainMediaId?: string | null;
+
   @ApiPropertyOptional() @IsOptional() @IsString() regulatoryName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() subtitle?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() originCountry?: string;

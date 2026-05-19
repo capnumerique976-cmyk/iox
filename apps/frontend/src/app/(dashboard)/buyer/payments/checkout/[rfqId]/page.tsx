@@ -229,16 +229,13 @@ export default function BuyerCheckoutPage() {
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700">Montant total (EUR)</label>
-          <input
-            type="number"
-            value={amountEuros}
-            onChange={(e) => setAmountEuros(e.target.value)}
-            min="0.5"
-            step="0.01"
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+          {/* Montant read-only : vient du serveur (unitPrice × quantité du RFQ), non modifiable par le buyer. */}
+          <p
+            className="mt-1 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 select-none"
             data-testid="buyer-checkout-amount"
-            placeholder="100.00"
-          />
+          >
+            {amountEuros || '—'}
+          </p>
         </div>
         <button
           type="button"

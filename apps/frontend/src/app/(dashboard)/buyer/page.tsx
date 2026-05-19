@@ -6,7 +6,7 @@
 // RFQ par status, raccourcis vers actions principales, accès profil.
 // Hors scope cette phase : orders/payments (PAY-2+).
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Building2,
@@ -22,6 +22,8 @@ import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
 import { QuoteRequestStatus, UserRole } from '@iox/shared';
 import { PageHeader } from '@/components/ui/page-header';
 import { GuidedDashboardHeader } from '@/components/onboarding/guided-dashboard-header';
+import { DailyActionsPanel } from '@/components/dashboard/daily-actions-panel';
+import { getBuyerDailyActions, type BuyerDailyData } from '@/lib/daily-actions';
 
 const STATUS_LABELS: Record<QuoteRequestStatus, string> = {
   NEW: 'En attente',
@@ -40,11 +42,18 @@ const ACTIVE_STATUSES: QuoteRequestStatus[] = [
   QuoteRequestStatus.NEGOTIATING,
 ];
 
+interface BuyerMarketplaceAlerts {
+  pendingPayment: number;
+  newMessages: number;
+}
+
 export default function BuyerCockpitPage() {
   const { user, token } = useAuth();
   const [items, setItems] = useState<QuoteRequestSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  /** M104 — Alertes marketplace (paiement + messages). */
+  const [marketplaceAlerts, setMarketplaceAlerts] = useState<BuyerMarketplaceAlerts | null>(null);
 
   const load = useCallback(() => {
     if (!token) return;
@@ -55,6 +64,13 @@ export default function BuyerCockpitPage() {
       .then((res) => setItems(res.data))
       .catch((e: Error) => setErr(e.message))
       .finally(() => setLoading(false));
+    // M104 — fetch silencieux pour enrichir les daily actions.
+    fetch('/api/v1/dashboard/marketplace-alerts', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => { if (json) setMarketplaceAlerts(json.data ?? json); })
+      .catch(() => { /* silencieux */ });
   }, [token]);
 
   useEffect(() => {
@@ -74,6 +90,21 @@ export default function BuyerCockpitPage() {
   const totalActive = ACTIVE_STATUSES.reduce((acc, s) => acc + counts[s], 0);
   const totalAll = items.length;
 
+  // M103/M104 — Daily actions (dérivées des RFQ + marketplace-alerts)
+  const buyerDailyData = useMemo<BuyerDailyData>(() => ({
+    quotedRfq: counts[QuoteRequestStatus.QUOTED],
+    activeRfq: ACTIVE_STATUSES.reduce((acc, s) => acc + counts[s], 0),
+    totalRfq: items.length,
+    // M104 — enrichi si marketplace-alerts a répondu (optionnel)
+    pendingPayment: marketplaceAlerts?.pendingPayment ?? 0,
+    newMessages: marketplaceAlerts?.newMessages ?? 0,
+  }), [counts, items, marketplaceAlerts]);
+
+  const buyerDailyActions = useMemo(
+    () => (loading ? [] : getBuyerDailyActions(buyerDailyData)),
+    [loading, buyerDailyData],
+  );
+
   const isBuyer = user?.role === UserRole.MARKETPLACE_BUYER;
   const greeting = isBuyer
     ? `Bonjour ${user?.firstName ?? ''}`
@@ -83,6 +114,15 @@ export default function BuyerCockpitPage() {
     <div className="flex flex-col gap-6">
       {/* Guided journey header — visible for marketplace buyers */}
       {isBuyer && <GuidedDashboardHeader />}
+
+      {/* M103 — Panneau actions quotidiennes */}
+      <DailyActionsPanel
+        actions={buyerDailyActions}
+        isLoading={loading}
+        title="Mes actions"
+        emptyMessage="Tout va bien"
+        emptyDescription="Aucune action en attente. Explorez le catalogue pour trouver vos prochains fournisseurs."
+      />
 
       <PageHeader
         icon={<Sparkles className="h-5 w-5" aria-hidden />}

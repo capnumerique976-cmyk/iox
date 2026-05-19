@@ -21,6 +21,8 @@ test.beforeAll(async ({ browser }) => {
     '/quote-requests',
     '/quote-requests/new',
     '/quote-requests/rfq-1',
+    '/buyer/quote-requests',
+    '/buyer/quote-requests/rfq-1',
   ]);
   await ctx.close();
 });
@@ -62,15 +64,15 @@ test.describe('P9-D — Buyer crée une RFQ et échange avec le seller', () => {
   test('buyer crée une RFQ depuis une offre publiée', async ({ page }) => {
     const state = await setupBuyer(page);
 
-    await loginAsRole(page, BUYER_USER);
+    // MARKETPLACE_BUYER est redirigé vers /buyer (pas /dashboard).
+    await loginAsRole(page, BUYER_USER, { expectUrl: /\/buyer$/ });
     await page.goto(`/quote-requests/new?offerId=${OFFER_ID}`, { timeout: 60_000 });
     await expect(page.locator('select').first()).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('option[value="company-buyer-1"]')).toHaveCount(1, {
       timeout: 30_000,
     });
 
-    await expect(page.getByRole('heading', { name: /Nouvelle demande de devis/i })).toBeVisible();
-    await expect(page.getByText(OFFER_ID)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Demande de devis/i })).toBeVisible();
 
     // Sélectionner la société acheteuse
     await page.locator('select').first().selectOption('company-buyer-1');
@@ -85,7 +87,7 @@ test.describe('P9-D — Buyer crée une RFQ et échange avec le seller', () => {
         (r) =>
           r.url().endsWith('/api/v1/marketplace/quote-requests') && r.request().method() === 'POST',
       ),
-      page.getByRole('button', { name: /Envoyer la demande/i }).click(),
+      page.getByRole('button', { name: /Envoyer ma demande/i }).click(),
     ]);
     expect(resp.status()).toBe(201);
 
@@ -102,8 +104,8 @@ test.describe('P9-D — Buyer crée une RFQ et échange avec le seller', () => {
       page.getByRole('heading', { name: /Huile essentielle Ylang-Ylang/i }),
     ).toBeVisible();
 
-    // Buyer : seule transition possible = CANCELLED
-    await expect(page.getByRole('button', { name: /→ Annulée/i })).toBeVisible();
+    // Buyer : seule action possible = annuler la demande
+    await expect(page.getByRole('button', { name: /Annuler la demande/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /→ Qualifiée/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /→ Gagnée/i })).toHaveCount(0);
 
@@ -111,7 +113,7 @@ test.describe('P9-D — Buyer crée une RFQ et échange avec le seller', () => {
     await expect(page.getByText(/Note interne/)).toHaveCount(0);
 
     // Envoi d'un message public
-    await page.getByPlaceholder(/Répondre…/).fill('Bonjour, avez-vous un MOQ sur cette huile ?');
+    await page.getByPlaceholder(/Posez une question/).fill('Bonjour, avez-vous un MOQ sur cette huile ?');
     await Promise.all([
       page.waitForResponse(
         (r) =>
@@ -135,7 +137,8 @@ test.describe('P9-D — Buyer crée une RFQ et échange avec le seller', () => {
     const buyerCtx = await browser.newContext();
     const buyerPage = await buyerCtx.newPage();
     const state = await setupBuyer(buyerPage);
-    await loginAsRole(buyerPage, BUYER_USER);
+    // MARKETPLACE_BUYER est redirigé vers /buyer (pas /dashboard).
+    await loginAsRole(buyerPage, BUYER_USER, { expectUrl: /\/buyer$/ });
     await buyerPage.goto(`/quote-requests/new?offerId=${OFFER_ID}`, { timeout: 60_000 });
     await expect(buyerPage.locator('select').first()).toBeVisible({ timeout: 30_000 });
     // Attendre que les options soient chargées (companies API mock) avant selectOption
@@ -149,7 +152,7 @@ test.describe('P9-D — Buyer crée une RFQ et échange avec le seller', () => {
         (r) =>
           r.url().endsWith('/api/v1/marketplace/quote-requests') && r.request().method() === 'POST',
       ),
-      buyerPage.getByRole('button', { name: /Envoyer la demande/i }).click(),
+      buyerPage.getByRole('button', { name: /Envoyer ma demande/i }).click(),
     ]);
     await buyerPage.waitForURL(/\/quote-requests\/rfq-1$/);
 
@@ -224,8 +227,9 @@ test.describe('P9-D — Permissions RFQ', () => {
     page,
   }) => {
     await setupBuyer(page);
-    await loginAsRole(page, BUYER_USER);
+    await loginAsRole(page, BUYER_USER, { expectUrl: /\/buyer$/ });
     await page.goto('/quote-requests/new');
-    await expect(page.getByText(/Paramètre.*offerId.*manquant/i)).toBeVisible();
+    // Sans offerId, la page affiche "Lien invalide" (pas de param offerId dans l'URL).
+    await expect(page.getByText(/Lien invalide/i)).toBeVisible();
   });
 });

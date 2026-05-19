@@ -23,6 +23,8 @@ import { quoteRequestsApi, QuoteRequestSummary } from '@/lib/quote-requests';
 import { PageHeader } from '@/components/ui/page-header';
 import { GuidedDashboardHeader } from '@/components/onboarding/guided-dashboard-header';
 import { publicationStatusLabel, sellerProfileStatusLabel, rfqStatusLabel, verificationStatusLabel } from '@/lib/status-labels';
+import { DailyActionsPanel } from '@/components/dashboard/daily-actions-panel';
+import { getSellerDailyActions, type SellerDailyData } from '@/lib/daily-actions';
 
 /**
  * Cockpit vendeur marketplace — vue synthétique 1 écran.
@@ -123,6 +125,10 @@ function completionCriteria(p: SellerProfileRow): CompletionCriterion[] {
   ];
 }
 
+interface MarketplaceAlerts {
+  newMessages: number;
+}
+
 export default function SellerDashboardPage() {
   const { user } = useAuth();
 
@@ -131,6 +137,8 @@ export default function SellerDashboardPage() {
   const [rfq, setRfq] = useState<LoadState<QuoteRequestSummary[]>>({ status: 'loading' });
   const [docs, setDocs] = useState<LoadState<DocumentRow[]>>({ status: 'loading' });
   const [profile, setProfile] = useState<LoadState<SellerProfileRow | null>>({ status: 'loading' });
+  /** Alertes marketplace — chargées en parallèle, enrichit les daily actions. */
+  const [marketplaceAlerts, setMarketplaceAlerts] = useState<MarketplaceAlerts | null>(null);
 
   const load = useCallback(async () => {
     const token = authStorage.getAccessToken() ?? '';
@@ -139,6 +147,16 @@ export default function SellerDashboardPage() {
     setRfq({ status: 'loading' });
     setDocs({ status: 'loading' });
     setProfile({ status: 'loading' });
+
+    // M104 — Alertes marketplace (messages non lus) — silencieux si indisponible.
+    fetch('/api/v1/dashboard/marketplace-alerts', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json) setMarketplaceAlerts(json.data ?? json);
+      })
+      .catch(() => { /* silencieux */ });
 
     api
       .get<ListResponse<OfferRow>>('/marketplace/offers?limit=100', token)
@@ -236,6 +254,45 @@ export default function SellerDashboardPage() {
     return { expiring, pending };
   }, [docs]);
 
+  // M103/M104 — Daily actions : données dérivées des états déjà chargés + marketplace-alerts.
+  const sellerDailyData = useMemo<SellerDailyData | null>(() => {
+    if (
+      products.status !== 'ok' ||
+      offers.status !== 'ok' ||
+      rfq.status !== 'ok' ||
+      docs.status !== 'ok' ||
+      profile.status !== 'ok'
+    ) {
+      return null; // données pas encore chargées
+    }
+    const crits = profile.value ? completionCriteria(profile.value) : [];
+    const done = crits.filter((c) => c.done).length;
+    const pct = crits.length > 0 ? Math.round((done / crits.length) * 100) : 100;
+    return {
+      rejectedDocs: docs.value.filter((d) => d.verificationStatus === 'REJECTED').length,
+      pendingDocs: docs.value.filter((d) => d.verificationStatus === 'PENDING').length,
+      newRfq: rfq.value.filter((q) => q.status === QuoteRequestStatus.NEW).length,
+      negotiatingRfq: rfq.value.filter((q) => q.status === QuoteRequestStatus.NEGOTIATING).length,
+      profileCompletionPct: pct,
+      hasProducts: products.value.length > 0,
+      hasOffers: offers.value.length > 0,
+      hasDocuments: docs.value.length > 0,
+      rejectedProducts: products.value.filter(
+        (p) => p.publicationStatus === MarketplacePublicationStatus.REJECTED,
+      ).length,
+      rejectedOffers: offers.value.filter(
+        (o) => o.publicationStatus === MarketplacePublicationStatus.REJECTED,
+      ).length,
+      // M104 — enrichi si marketplace-alerts a répondu (optionnel)
+      newMessages: marketplaceAlerts?.newMessages ?? 0,
+    };
+  }, [products, offers, rfq, docs, profile, marketplaceAlerts]);
+
+  const sellerDailyActions = useMemo(
+    () => (sellerDailyData ? getSellerDailyActions(sellerDailyData) : []),
+    [sellerDailyData],
+  );
+
   if (user && !CAN_VIEW.includes(user.role as (typeof CAN_VIEW)[number])) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -248,6 +305,15 @@ export default function SellerDashboardPage() {
     <div className="space-y-6">
       {/* Guided journey header — visible for marketplace sellers */}
       {user?.role === UserRole.MARKETPLACE_SELLER && <GuidedDashboardHeader />}
+
+      {/* M103 — Panneau actions quotidiennes */}
+      <DailyActionsPanel
+        actions={sellerDailyActions}
+        isLoading={sellerDailyData === null}
+        title="À faire aujourd'hui"
+        emptyMessage="Tout est à jour"
+        emptyDescription="Aucune action urgente pour aujourd'hui. Continuez à développer votre activité."
+      />
 
       <PageHeader
         icon={<Store className="h-5 w-5" aria-hidden />}
@@ -399,7 +465,7 @@ export default function SellerDashboardPage() {
             ['Gagnées', rfqCounts.byStatus[QuoteRequestStatus.WON] ?? 0],
           ]}
           emptyHint="Aucune demande entrante."
-          cta={{ href: '/quote-requests', label: 'Voir les demandes' }}
+          cta={{ href: '/seller/quote-requests', label: 'Voir les demandes' }}
         />
       </section>
 
@@ -420,7 +486,7 @@ export default function SellerDashboardPage() {
                     <li key={p.id} className="flex items-center justify-between">
                       <span className="truncate font-medium">{p.commercialName}</span>
                       <Link
-                        href={`/products/${p.id}`}
+                        href={`/seller/marketplace-products/${p.id}`}
                         className="flex-shrink-0 underline hover:no-underline"
                       >
                         Corriger
@@ -443,7 +509,7 @@ export default function SellerDashboardPage() {
                     <li key={o.id} className="flex items-center justify-between">
                       <span className="truncate font-medium">{o.title}</span>
                       <Link
-                        href={`/marketplace/offers/${o.id}`}
+                        href={`/seller/marketplace-offers/${o.id}`}
                         className="flex-shrink-0 underline hover:no-underline"
                       >
                         Corriger

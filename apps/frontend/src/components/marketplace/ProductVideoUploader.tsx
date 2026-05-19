@@ -118,11 +118,7 @@ export function ProductVideoUploader({
     try {
       const token = authStorage.getAccessToken() ?? '';
 
-      // Si vidéo existante : DELETE old en séquentiel avant upload.
-      if (currentVideo) {
-        await marketplaceMediaAssetsApi.delete(currentVideo.id, token);
-      }
-
+      // Upload en premier — si ça échoue, l'ancienne vidéo reste intacte.
       await marketplaceMediaAssetsApi.upload(
         file,
         {
@@ -133,6 +129,12 @@ export function ProductVideoUploader({
         },
         token,
       );
+
+      // Suppression de l'ancienne vidéo APRÈS upload réussi (évite la perte en cas d'échec).
+      if (currentVideo) {
+        await marketplaceMediaAssetsApi.delete(currentVideo.id, token);
+      }
+
       await onUploaded();
       URL.revokeObjectURL(objectUrl);
       setPhase({ kind: 'success' });
@@ -264,7 +266,9 @@ export function ProductVideoUploader({
       </div>
 
       <div
-        className={`overflow-hidden rounded-lg border border-gray-200 bg-black ${isBusy ? 'opacity-60' : ''}`}
+        className={`overflow-hidden rounded-lg border border-gray-200 ${
+          previewSrc ? 'bg-black' : 'bg-gray-50'
+        } ${isBusy ? 'opacity-60' : ''}`}
       >
         {previewSrc ? (
           <video
@@ -276,20 +280,46 @@ export function ProductVideoUploader({
             data-testid={`${root}-preview`}
           />
         ) : currentUrlError ? (
-          <div className="flex aspect-video items-center justify-center bg-gray-50 px-3 text-center text-xs text-amber-700">
+          <div className="flex aspect-video w-full items-center justify-center px-3 text-center text-xs text-amber-700">
             {currentUrlError}
           </div>
         ) : (
-          <div className="flex aspect-video flex-col items-center justify-center gap-1 bg-gray-50 text-xs text-gray-400">
-            <Video className="h-6 w-6" />
-            Aucune vidéo
+          <div
+            className="flex aspect-video w-full flex-col items-center justify-center gap-3 text-center"
+            data-testid={`${root}-empty`}
+          >
+            <Video className="h-8 w-8 text-gray-300" />
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-gray-400">Aucune vidéo de présentation</p>
+              <p className="text-[11px] text-gray-400">MP4, WebM, MOV · max 50 Mo</p>
+              <p className="text-[11px] text-gray-400">Visible après validation par notre équipe</p>
+            </div>
           </div>
         )}
       </div>
 
+      {/* Info fichier sélectionné (preview + upload en cours) */}
+      {(phase.kind === 'preview' || phase.kind === 'uploading') && (
+        <div
+          className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs"
+          data-testid={`${root}-file-info`}
+        >
+          <Video className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+          <span
+            className="min-w-0 flex-1 truncate font-medium text-gray-700"
+            data-testid={`${root}-file-name`}
+          >
+            {phase.file.name}
+          </span>
+          <span className="flex-shrink-0 text-gray-400" data-testid={`${root}-file-size`}>
+            {(phase.file.size / (1024 * 1024)).toFixed(1)} Mo
+          </span>
+        </div>
+      )}
+
       <p className="text-[11px] text-gray-500">
-        Formats acceptés : MP4, WebM, MOV. Taille maximale : 50 Mo. La vidéo sera modérée avant
-        affichage public.
+        Formats acceptés : MP4, WebM, MOV · max 50 Mo · La vidéo sera modérée avant affichage
+        public.
       </p>
 
       {phase.kind === 'uploading' && (

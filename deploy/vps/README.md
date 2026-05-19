@@ -1,29 +1,40 @@
 # IOX — Déploiement VPS
 
-Scripts codifiant le flux **réel** de déploiement IOX documenté dans
-`docs/deploy/VPS-DEPLOY-AUDIT.md` et `docs/ops/DEPLOY-VPS.md`.
+Scripts codifiant le flux **réel** de déploiement IOX.
 
-> Ces scripts **ne remplacent pas** `deploy/preprod/` (qui décrit l'idéal
-> registry + tag + CI). Ils documentent et exécutent la procédure
-> minimale sécurisée effectivement utilisée sur `rahiss-vps`.
+## Démarrage rapide (premier déploiement)
+
+```bash
+# Prérequis : accès SSH configuré dans ~/.ssh/config
+export IOX_VPS_HOST=rahiss-vps
+export IOX_VPS_DOMAIN=iox.mycloud.yt
+./deploy/vps/setup-first-run.sh
+```
+
+Ce script unique installe Docker, build les images, démarre la stack,
+crée le bucket MinIO, applique les migrations, et configure Nginx + SSL.
 
 ## Contenu
 
-| Fichier       | Rôle                                                           |
-| ------------- | -------------------------------------------------------------- |
-| `deploy.sh`   | rsync + build ciblé + restart + healthchecks                   |
-| `rollback.sh` | Rétablit le tag `:prev` comme `:local` courant                 |
-| `backup.sh`   | pg_dump + MinIO tar.gz, rotation N jours, miroir local option. |
-| `restore.sh`  | pg_restore depuis un dump (DESTRUCTIF, confirmation YES)       |
+| Fichier                       | Rôle                                                              |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `setup-first-run.sh`          | **PREMIER DÉPLOIEMENT** — VPS vierge → pilote opérationnel        |
+| `docker-compose.pilot.yml`    | Stack complète self-contained (postgres, redis, minio, app)       |
+| `.env.example`                | Template variables d'environnement (copier → `.env`)              |
+| `nginx/iox-pilot.conf`        | Config Nginx reverse proxy + SSL                                  |
+| `deploy.sh`                   | Mises à jour suivantes : rsync + build ciblé + restart + health   |
+| `rollback.sh`                 | Rétablit le tag `:prev` comme `:local` courant                    |
+| `backup.sh`                   | pg_dump + MinIO tar.gz, rotation N jours, miroir local optionnel  |
+| `restore.sh`                  | pg_restore depuis un dump (DESTRUCTIF, confirmation YES)          |
 
 ## Variables d'environnement
 
-| Variable                       | Défaut                    | Description                       |
-| ------------------------------ | ------------------------- | --------------------------------- |
-| `IOX_VPS_HOST`                 | `rahiss-vps`              | Hôte SSH cible                    |
-| `IOX_VPS_REMOTE`               | `/opt/apps/iox`           | Répertoire applicatif sur le VPS  |
-| `IOX_VPS_COMPOSE`              | `docker-compose.vps.yml`  | Nom du fichier compose sur le VPS |
-| `IOX_VPS_DOMAIN`               | `iox.mycloud.yt`          | Domaine public (healthchecks)     |
+| Variable                       | Défaut                              | Description                       |
+| ------------------------------ | ----------------------------------- | --------------------------------- |
+| `IOX_VPS_HOST`                 | `rahiss-vps`                        | Hôte SSH cible                    |
+| `IOX_VPS_REMOTE`               | `/opt/iox`                          | Répertoire applicatif sur le VPS  |
+| `IOX_VPS_COMPOSE`              | `deploy/vps/docker-compose.pilot.yml` | Fichier compose utilisé           |
+| `IOX_VPS_DOMAIN`               | `iox.mycloud.yt`                    | Domaine public (healthchecks)     |
 | `IOX_BACKUP_DIR`               | `/opt/apps/iox/backups`   | Répertoire des dumps              |
 | `IOX_BACKUP_RETENTION_DAYS`    | `7`                       | Rotation find -mtime              |
 | `IOX_LOCAL_BACKUP_MIRROR`      | (vide)                    | Si défini, rsync local des dumps  |
