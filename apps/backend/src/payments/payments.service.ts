@@ -187,6 +187,22 @@ export class PaymentsService {
       `Checkout session created paymentId=${payment.id} sessionId=${sessionResult.sessionId} amountCents=${serverAmountCents} appFee=${applicationFeeCents}`,
     );
 
+    // M136 — Audit log : création d'une Checkout Session.
+    await this.audit.log({
+      action: 'PAYMENT_CHECKOUT_SESSION_CREATED',
+      entityType: EntityType.PAYMENT,
+      entityId: payment.id,
+      userId: actor.id,
+      newData: {
+        paymentId: payment.id,
+        sessionId: sessionResult.sessionId,
+        amountCents: serverAmountCents,
+        currency,
+        applicationFeeCents,
+        quoteRequestId: input.quoteRequestId,
+      },
+    });
+
     return {
       paymentId: payment.id,
       sessionId: sessionResult.sessionId,

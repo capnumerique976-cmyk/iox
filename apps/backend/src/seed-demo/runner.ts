@@ -712,6 +712,8 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
         },
         select: { id: true },
       });
+      // M136 — Pour les RFQ WON, agreedAmountCents doit être renseigné
+      // afin que createCheckoutSession puisse lire le montant serveur.
       const rfqData = {
         requestedQuantity: new Prisma.Decimal(rfqDef.requestedQuantity),
         requestedUnit: rfqDef.requestedUnit,
@@ -719,6 +721,12 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
         targetMarket: rfqDef.seedKey,
         message: rfqDef.initialMessage,
         status: QuoteRequestStatus[rfqDef.status],
+        ...(rfqDef.status === 'WON' && rfqDef.paymentAmountCents
+          ? {
+              agreedAmountCents: rfqDef.paymentAmountCents,
+              agreedCurrency: rfqDef.paymentCurrency ?? 'EUR',
+            }
+          : {}),
       } as const;
 
       let rfqId: string;

@@ -10,7 +10,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
-import { PaymentStatus } from '@iox/shared';
+import { EntityType, PaymentStatus } from '@iox/shared';
+import { AuditService } from '../audit/audit.service';
 import { StripeOnboardingService } from './stripe-onboarding.service';
 import { NotifEmailService } from '../notif-email/notif-email.service';
 import {
@@ -18,6 +19,16 @@ import {
   type PaymentProvider,
   type PaymentEvent,
 } from './provider/payment-provider.interface';
+// Prisma-compatible Payment row (minimal shape used in webhook handlers).
+interface PaymentRow {
+  id: string;
+  status: string;
+  buyerUserId: string;
+  amountCents: number;
+  currency: string;
+  marketplaceOfferId: string | null;
+}
+
 interface StripePaymentIntentLike {
   id: string;
   amount?: number;
@@ -44,6 +55,7 @@ export class PaymentsWebhookService {
     private readonly prisma: PrismaService,
     private readonly onboarding: StripeOnboardingService,
     private readonly notifEmail: NotifEmailService,
+    private readonly audit: AuditService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
     config: ConfigService,
   ) {
@@ -90,6 +102,18 @@ export class PaymentsWebhookService {
       return { handled: false, action: 'no-payment-id' };
     }
 
+    // M136 — Idempotency guard : skip silently if already SUCCEEDED.
+    const existing = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    }) as PaymentRow | null;
+
+    if (existing?.status === PaymentStatus.SUCCEEDED) {
+      this.logger.log(
+        `payment_intent.succeeded already processed (idempotent skip) paymentId=${paymentId} pi=${pi.id}`,
+      );
+      return { handled: true, action: 'payment-succeeded-duplicate' };
+    }
+
     const chargeId =
       typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge?.id;
 
@@ -105,6 +129,19 @@ export class PaymentsWebhookService {
     this.logger.log(
       `Payment SUCCEEDED paymentId=${paymentId} pi=${pi.id} amount=${pi.amount}`,
     );
+
+    // M136 — Audit log : paiement réussi via webhook.
+    await this.audit.log({
+      action: 'PAYMENT_SUCCEEDED',
+      entityType: EntityType.PAYMENT,
+      entityId: paymentId,
+      previousData: { status: existing?.status ?? PaymentStatus.PENDING },
+      newData: {
+        status: PaymentStatus.SUCCEEDED,
+        stripePaymentIntentId: pi.id,
+        stripeChargeId: chargeId ?? null,
+      },
+    });
 
     // PAY-2 — safeNotify buyer by email.
     await this.safeNotifyBuyer(payment);
@@ -193,6 +230,19 @@ export class PaymentsWebhookService {
     this.logger.warn(
       `Payment FAILED paymentId=${paymentId} pi=${pi.id} code=${pi.last_payment_error?.code}`,
     );
+
+    // M136 — Audit log : paiement échoué via webhook.
+    await this.audit.log({
+      action: 'PAYMENT_FAILED',
+      entityType: EntityType.PAYMENT,
+      entityId: paymentId,
+      newData: {
+        status: PaymentStatus.FAILED,
+        stripePaymentIntentId: pi.id,
+        errorCode: pi.last_payment_error?.code ?? null,
+      },
+    });
+
     return { handled: true, action: 'payment-failed' };
   }
 

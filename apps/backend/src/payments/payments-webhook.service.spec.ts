@@ -4,6 +4,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentsWebhookService } from './payments-webhook.service';
 import { PrismaService } from '../database/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { StripeOnboardingService } from './stripe-onboarding.service';
 import { NotifEmailService } from '../notif-email/notif-email.service';
 import { PaymentStatus, SellerStripeAccountStatus } from '@iox/shared';
@@ -14,7 +15,7 @@ import { WebhookSignatureError } from './provider/payment-provider.errors';
 describe('PaymentsWebhookService', () => {
   let service: PaymentsWebhookService;
   let prisma: {
-    payment: { update: jest.Mock };
+    payment: { update: jest.Mock; findUnique: jest.Mock };
     sellerStripeAccount: { update: jest.Mock };
     user: { findUnique: jest.Mock };
     marketplaceOffer: { findUnique: jest.Mock };
@@ -28,6 +29,15 @@ describe('PaymentsWebhookService', () => {
       payment: {
         update: jest.fn().mockResolvedValue({
           id: 'pay_1',
+          buyerUserId: 'u-buyer',
+          amountCents: 10000,
+          currency: 'EUR',
+          marketplaceOfferId: 'offer-1',
+        }),
+        // M136 — default: payment in PENDING state (not yet SUCCEEDED)
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'pay_1',
+          status: 'PENDING',
           buyerUserId: 'u-buyer',
           amountCents: 10000,
           currency: 'EUR',
@@ -59,6 +69,7 @@ describe('PaymentsWebhookService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: StripeOnboardingService, useValue: onboarding },
         { provide: NotifEmailService, useValue: notifEmail },
+        { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
         {
           provide: PAYMENT_PROVIDER,
           useValue: {
@@ -306,6 +317,92 @@ describe('PaymentsWebhookService', () => {
       const res = await service.receiveRaw(Buffer.from('{}'), 'sig_ok');
       expect(res.handled).toBe(false);
       expect(res.action).toBe('ignored');
+    });
+  });
+
+  // M136 — Idempotency tests.
+
+  describe('idempotency — payment_intent.succeeded', () => {
+    it('webhook dupliqué avec Payment déjà SUCCEEDED → skip silencieux, pas de double update', async () => {
+      // Payment is already in SUCCEEDED state (duplicate webhook delivery).
+      prisma.payment.findUnique.mockResolvedValue({
+        id: 'pay_dup',
+        status: 'SUCCEEDED',
+        buyerUserId: 'u-buyer',
+        amountCents: 10000,
+        currency: 'EUR',
+        marketplaceOfferId: 'offer-1',
+      });
+
+      const event = {
+        id: 'evt_dup',
+        type: 'payment_intent.succeeded',
+        data: {
+          object: {
+            id: 'pi_dup',
+            metadata: { payment_id: 'pay_dup' },
+            latest_charge: 'ch_dup',
+            amount: 10000,
+          },
+        },
+      };
+
+      const res = await service.handleEvent(event);
+
+      // Should be handled=true but action indicates duplicate was skipped.
+      expect(res.handled).toBe(true);
+      expect(res.action).toBe('payment-succeeded-duplicate');
+      // prisma.payment.update must NOT have been called (no double update).
+      expect(prisma.payment.update).not.toHaveBeenCalled();
+      // Email must NOT be sent again.
+      expect(notifEmail.send).not.toHaveBeenCalled();
+    });
+
+    it('premier webhook avec Payment en PENDING → traité normalement', async () => {
+      // Default mock is PENDING — first event processes normally.
+      const event = {
+        id: 'evt_first',
+        type: 'payment_intent.succeeded',
+        data: {
+          object: {
+            id: 'pi_first',
+            metadata: { payment_id: 'pay_1' },
+            latest_charge: 'ch_first',
+            amount: 10000,
+          },
+        },
+      };
+
+      const res = await service.handleEvent(event);
+
+      expect(res.action).toBe('payment-succeeded');
+      expect(prisma.payment.update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // M136 — account.updated without seller_profile_id metadata.
+
+  describe('account.updated edge cases', () => {
+    it('account.updated sans seller_profile_id metadata → no-seller-profile-id', async () => {
+      const event = {
+        id: 'evt_acct_noid',
+        type: 'account.updated',
+        data: {
+          object: {
+            id: 'acct_no_meta',
+            metadata: {}, // no seller_profile_id
+            details_submitted: true,
+            charges_enabled: true,
+            payouts_enabled: true,
+          },
+        },
+      };
+
+      const res = await service.handleEvent(event);
+
+      expect(res.handled).toBe(false);
+      expect(res.action).toBe('no-seller-profile-id');
+      expect(prisma.sellerStripeAccount.update).not.toHaveBeenCalled();
     });
   });
 });
