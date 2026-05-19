@@ -62,7 +62,8 @@ test.describe('P9-D — Buyer crée une RFQ et échange avec le seller', () => {
   test('buyer crée une RFQ depuis une offre publiée', async ({ page }) => {
     const state = await setupBuyer(page);
 
-    await loginAsRole(page, BUYER_USER);
+    // MARKETPLACE_BUYER est redirigé vers /buyer (pas /dashboard).
+    await loginAsRole(page, BUYER_USER, { expectUrl: /\/buyer$/ });
     await page.goto(`/quote-requests/new?offerId=${OFFER_ID}`, { timeout: 60_000 });
     await expect(page.locator('select').first()).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('option[value="company-buyer-1"]')).toHaveCount(1, {
@@ -135,7 +136,8 @@ test.describe('P9-D — Buyer crée une RFQ et échange avec le seller', () => {
     const buyerCtx = await browser.newContext();
     const buyerPage = await buyerCtx.newPage();
     const state = await setupBuyer(buyerPage);
-    await loginAsRole(buyerPage, BUYER_USER);
+    // MARKETPLACE_BUYER est redirigé vers /buyer (pas /dashboard).
+    await loginAsRole(buyerPage, BUYER_USER, { expectUrl: /\/buyer$/ });
     await buyerPage.goto(`/quote-requests/new?offerId=${OFFER_ID}`, { timeout: 60_000 });
     await expect(buyerPage.locator('select').first()).toBeVisible({ timeout: 30_000 });
     // Attendre que les options soient chargées (companies API mock) avant selectOption
@@ -224,8 +226,9 @@ test.describe('P9-D — Permissions RFQ', () => {
     page,
   }) => {
     await setupBuyer(page);
-    await loginAsRole(page, BUYER_USER);
+    await loginAsRole(page, BUYER_USER, { expectUrl: /\/buyer$/ });
     await page.goto('/quote-requests/new');
-    await expect(page.getByText(/Paramètre.*offerId.*manquant/i)).toBeVisible();
+    // Sans offerId, la page affiche "Lien invalide" (pas de param offerId dans l'URL).
+    await expect(page.getByText(/Lien invalide/i)).toBeVisible();
   });
 });
