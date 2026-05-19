@@ -6,21 +6,20 @@ import { PaymentsController } from './payments.controller';
 import { StripeOnboardingService } from './stripe-onboarding.service';
 import { PaymentsService } from './payments.service';
 import { PaymentsWebhookService } from './payments-webhook.service';
-import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
+import { WebhookSignatureError } from './provider/payment-provider.errors';
 import { UserRole, RequestUser } from '@iox/shared';
 import type { Request } from 'express';
 
 describe('PaymentsController (PAY-1 phase 1 LOT 1)', () => {
   let controller: PaymentsController;
+  let module: TestingModule;
   let onboarding: {
     generateOnboardingLink: jest.Mock;
     syncAccountStatus: jest.Mock;
     getAccountStatus: jest.Mock;
   };
-  let stripeWrapper: StripeClientWrapper;
 
   const sellerActor: RequestUser = {
     id: 'u-seller',
@@ -38,33 +37,18 @@ describe('PaymentsController (PAY-1 phase 1 LOT 1)', () => {
     };
     const paymentsSvc = { createCheckoutSession: jest.fn() };
     const webhookSvc = {
-      handleEvent: jest
-        .fn()
-        .mockResolvedValue({ handled: true, action: 'payment-succeeded' }),
+      receiveRaw: jest.fn().mockResolvedValue({
+        handled: true,
+        action: 'payment-succeeded',
+        eventType: 'payment_intent.succeeded',
+      }),
     };
-    stripeWrapper = {
-      isConfigured: () => true,
-      client: () =>
-        ({
-          webhooks: {
-            constructEvent: jest
-              .fn()
-              .mockImplementation((_body, _sig, _secret) => ({
-                type: 'payment_intent.succeeded',
-                id: 'evt_test_1',
-              })),
-          },
-        }) as never,
-    };
-    const config = { get: jest.fn().mockReturnValue('whsec_test') };
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       controllers: [PaymentsController],
       providers: [
         { provide: StripeOnboardingService, useValue: onboarding },
         { provide: PaymentsService, useValue: paymentsSvc },
         { provide: PaymentsWebhookService, useValue: webhookSvc },
-        { provide: ConfigService, useValue: config },
-        { provide: STRIPE_CLIENT, useValue: stripeWrapper },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -123,30 +107,20 @@ describe('PaymentsController (PAY-1 phase 1 LOT 1)', () => {
 
   it('POST webhook : signature manquante → 400', async () => {
     const req = { rawBody: Buffer.from('{}') } as unknown as Request;
-    await expect(controller.webhook(undefined, req)).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(controller.webhook(undefined as unknown as string, req)).rejects.toThrow(BadRequestException);
   });
 
-  it('POST webhook : signature valide → 200 + log type', async () => {
+  it('POST webhook : signature valide → 200 + type dans réponse', async () => {
     const req = { rawBody: Buffer.from('{}') } as unknown as Request;
     const res = await controller.webhook('sig_valid', req);
     expect(res.received).toBe(true);
     expect(res.type).toBe('payment_intent.succeeded');
   });
 
-  it('POST webhook : signature invalide (constructEvent throw) → 400', async () => {
-    stripeWrapper.client = () =>
-      ({
-        webhooks: {
-          constructEvent: jest.fn().mockImplementation(() => {
-            throw new Error('signature mismatch');
-          }),
-        },
-      }) as never;
+  it('POST webhook : WebhookSignatureError → 400', async () => {
+    const wh = module.get(PaymentsWebhookService);
+    (wh.receiveRaw as jest.Mock).mockRejectedValueOnce(new WebhookSignatureError());
     const req = { rawBody: Buffer.from('{}') } as unknown as Request;
-    await expect(controller.webhook('sig_bad', req)).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(controller.webhook('sig_bad', req)).rejects.toThrow(BadRequestException);
   });
 });
