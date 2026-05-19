@@ -89,8 +89,12 @@ describe('BuyerCheckoutPage (PAY-1 LOT 4)', () => {
     expect(screen.getByTestId('buyer-checkout-offer-id')).toBeInTheDocument();
   });
 
-  it('click Payer sans montant calculé → createCheckoutSession non appelé', async () => {
-    // RFQ sans prix — le montant reste vide (read-only, non éditable par le buyer)
+  it('M133 — click Payer sans montant affiché → API appelée (serveur valide le montant)', async () => {
+    // M133 — Le montant n'est plus validé côté client.
+    // Même sans unitPrice, le frontend appelle l'API ; c'est le serveur (agreedAmountCents)
+    // qui valide et retourne 400 si non verrouillé.
+    const apiError = new Error('Le montant payable n\'a pas été verrouillé');
+    createCheckoutSessionMock.mockRejectedValue(apiError);
     getMock.mockResolvedValue(makeRfq({ marketplaceOffer: { id: 'o1', title: 'T', priceMode: 'FIXED', unitPrice: null, currency: null, moq: null, incoterm: null, leadTimeDays: null, departureLocation: null, sellerProfile: null, marketplaceProduct: null } }));
     const user = userEvent.setup();
     render(<BuyerCheckoutPage />);
@@ -99,9 +103,12 @@ describe('BuyerCheckoutPage (PAY-1 LOT 4)', () => {
     const amountDisplay = screen.getByTestId('buyer-checkout-amount');
     expect(amountDisplay.tagName.toLowerCase()).toBe('p');
     await user.click(screen.getByTestId('buyer-checkout-pay'));
-    // sonner toast est affiché, createCheckoutSession n'est PAS appelé
+    // M133 — l'API EST appelée (guard côté serveur, pas client)
     await waitFor(() => {
-      expect(createCheckoutSessionMock).not.toHaveBeenCalled();
+      expect(createCheckoutSessionMock).toHaveBeenCalledWith(
+        expect.objectContaining({ quoteRequestId: 'rfq-test-1', marketplaceOfferId: 'o1' }),
+        'tok',
+      );
     });
   });
 

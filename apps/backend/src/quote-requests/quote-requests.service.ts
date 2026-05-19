@@ -430,6 +430,9 @@ export class QuoteRequestsService {
             title: true,
             sellerProfileId: true,
             sellerProfile: { select: { publicDisplayName: true } },
+            // M133 — nécessaire pour calculer agreedAmountCents si non fourni dans dto
+            unitPrice: true,
+            currency: true,
           },
         },
       },
@@ -440,9 +443,54 @@ export class QuoteRequestsService {
     // Mandat 53: centralized FSM validation (structure + role).
     QuoteRequestFsm.assertTransition(rfq.status as QuoteRequestStatus, dto.status, actor);
 
+    // M133 — Verrouillage serveur du montant payable à la transition → WON.
+    // Si agreedAmountCents fourni dans le dto : utiliser directement (montant négocié explicite).
+    // Sinon : calculer unitPrice × requestedQuantity depuis l'offre.
+    // Si le montant ne peut être déterminé : rejeter la transition (guard).
+    let agreedAmountCents: number | undefined;
+    let agreedCurrency: string | undefined;
+
+    if (dto.status === QuoteRequestStatus.WON) {
+      if (dto.agreedAmountCents !== undefined) {
+        agreedAmountCents = dto.agreedAmountCents;
+        agreedCurrency = dto.agreedCurrency ?? 'EUR';
+      } else {
+        const offer = rfq.marketplaceOffer as {
+          unitPrice?: { toNumber?: () => number } | number | string | null;
+          currency?: string | null;
+        } | null;
+        const unitPrice = offer?.unitPrice
+          ? typeof offer.unitPrice === 'object' && 'toNumber' in offer.unitPrice
+            ? offer.unitPrice.toNumber?.()
+            : parseFloat(String(offer.unitPrice))
+          : null;
+        const qty = rfq.requestedQuantity
+          ? typeof rfq.requestedQuantity === 'object' && 'toNumber' in rfq.requestedQuantity
+            ? (rfq.requestedQuantity as { toNumber: () => number }).toNumber()
+            : parseFloat(String(rfq.requestedQuantity))
+          : null;
+
+        if (unitPrice && qty && unitPrice > 0 && qty > 0) {
+          agreedAmountCents = Math.round(unitPrice * qty * 100);
+          agreedCurrency = offer?.currency ?? 'EUR';
+        } else {
+          throw new BadRequestException(
+            'Impossible de verrouiller le montant payable : ' +
+              'fournissez agreedAmountCents dans le body ou assurez-vous que ' +
+              "l'offre a un unitPrice et que la RFQ a une requestedQuantity.",
+          );
+        }
+      }
+    }
+
     const updated = await this.prisma.quoteRequest.update({
       where: { id },
-      data: { status: dto.status },
+      data: {
+        status: dto.status,
+        ...(agreedAmountCents !== undefined
+          ? { agreedAmountCents, agreedCurrency }
+          : {}),
+      },
       include: RFQ_INCLUDE,
     });
 

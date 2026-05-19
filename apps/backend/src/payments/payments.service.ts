@@ -42,7 +42,9 @@ export const APPLICATION_FEE_PERCENT = 0.05;
 export interface CreateCheckoutSessionInput {
   quoteRequestId: string;
   marketplaceOfferId: string;
-  amountCents: number;
+  // M133 — amountCents supprimé : le montant est lu depuis rfq.agreedAmountCents (serveur).
+  // Champ conservé optionnel pour rétrocompatibilité des tests existants — ignoré.
+  amountCents?: number;
   currency?: string;
   returnUrl: string;
   cancelUrl: string;
@@ -113,17 +115,28 @@ export class PaymentsService {
       );
     }
 
-    // M59: multi-devise EUR/USD — normalizeCurrency valide + normalise UPPERCASE
-    let currency: string;
-    try {
-      currency = normalizeCurrency(input.currency);
-    } catch {
+    // M133 — Montant serveur : utiliser rfq.agreedAmountCents, jamais le body client.
+    // Rejet si le montant n'a pas été verrouillé (transition → WON sans agreedAmountCents).
+    const serverAmountCents = (rfq as { agreedAmountCents?: number | null }).agreedAmountCents;
+    if (!serverAmountCents || serverAmountCents <= 0) {
       throw new BadRequestException(
-        `Devise non supportée : ${input.currency ?? '(vide)'}. Devises acceptées : EUR, USD`,
+        'Le montant payable n\'a pas été verrouillé sur cette RFQ. ' +
+          'Contactez votre vendeur pour finaliser le devis.',
       );
     }
 
-    const applicationFeeCents = this.computeApplicationFeeCents(input.amountCents);
+    // M59: multi-devise EUR/USD — utiliser rfq.agreedCurrency, fallback EUR.
+    let currency: string;
+    try {
+      const rawCurrency = (rfq as { agreedCurrency?: string | null }).agreedCurrency ?? 'EUR';
+      currency = normalizeCurrency(rawCurrency);
+    } catch {
+      throw new BadRequestException(
+        'Devise du montant verrouillé non supportée. Devises acceptées : EUR, USD',
+      );
+    }
+
+    const applicationFeeCents = this.computeApplicationFeeCents(serverAmountCents);
 
     // 3. Crée Payment row PENDING
     const payment = await this.prisma.payment.create({
@@ -133,7 +146,7 @@ export class PaymentsService {
         sellerProfileId: sellerProfile.id,
         buyerCompanyId: rfq.buyerCompanyId,
         buyerUserId: actor.id,
-        amountCents: input.amountCents,
+        amountCents: serverAmountCents,
         currency,
         applicationFeeCents,
         status: PaymentStatus.PENDING,
@@ -144,7 +157,7 @@ export class PaymentsService {
     let sessionResult: CheckoutSessionResult;
     try {
       sessionResult = await this.provider.createCheckoutSession({
-        amountCents: input.amountCents,
+        amountCents: serverAmountCents,
         currency,
         productName: rfq.marketplaceOffer.title ?? 'Commande IOX Marketplace',
         applicationFeeCents,
@@ -171,7 +184,7 @@ export class PaymentsService {
     });
 
     this.logger.log(
-      `Checkout session created paymentId=${payment.id} sessionId=${sessionResult.sessionId} amountCents=${input.amountCents} appFee=${applicationFeeCents}`,
+      `Checkout session created paymentId=${payment.id} sessionId=${sessionResult.sessionId} amountCents=${serverAmountCents} appFee=${applicationFeeCents}`,
     );
 
     return {

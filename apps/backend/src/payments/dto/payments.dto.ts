@@ -25,10 +25,18 @@ export class CreateCheckoutSessionDto {
   @IsUUID()
   marketplaceOfferId: string;
 
-  @ApiProperty({ example: 100000, description: 'Montant total en centimes. Pas de conversion de devise — montant stocké dans la devise choisie.' })
+  // M133 — amountCents retiré du body : le montant est lu depuis rfq.agreedAmountCents (serveur).
+  // Champ conservé optionnel dans le DTO pour ne pas casser les clients existants — ignoré côté service.
+  @ApiPropertyOptional({
+    example: 240000,
+    description:
+      'DÉPRÉCIÉ — ignoré depuis M133. Le montant est lu depuis rfq.agreedAmountCents. ' +
+      'Conserver pour rétrocompatibilité uniquement.',
+  })
+  @IsOptional()
   @IsInt()
-  @Min(50) // 0.50 EUR min côté Stripe
-  amountCents: number;
+  @Min(1)
+  amountCents?: number;
 
   @ApiProperty({ example: 'https://iox.mycloud.yt/buyer/payments/return' })
   @IsString()
@@ -40,10 +48,10 @@ export class CreateCheckoutSessionDto {
   @IsUrl({ require_tld: false })
   cancelUrl: string;
 
+  // M133 — currency ignorée aussi : la devise est lue depuis rfq.agreedCurrency.
   @ApiPropertyOptional({
     example: 'EUR',
-    default: 'EUR',
-    description: 'Devise (case-insensitive). Valeurs acceptées : EUR, USD. Défaut : EUR. Pas de conversion EUR↔USD.',
+    description: 'DÉPRÉCIÉ — ignoré depuis M133. La devise est lue depuis rfq.agreedCurrency.',
   })
   @IsOptional()
   @IsString()

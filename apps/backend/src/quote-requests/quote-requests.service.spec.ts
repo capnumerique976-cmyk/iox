@@ -435,14 +435,64 @@ describe('QuoteRequestsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('WON autorisé depuis QUOTED par seller', async () => {
+    it('WON autorisé depuis QUOTED par seller (agreedAmountCents explicite)', async () => {
+      // M133 — agreedAmountCents doit être fourni ou calculable depuis unitPrice × qty
       prisma.quoteRequest.findUnique.mockResolvedValue({
         ...baseRfq,
         status: QuoteRequestStatus.QUOTED,
       });
       prisma.quoteRequest.update.mockResolvedValue({ ...baseRfq, status: QuoteRequestStatus.WON });
-      const out = await service.updateStatus('rfq-1', { status: QuoteRequestStatus.WON }, SELLER);
+      const out = await service.updateStatus(
+        'rfq-1',
+        { status: QuoteRequestStatus.WON, agreedAmountCents: 240000, agreedCurrency: 'EUR' },
+        SELLER,
+      );
       expect(out.status).toBe(QuoteRequestStatus.WON);
+      // Vérifier que le montant verrouillé est bien passé au update
+      expect(prisma.quoteRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            agreedAmountCents: 240000,
+            agreedCurrency: 'EUR',
+          }),
+        }),
+      );
+    });
+
+    it('M133 — WON sans agreedAmountCents ni unitPrice → BadRequestException', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...baseRfq,
+        status: QuoteRequestStatus.QUOTED,
+        requestedQuantity: null,
+        marketplaceOffer: { sellerProfileId: 'sp-1', unitPrice: null, currency: null },
+      });
+      await expect(
+        service.updateStatus('rfq-1', { status: QuoteRequestStatus.WON }, SELLER),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('M133 — WON auto-compute depuis unitPrice × requestedQuantity', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...baseRfq,
+        status: QuoteRequestStatus.QUOTED,
+        requestedQuantity: { toNumber: () => 2 },
+        marketplaceOffer: {
+          sellerProfileId: 'sp-1',
+          unitPrice: { toNumber: () => 1200 },
+          currency: 'EUR',
+        },
+      });
+      prisma.quoteRequest.update.mockResolvedValue({ ...baseRfq, status: QuoteRequestStatus.WON });
+      await service.updateStatus('rfq-1', { status: QuoteRequestStatus.WON }, SELLER);
+      // 1200 EUR × 2 kg = 240 000 centimes
+      expect(prisma.quoteRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            agreedAmountCents: 240000,
+            agreedCurrency: 'EUR',
+          }),
+        }),
+      );
     });
 
     // ── MP-NOTIF-2 phase 2 — Notif transitions ─────────────────────────
@@ -507,7 +557,12 @@ describe('QuoteRequestsService', () => {
     it('MP-NOTIF-2 — QUOTED→WON par seller → notif rfq-won', async () => {
       fromStatusSetup(QuoteRequestStatus.QUOTED);
       prisma.quoteRequest.update.mockResolvedValue(richUpdated(QuoteRequestStatus.WON));
-      await service.updateStatus('rfq-1', { status: QuoteRequestStatus.WON }, SELLER);
+      // M133 — agreedAmountCents requis (baseRfq n'a pas de unitPrice)
+      await service.updateStatus(
+        'rfq-1',
+        { status: QuoteRequestStatus.WON, agreedAmountCents: 240000, agreedCurrency: 'EUR' },
+        SELLER,
+      );
       expect(notifEmail.send).toHaveBeenCalledTimes(1);
       expect(notifEmail.send.mock.calls[0][0].templateId).toBe('rfq-won');
     });

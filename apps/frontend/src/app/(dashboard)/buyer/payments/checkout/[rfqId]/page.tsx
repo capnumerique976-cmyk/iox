@@ -63,11 +63,8 @@ export default function BuyerCheckoutPage() {
   }, [rfqId]);
 
   const handlePay = async () => {
-    const amountCents = Math.round(parseFloat(amountEuros) * 100);
-    if (!Number.isFinite(amountCents) || amountCents <= 0) {
-      toast.error('Montant invalide');
-      return;
-    }
+    // M133 — Le montant est verrouillé côté serveur (rfq.agreedAmountCents).
+    // Aucun amountCents transmis depuis le frontend.
     if (!offerId) {
       toast.error('Offer ID manquant');
       return;
@@ -80,7 +77,6 @@ export default function BuyerCheckoutPage() {
         {
           quoteRequestId: rfqId,
           marketplaceOfferId: offerId,
-          amountCents,
           returnUrl: `${origin}/buyer/payments/return/${rfqId}`,
           cancelUrl: `${origin}/buyer/payments/cancel/${rfqId}`,
         },

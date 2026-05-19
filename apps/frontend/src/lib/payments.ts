@@ -92,12 +92,15 @@ export const paymentsApi = {
     });
   },
 
-  /** PAY-1 LOT 3 — Crée Stripe Checkout Session pour buyer payant RFQ WON. */
+  /** PAY-1 LOT 3 — Crée Stripe Checkout Session pour buyer payant RFQ WON.
+   * M133 — amountCents retiré : montant lu depuis rfq.agreedAmountCents côté serveur. */
   async createCheckoutSession(
     input: {
       quoteRequestId: string;
       marketplaceOfferId: string;
-      amountCents: number;
+      /** @deprecated M133 — ignoré par le backend, montant verrouillé serveur. */
+      amountCents?: number;
+      /** @deprecated M133 — ignoré par le backend, devise lue depuis rfq.agreedCurrency. */
       currency?: string;
       returnUrl: string;
       cancelUrl: string;

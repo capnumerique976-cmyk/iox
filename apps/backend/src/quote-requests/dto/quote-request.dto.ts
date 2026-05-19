@@ -81,6 +81,29 @@ export class UpdateQuoteRequestStatusDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  // M133 — Montant négocié explicite (centimes entiers).
+  // Si absent lors de la transition → WON, le backend calcule
+  // unitPrice × requestedQuantity depuis l'offre et la RFQ.
+  @ApiPropertyOptional({
+    description:
+      'Montant payable convenu en centimes (ex: 240000 = 2400,00 EUR). ' +
+      'Obligatoire si le prix de l\'offre est absent ou en mode QUOTE_ONLY.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  agreedAmountCents?: number;
+
+  @ApiPropertyOptional({
+    description: 'Devise ISO 4217 du montant convenu (ex: EUR, USD). Défaut : EUR.',
+    example: 'EUR',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  agreedCurrency?: string;
 }
 
 export class AssignQuoteRequestDto {

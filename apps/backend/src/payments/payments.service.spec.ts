@@ -162,6 +162,9 @@ describe('PaymentsService', () => {
       status: QuoteRequestStatus.WON,
       buyerUserId: 'u-buyer',
       buyerCompanyId: 'co-buyer',
+      // M133 — montant verrouillé serveur
+      agreedAmountCents: 100000,
+      agreedCurrency: 'EUR',
       marketplaceOffer: {
         id: 'o1',
         title: 'Vanille premium 1kg',
@@ -175,14 +178,14 @@ describe('PaymentsService', () => {
       },
     };
 
-    it('happy path : crée Payment + Stripe session, retourne checkoutUrl', async () => {
-      prisma.quoteRequest.findUnique.mockResolvedValue(validRfq);
+    it('happy path : crée Payment + Stripe session depuis rfq.agreedAmountCents, retourne checkoutUrl', async () => {
+      // M133 — amountCents n'est plus transmis depuis le frontend, montant lu depuis rfq
+      prisma.quoteRequest.findUnique.mockResolvedValue(validRfq); // agreedAmountCents=100000
       prisma.payment.create.mockResolvedValue({ id: 'pay1' });
       const res = await service.createCheckoutSession(
         {
           quoteRequestId: 'rfq1',
           marketplaceOfferId: 'o1',
-          amountCents: 100000,
           returnUrl: 'https://iox/r',
           cancelUrl: 'https://iox/c',
         },
@@ -191,13 +194,14 @@ describe('PaymentsService', () => {
       expect(res.paymentId).toBe('pay1');
       expect(res.checkoutUrl).toContain('stripe.com');
       const data = prisma.payment.create.mock.calls[0][0].data;
+      expect(data.amountCents).toBe(100000); // depuis rfq.agreedAmountCents
       expect(data.applicationFeeCents).toBe(5000);
-      expect(data.currency).toBe('EUR');
+      expect(data.currency).toBe('EUR'); // depuis rfq.agreedCurrency
       expect(data.status).toBe(PaymentStatus.PENDING);
       expect(providerMock.createCheckoutSession).toHaveBeenCalledWith(
         expect.objectContaining({
           amountCents: 100000,
-          currency: expect.any(String),
+          currency: 'EUR',
           destinationAccountId: expect.any(String),
         }),
       );
@@ -288,15 +292,18 @@ describe('PaymentsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('M59 — currency USD → accepté, Payment créé avec currency=USD', async () => {
-      prisma.quoteRequest.findUnique.mockResolvedValue(validRfq);
+    it('M59 — agreedCurrency USD → Payment créé avec currency=USD', async () => {
+      // M133 : devise lue depuis rfq.agreedCurrency, pas depuis input.currency
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...validRfq,
+        agreedAmountCents: 150000,
+        agreedCurrency: 'USD',
+      });
       prisma.payment.create.mockResolvedValue({ id: 'pay-usd' });
       const res = await service.createCheckoutSession(
         {
           quoteRequestId: 'rfq1',
           marketplaceOfferId: 'o1',
-          amountCents: 150000,
-          currency: 'USD',
           returnUrl: 'https://iox/r',
           cancelUrl: 'https://iox/c',
         },
@@ -305,17 +312,20 @@ describe('PaymentsService', () => {
       expect(res.paymentId).toBe('pay-usd');
       const data = prisma.payment.create.mock.calls[0][0].data;
       expect(data.currency).toBe('USD');
+      expect(data.amountCents).toBe(150000);
     });
 
-    it('M59 — currency usd (lowercase) → normalisé USD, accepté', async () => {
-      prisma.quoteRequest.findUnique.mockResolvedValue(validRfq);
+    it('M59 — agreedCurrency usd (lowercase) → normalisé USD, accepté', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...validRfq,
+        agreedAmountCents: 5000,
+        agreedCurrency: 'usd',
+      });
       prisma.payment.create.mockResolvedValue({ id: 'pay-usd2' });
       await service.createCheckoutSession(
         {
           quoteRequestId: 'rfq1',
           marketplaceOfferId: 'o1',
-          amountCents: 5000,
-          currency: 'usd',
           returnUrl: 'r',
           cancelUrl: 'c',
         },
@@ -325,21 +335,32 @@ describe('PaymentsService', () => {
       expect(data.currency).toBe('USD');
     });
 
-    it('M59 — currency GBP non supporté → BadRequestException', async () => {
-      prisma.quoteRequest.findUnique.mockResolvedValue(validRfq);
+    it('M59 — agreedCurrency GBP non supporté → BadRequestException', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...validRfq,
+        agreedAmountCents: 1000,
+        agreedCurrency: 'GBP',
+      });
       await expect(
         service.createCheckoutSession(
-          {
-            quoteRequestId: 'rfq1',
-            marketplaceOfferId: 'o1',
-            amountCents: 1000,
-            currency: 'GBP',
-            returnUrl: 'r',
-            cancelUrl: 'c',
-          },
+          { quoteRequestId: 'rfq1', marketplaceOfferId: 'o1', returnUrl: 'r', cancelUrl: 'c' },
           buyer,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('M133 — agreedAmountCents null → BadRequestException (montant non verrouillé)', async () => {
+      prisma.quoteRequest.findUnique.mockResolvedValue({
+        ...validRfq,
+        agreedAmountCents: null,
+        agreedCurrency: null,
+      });
+      await expect(
+        service.createCheckoutSession(
+          { quoteRequestId: 'rfq1', marketplaceOfferId: 'o1', returnUrl: 'r', cancelUrl: 'c' },
+          buyer,
+        ),
+      ).rejects.toThrow(/montant payable n'a pas été verrouillé/);
     });
 
     it('throws BadRequestException when provider not configured', async () => {

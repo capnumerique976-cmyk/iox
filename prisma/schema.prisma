@@ -1315,6 +1315,11 @@ model QuoteRequest {
   status             QuoteRequestStatus @default(NEW)
   assignedToUserId   String?            @map("assigned_to_user_id")
 
+  // M133 — Montant payable verrouillé serveur à la transition → WON.
+  // Null tant que la RFQ n'est pas WON. Source de vérité pour le checkout Stripe.
+  agreedAmountCents  Int?               @map("agreed_amount_cents")
+  agreedCurrency     String?            @map("agreed_currency")
+
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
