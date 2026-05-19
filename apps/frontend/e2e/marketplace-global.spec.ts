@@ -123,13 +123,15 @@ test.describe('P13-A — Seller publishes product bundle', () => {
       docState.queue.filter((q) => q.reviewType === 'DOCUMENT' && q.status === 'PENDING'),
     ).toHaveLength(1);
 
-    // Public page : offre non publiée + média non approuvé → 404
-    // Utiliser page.goto() plutôt que page.request.get() pour s'assurer que
-    // Next.js renvoie bien le statut HTTP 404 (notFound()) dans tous les environnements.
-    const pubResp = await page.goto('/marketplace/products/huile-ylang-ylang-bio', {
-      timeout: 30_000,
-    });
-    expect(pubResp?.status()).toBe(404);
+    // Vérification 404 via l'API catalog (SSR mock → 404 JSON direct).
+    // page.goto() sur la page HTML retourne 200 en next dev (streaming RSC
+    // engage la réponse HTTP avant que notFound() ne soit levé dans le
+    // Server Component). Le endpoint /api/v1 est un rewrite Next.js qui
+    // proxifie vers le mock port 3199 : son statut 404 est transmis tel quel.
+    const pubResp = await page.request.get(
+      '/api/v1/marketplace/catalog/products/huile-ylang-ylang-bio',
+    );
+    expect(pubResp.status()).toBe(404);
   });
 });
 
@@ -434,7 +436,8 @@ test.describe('P13-D — Buyer creates RFQ from public product page', () => {
     await mockAuthAs(page, BUYER_USER);
     await mockRfqRoutes(page, rfq, BUYER_USER);
 
-    await loginAsRole(page, BUYER_USER);
+    // MARKETPLACE_BUYER est redirigé vers /buyer (pas /dashboard).
+    await loginAsRole(page, BUYER_USER, { expectUrl: /\/buyer$/ });
     await page.goto(`/quote-requests/new?offerId=${offer.id}`, { timeout: 60_000 });
     await expect(page.locator('option[value="company-buyer-1"]')).toHaveCount(1, {
       timeout: 30_000,
@@ -515,7 +518,7 @@ test.describe('P13-D — Buyer creates RFQ from public product page', () => {
     // Buyer revient : il ne voit PAS la note interne
     await mockAuthAs(page, BUYER_USER);
     await mockRfqRoutes(page, rfq, BUYER_USER);
-    await loginAsRole(page, BUYER_USER);
+    await loginAsRole(page, BUYER_USER, { expectUrl: /\/buyer$/ });
     await page.goto(`/quote-requests/${newRfqId}`, { timeout: 60_000 });
     await expect(page.getByText('Quel est le prix pour 100 kg')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/Prix plancher 350/i)).toHaveCount(0);
@@ -535,8 +538,10 @@ test.describe('P13-E — No public leakage of non-validated content', () => {
         { ...offer, isPublished: true, publishedAt: new Date().toISOString(), status: 'ACTIVE' },
       ],
     });
-    const resp = await page.goto(`/marketplace/products/${product.slug}`, { timeout: 30_000 });
-    expect(resp?.status()).toBe(404);
+    const resp = await page.request.get(
+      `/api/v1/marketplace/catalog/products/${product.slug}`,
+    );
+    expect(resp.status()).toBe(404);
   });
 
   test('offre suspendue → fiche publique 404 + catalogue vide', async ({ page }) => {
@@ -548,8 +553,10 @@ test.describe('P13-E — No public leakage of non-validated content', () => {
         { ...offer, isPublished: true, publishedAt: new Date().toISOString(), status: 'SUSPENDED' },
       ],
     });
-    const detail = await page.goto(`/marketplace/products/${product.slug}`, { timeout: 30_000 });
-    expect(detail?.status()).toBe(404);
+    const detail = await page.request.get(
+      `/api/v1/marketplace/catalog/products/${product.slug}`,
+    );
+    expect(detail.status()).toBe(404);
 
     await page.goto('/marketplace', { timeout: 60_000 });
     await expect(page.getByText(product.commercialName)).toHaveCount(0);
@@ -647,13 +654,14 @@ test.describe('P13-F — Login redirect flow', () => {
     });
   });
 
-  test('redirect protocol-relative ignoré → fallback /dashboard (anti open-redirect)', async ({
+  test('redirect protocol-relative ignoré → fallback /buyer (anti open-redirect)', async ({
     page,
   }) => {
     await mockAuthAs(page, BUYER_USER);
+    // Protocol-relative URL rejected → defaultLandingForRole(MARKETPLACE_BUYER) = /buyer
     await loginAsRole(page, BUYER_USER, {
       redirect: '//evil.example.com/phish',
-      expectUrl: /\/dashboard$/,
+      expectUrl: /\/buyer$/,
     });
   });
 });

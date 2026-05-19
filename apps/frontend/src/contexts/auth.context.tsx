@@ -25,7 +25,8 @@ interface AuthContextValue {
  * Normalise une URL de redirection pour éviter les open redirects :
  *  - elle doit démarrer par `/`
  *  - elle ne doit PAS être `//` (protocol-relative) ni contenir `:` (URL absolue)
- *  - fallback : `/dashboard`
+ *  - fallback : defaultLandingForRole (ex : /buyer pour MARKETPLACE_BUYER,
+ *    /seller/dashboard pour MARKETPLACE_SELLER, /dashboard pour les autres)
  */
 function safeRedirect(target: string | null | undefined, role?: UserRole): string {
   if (!target) return defaultLandingForRole(role);
