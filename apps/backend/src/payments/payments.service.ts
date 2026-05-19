@@ -14,7 +14,7 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
 import { AuditService } from '../audit/audit.service';
-import { normalizeCurrency, toStripeCurrency } from '../common/money';
+import { normalizeCurrency } from '../common/money';
 import {
   EntityType,
   PaymentStatus,
@@ -22,7 +22,13 @@ import {
   RequestUser,
   UserRole,
 } from '@iox/shared';
-import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
+import {
+  PAYMENT_PROVIDER,
+  type PaymentProvider,
+  type CheckoutSessionResult,
+  type RefundResult,
+} from './provider/payment-provider.interface';
+import { PaymentProviderError } from './provider/payment-provider.errors';
 import type { RefundPaymentDto } from './dto/payments.dto';
 import { QuoteRequestFsm } from '../quote-requests/quote-request-fsm';
 
@@ -50,7 +56,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly ownership: SellerOwnershipService,
     private readonly audit: AuditService,
-    @Inject(STRIPE_CLIENT) private readonly stripeWrapper: StripeClientWrapper,
+    @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
   ) {}
 
   /**
@@ -71,7 +77,7 @@ export class PaymentsService {
    * Transfer destination = stripeAccountId du seller (split à la source).
    */
   async createCheckoutSession(input: CreateCheckoutSessionInput, actor: RequestUser) {
-    if (!this.stripeWrapper.isConfigured()) {
+    if (!this.provider.isConfigured()) {
       throw new BadRequestException(
         'Stripe non configuré côté serveur. Contacter l\'admin.',
       );
@@ -134,50 +140,44 @@ export class PaymentsService {
       },
     });
 
-    // 4. Crée Stripe Checkout Session
-    const stripe = this.stripeWrapper.client();
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: [
-        {
-          price_data: {
-            currency: toStripeCurrency(currency),
-            product_data: {
-              name: rfq.marketplaceOffer.title ?? 'Commande IOX Marketplace',
-            },
-            unit_amount: input.amountCents,
-          },
-          quantity: 1,
-        },
-      ],
-      payment_intent_data: {
-        application_fee_amount: applicationFeeCents,
-        transfer_data: { destination: stripeAccount.stripeAccountId },
+    // 4. Crée Checkout Session via le provider
+    let sessionResult: CheckoutSessionResult;
+    try {
+      sessionResult = await this.provider.createCheckoutSession({
+        amountCents: input.amountCents,
+        currency,
+        productName: rfq.marketplaceOffer.title ?? 'Commande IOX Marketplace',
+        applicationFeeCents,
+        destinationAccountId: stripeAccount.stripeAccountId,
+        successUrl: input.returnUrl,
+        cancelUrl: input.cancelUrl,
         metadata: {
           payment_id: payment.id,
           quote_request_id: input.quoteRequestId,
           marketplace_offer_id: input.marketplaceOfferId,
         },
-      },
-      success_url: input.returnUrl,
-      cancel_url: input.cancelUrl,
-      metadata: { payment_id: payment.id },
-    });
+      });
+    } catch (err) {
+      if (err instanceof PaymentProviderError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
 
     // 5. Persist sessionId sur Payment row
     await this.prisma.payment.update({
       where: { id: payment.id },
-      data: { stripeCheckoutSessionId: session.id },
+      data: { stripeCheckoutSessionId: sessionResult.sessionId },
     });
 
     this.logger.log(
-      `Checkout session created paymentId=${payment.id} sessionId=${session.id} amountCents=${input.amountCents} appFee=${applicationFeeCents}`,
+      `Checkout session created paymentId=${payment.id} sessionId=${sessionResult.sessionId} amountCents=${input.amountCents} appFee=${applicationFeeCents}`,
     );
 
     return {
       paymentId: payment.id,
-      sessionId: session.id,
-      checkoutUrl: session.url ?? '',
+      sessionId: sessionResult.sessionId,
+      checkoutUrl: sessionResult.url,
     };
   }
 
@@ -234,7 +234,7 @@ export class PaymentsService {
   // ─── PAY-2 — Remboursement (total ou partiel) ───────────────────────────
 
   async refund(id: string, dto: RefundPaymentDto, actor: RequestUser) {
-    if (!this.stripeWrapper.isConfigured()) {
+    if (!this.provider.isConfigured()) {
       throw new BadRequestException(
         'Stripe non configuré côté serveur. Contacter l\'admin.',
       );
@@ -260,16 +260,21 @@ export class PaymentsService {
       }
     }
 
-    const stripe = this.stripeWrapper.client();
-    const refundParams: Record<string, unknown> = {
-      payment_intent: payment.stripePaymentIntentId,
-      reason: 'requested_by_customer' as const,
-    };
-    if (dto.amountCents) {
-      refundParams.amount = dto.amountCents;
+    if (!payment.stripePaymentIntentId) {
+      throw new BadRequestException('Aucun paymentIntentId associé à ce paiement.');
     }
-
-    const refund = await stripe.refunds.create(refundParams as never);
+    let refundResult: RefundResult;
+    try {
+      refundResult = await this.provider.createRefund({
+        paymentIntentId: payment.stripePaymentIntentId,
+        amountCents: dto.amountCents,
+      });
+    } catch (err) {
+      if (err instanceof PaymentProviderError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
 
     const existingMeta =
       (payment.metadataJson as Record<string, unknown> | null) ?? {};
@@ -279,7 +284,7 @@ export class PaymentsService {
         status: PaymentStatus.REFUNDED,
         metadataJson: {
           ...existingMeta,
-          refundId: (refund as { id: string }).id,
+          refundId: refundResult.refundId,
           refundReason: dto.reason ?? null,
           refundAmountCents: dto.amountCents ?? payment.amountCents,
         },
@@ -294,14 +299,14 @@ export class PaymentsService {
       previousData: { status: payment.status },
       newData: {
         status: PaymentStatus.REFUNDED,
-        refundId: (refund as { id: string }).id,
+        refundId: refundResult.refundId,
         refundAmountCents: dto.amountCents ?? payment.amountCents,
       },
       notes: dto.reason ?? undefined,
     });
 
     this.logger.log(
-      `Payment REFUNDED paymentId=${id} refundId=${(refund as { id: string }).id} amountCents=${dto.amountCents ?? payment.amountCents}`,
+      `Payment REFUNDED paymentId=${id} refundId=${refundResult.refundId} amountCents=${dto.amountCents ?? payment.amountCents}`,
     );
 
     return updated;

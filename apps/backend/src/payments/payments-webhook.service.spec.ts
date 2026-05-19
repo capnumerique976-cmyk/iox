@@ -7,6 +7,9 @@ import { PrismaService } from '../database/prisma.service';
 import { StripeOnboardingService } from './stripe-onboarding.service';
 import { NotifEmailService } from '../notif-email/notif-email.service';
 import { PaymentStatus, SellerStripeAccountStatus } from '@iox/shared';
+import { ConfigService } from '@nestjs/config';
+import { PAYMENT_PROVIDER, type PaymentProvider } from './provider/payment-provider.interface';
+import { WebhookSignatureError } from './provider/payment-provider.errors';
 
 describe('PaymentsWebhookService', () => {
   let service: PaymentsWebhookService;
@@ -18,6 +21,7 @@ describe('PaymentsWebhookService', () => {
   };
   let onboarding: { computeStatus: jest.Mock };
   let notifEmail: { send: jest.Mock };
+  let providerMock: PaymentProvider;
 
   beforeEach(async () => {
     prisma = {
@@ -55,9 +59,26 @@ describe('PaymentsWebhookService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: StripeOnboardingService, useValue: onboarding },
         { provide: NotifEmailService, useValue: notifEmail },
+        {
+          provide: PAYMENT_PROVIDER,
+          useValue: {
+            verifyWebhookEvent: jest.fn(),
+            isConfigured: jest.fn().mockReturnValue(true),
+            createCheckoutSession: jest.fn(),
+            createRefund: jest.fn(),
+            createConnectedAccount: jest.fn(),
+            generateOnboardingLink: jest.fn(),
+            retrieveAccountFlags: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('whsec_test') },
+        },
       ],
     }).compile();
     service = module.get(PaymentsWebhookService);
+    providerMock = module.get<PaymentProvider>(PAYMENT_PROVIDER as string);
   });
 
   it('payment_intent.succeeded → Payment status SUCCEEDED + IDs', async () => {
@@ -235,5 +256,56 @@ describe('PaymentsWebhookService', () => {
 
     expect(res.action).toBe('payment-succeeded');
     expect(notifEmail.send).not.toHaveBeenCalled();
+  });
+
+  describe('receiveRaw', () => {
+    it('valid signature → dispatches event, returns result', async () => {
+      const fakeEvent = {
+        id: 'evt_raw_1',
+        type: 'payment_intent.succeeded',
+        data: {
+          object: {
+            id: 'pi_raw',
+            metadata: { payment_id: 'pay_raw' },
+            latest_charge: 'ch_raw',
+            amount: 5000,
+          },
+        },
+      };
+      (providerMock.verifyWebhookEvent as jest.Mock).mockResolvedValue(fakeEvent);
+
+      const res = await service.receiveRaw(Buffer.from('{}'), 'sig_valid');
+
+      expect(providerMock.verifyWebhookEvent).toHaveBeenCalledWith(
+        Buffer.from('{}'),
+        'sig_valid',
+        'whsec_test',
+      );
+      expect(res.handled).toBe(true);
+      expect(res.action).toBe('payment-succeeded');
+      expect(res.eventType).toBe('payment_intent.succeeded');
+    });
+
+    it('WebhookSignatureError from provider bubbles up', async () => {
+      (providerMock.verifyWebhookEvent as jest.Mock).mockRejectedValue(
+        new WebhookSignatureError(),
+      );
+      await expect(service.receiveRaw(Buffer.from('{}'), 'bad_sig')).rejects.toBeInstanceOf(
+        WebhookSignatureError,
+      );
+    });
+
+    it('unknown event type → handled=false, action=ignored', async () => {
+      const unknownEvent = {
+        id: 'evt_u',
+        type: 'invoice.created',
+        data: { object: {} },
+      };
+      (providerMock.verifyWebhookEvent as jest.Mock).mockResolvedValue(unknownEvent);
+
+      const res = await service.receiveRaw(Buffer.from('{}'), 'sig_ok');
+      expect(res.handled).toBe(false);
+      expect(res.action).toBe('ignored');
+    });
   });
 });

@@ -16,7 +16,6 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
-  Inject,
   Logger,
   Param,
   ParseUUIDPipe,
@@ -33,12 +32,10 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiSecurity,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Public, Roles } from '../common/decorators/roles.decorator';
@@ -48,7 +45,10 @@ import { CreateCheckoutSessionDto, GenerateOnboardingLinkDto, RefundPaymentDto }
 import { PaymentsService } from './payments.service';
 import { PaymentsWebhookService } from './payments-webhook.service';
 import { StripeOnboardingService } from './stripe-onboarding.service';
-import { STRIPE_CLIENT, type StripeClientWrapper } from './stripe.factory';
+import {
+  WebhookSignatureError,
+  PaymentProviderNotConfiguredError,
+} from './provider/payment-provider.errors';
 import {
   OnboardingLinkResponseDto,
   PaymentCheckoutResponseDto,
@@ -66,8 +66,6 @@ export class PaymentsController {
     private readonly onboarding: StripeOnboardingService,
     private readonly payments: PaymentsService,
     private readonly webhookHandler: PaymentsWebhookService,
-    private readonly config: ConfigService,
-    @Inject(STRIPE_CLIENT) private readonly stripeWrapper: StripeClientWrapper,
   ) {}
 
   // ─── Onboarding Stripe Connect Express ───────────────────────────────────
@@ -242,7 +240,6 @@ export class PaymentsController {
     required: true,
     description: 'Signature HMAC Stripe (générée par Stripe, vérifiée côté backend)',
   })
-  @ApiSecurity({})
   @ApiOkResponse({ type: WebhookAckDto })
   @ApiBadRequestResponse({ description: 'Signature manquante ou invalide | Body raw indisponible' })
   async webhook(
@@ -252,39 +249,26 @@ export class PaymentsController {
     if (!signature) {
       throw new BadRequestException('Signature Stripe manquante');
     }
-    if (!this.stripeWrapper.isConfigured()) {
-      throw new BadRequestException('Stripe non configuré côté serveur');
-    }
-    const webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
-    if (!webhookSecret) {
-      throw new BadRequestException('STRIPE_WEBHOOK_SECRET non configuré');
-    }
 
-    // Body raw requis pour vérif signature (cf. main.ts json verify hook).
     const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
     if (!rawBody) {
-      throw new BadRequestException(
-        'Body raw indisponible (raw-body parser non câblé)',
-      );
+      throw new BadRequestException('Body raw indisponible (raw-body parser non câblé)');
     }
 
-    let event;
+    let result: { handled: boolean; action: string; eventType: string };
     try {
-      event = this.stripeWrapper.client().webhooks.constructEvent(
-        rawBody,
-        signature,
-        webhookSecret,
-      );
+      result = await this.webhookHandler.receiveRaw(rawBody, signature);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'unknown';
-      this.logger.warn(`Webhook signature verification failed: ${msg}`);
-      throw new BadRequestException(`Webhook signature invalide: ${msg}`);
+      if (err instanceof WebhookSignatureError) {
+        this.logger.warn(`Webhook signature verification failed: ${err.message}`);
+        throw new BadRequestException(`Webhook signature invalide: ${err.message}`);
+      }
+      if (err instanceof PaymentProviderNotConfiguredError) {
+        throw new BadRequestException('Stripe non configuré côté serveur');
+      }
+      throw err;
     }
 
-    this.logger.log(`Webhook received type=${event.type} id=${event.id}`);
-    const result = await this.webhookHandler.handleEvent(
-      event as unknown as Parameters<typeof this.webhookHandler.handleEvent>[0],
-    );
-    return { received: true, type: event.type, ...result };
+    return { received: true, type: result.eventType, ...result };
   }
 }

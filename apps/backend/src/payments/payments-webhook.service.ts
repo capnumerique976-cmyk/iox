@@ -7,20 +7,17 @@
 //  - account.updated (Connect) → SellerStripeAccount status sync
 //  - autres → log + ignore (return 200)
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { PaymentStatus } from '@iox/shared';
 import { StripeOnboardingService } from './stripe-onboarding.service';
 import { NotifEmailService } from '../notif-email/notif-email.service';
-// Types Stripe (Event, PaymentIntent, Account) : le SDK 22.x complique
-// l'extraction des types depuis le default export (cf. namespace merging
-// quirks). On utilise des shapes minimales typées localement — sufficient
-// pour le webhook handler V1, et précis sur les champs qu'on lit.
-interface StripeEventBase {
-  id: string;
-  type: string;
-  data: { object: unknown };
-}
+import {
+  PAYMENT_PROVIDER,
+  type PaymentProvider,
+  type PaymentEvent,
+} from './provider/payment-provider.interface';
 interface StripePaymentIntentLike {
   id: string;
   amount?: number;
@@ -41,14 +38,33 @@ interface StripeAccountLike {
 @Injectable()
 export class PaymentsWebhookService {
   private readonly logger = new Logger(PaymentsWebhookService.name);
+  private readonly webhookSecret: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly onboarding: StripeOnboardingService,
     private readonly notifEmail: NotifEmailService,
-  ) {}
+    @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
+    config: ConfigService,
+  ) {
+    this.webhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
+  }
 
-  async handleEvent(event: StripeEventBase): Promise<{ handled: boolean; action: string }> {
+  /**
+   * Webhook entry point. Verifies signature via provider, then dispatches event.
+   * Throws WebhookSignatureError if invalid — controller maps it to BadRequestException.
+   */
+  async receiveRaw(
+    payload: Buffer,
+    signature: string,
+  ): Promise<{ handled: boolean; action: string; eventType: string }> {
+    const event = await this.provider.verifyWebhookEvent(payload, signature, this.webhookSecret);
+    this.logger.log(`Webhook received type=${event.type} id=${event.id}`);
+    const result = await this.handleEvent(event);
+    return { ...result, eventType: event.type };
+  }
+
+  async handleEvent(event: PaymentEvent): Promise<{ handled: boolean; action: string }> {
     switch (event.type) {
       case 'payment_intent.succeeded':
         return this.handlePaymentIntentSucceeded(event.data.object as StripePaymentIntentLike);

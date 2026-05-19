@@ -13,7 +13,8 @@ import { PaymentsService } from './payments.service';
 import { PaymentsWebhookService } from './payments-webhook.service';
 import { StripeOnboardingService } from './stripe-onboarding.service';
 import { InvoicesService } from './invoices.service';
-import { stripeClientProvider } from './stripe.factory';
+import { PAYMENT_PROVIDER } from './provider/payment-provider.interface';
+import { StripePaymentAdapter } from './provider/stripe/stripe-payment.adapter';
 
 @Module({
   imports: [ConfigModule, DatabaseModule, CommonModule, AuditModule, NotifEmailModule],
@@ -23,7 +24,10 @@ import { stripeClientProvider } from './stripe.factory';
     PaymentsWebhookService,
     StripeOnboardingService,
     InvoicesService,
-    stripeClientProvider,
+    {
+      provide: PAYMENT_PROVIDER,
+      useClass: StripePaymentAdapter,
+    },
   ],
   exports: [PaymentsService, PaymentsWebhookService, StripeOnboardingService, InvoicesService],
 })
