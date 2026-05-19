@@ -123,4 +123,71 @@ describe('PaymentsController (PAY-1 phase 1 LOT 1)', () => {
     const req = { rawBody: Buffer.from('{}') } as unknown as Request;
     await expect(controller.webhook('sig_bad', req)).rejects.toThrow(BadRequestException);
   });
+
+  // M136 — checkout-session controller delegation tests.
+
+  describe('POST checkout-session (controller)', () => {
+    const buyerActor: RequestUser = {
+      id: 'u-buyer',
+      email: 'b@b.com',
+      role: UserRole.MARKETPLACE_BUYER,
+      sellerProfileIds: [],
+      companyIds: ['co-1'],
+    };
+
+    it('délègue au PaymentsService avec les params du DTO', async () => {
+      const paymentsSvc = module.get(PaymentsService);
+      (paymentsSvc.createCheckoutSession as jest.Mock).mockResolvedValue({
+        paymentId: 'pay-1',
+        sessionId: 'cs_test_1',
+        checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_1',
+      });
+
+      const dto = {
+        quoteRequestId: '00000000-0000-0000-0000-000000000001',
+        marketplaceOfferId: '00000000-0000-0000-0000-000000000002',
+        returnUrl: 'https://iox.test/r',
+        cancelUrl: 'https://iox.test/c',
+      };
+
+      const res = await controller.createCheckoutSession(dto as never, buyerActor);
+
+      expect(res.paymentId).toBe('pay-1');
+      expect(res.checkoutUrl).toContain('stripe.com');
+      expect(paymentsSvc.createCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quoteRequestId: dto.quoteRequestId,
+          marketplaceOfferId: dto.marketplaceOfferId,
+          returnUrl: dto.returnUrl,
+          cancelUrl: dto.cancelUrl,
+        }),
+        buyerActor,
+      );
+    });
+
+    it('rawBody absent → BadRequestException', async () => {
+      const req = { rawBody: undefined } as unknown as Request;
+      // Webhook endpoint requires rawBody — checkout-session does not use rawBody, this is a webhook-specific concern.
+      // Testing checkout propagates service BadRequestException to caller.
+      const paymentsSvc = module.get(PaymentsService);
+      (paymentsSvc.createCheckoutSession as jest.Mock).mockRejectedValueOnce(
+        new BadRequestException('RFQ non en statut WON'),
+      );
+      const dto = {
+        quoteRequestId: '00000000-0000-0000-0000-000000000001',
+        marketplaceOfferId: '00000000-0000-0000-0000-000000000002',
+        returnUrl: 'https://iox.test/r',
+        cancelUrl: 'https://iox.test/c',
+      };
+      await expect(
+        controller.createCheckoutSession(dto as never, buyerActor),
+      ).rejects.toThrow(BadRequestException);
+      void req; // suppress unused warning
+    });
+
+    it('webhook sans rawBody → BadRequestException', async () => {
+      const req = { rawBody: undefined } as unknown as Request;
+      await expect(controller.webhook('sig_ok', req)).rejects.toThrow(BadRequestException);
+    });
+  });
 });

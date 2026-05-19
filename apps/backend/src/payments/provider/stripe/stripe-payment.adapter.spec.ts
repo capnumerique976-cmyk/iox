@@ -89,4 +89,100 @@ describe('StripePaymentAdapter', () => {
       expect(mapped.message).toBe('Unknown PSP error');
     });
   });
+
+  // M136 — createCheckoutSession & createRefund param verification (SDK fully mocked).
+
+  describe('createCheckoutSession — SDK param forwarding', () => {
+    it('transmet amountCents, currency lowercase, applicationFeeCents, destinationAccountId à Stripe', async () => {
+      const adapter = makeAdapter('sk_test_abc123');
+
+      // Stub the internal Stripe SDK instance's checkout.sessions.create.
+      const fakeSession = { id: 'cs_test_mock', url: 'https://checkout.stripe.com/c/pay/cs_test_mock' };
+      const createSpy = jest.fn().mockResolvedValue(fakeSession);
+      // Access the private `stripe` property via casting.
+      (adapter as unknown as { stripe: { checkout: { sessions: { create: jest.Mock } } } }).stripe = {
+        checkout: { sessions: { create: createSpy } },
+      } as never;
+
+      const result = await adapter.createCheckoutSession({
+        amountCents: 10000,
+        currency: 'EUR',
+        productName: 'Vanille premium',
+        applicationFeeCents: 500,
+        destinationAccountId: 'acct_seller',
+        successUrl: 'https://iox/r',
+        cancelUrl: 'https://iox/c',
+        metadata: { payment_id: 'pay-1', quote_request_id: 'rfq-1', marketplace_offer_id: 'off-1' },
+      });
+
+      expect(result.sessionId).toBe('cs_test_mock');
+      expect(result.url).toBe('https://checkout.stripe.com/c/pay/cs_test_mock');
+
+      const callArg = createSpy.mock.calls[0][0];
+      expect(callArg.mode).toBe('payment');
+      // currency must be lowercase per Stripe requirements.
+      expect(callArg.line_items[0].price_data.currency).toBe('eur');
+      expect(callArg.line_items[0].price_data.unit_amount).toBe(10000);
+      expect(callArg.payment_intent_data.application_fee_amount).toBe(500);
+      expect(callArg.payment_intent_data.transfer_data.destination).toBe('acct_seller');
+      expect(callArg.payment_intent_data.metadata.payment_id).toBe('pay-1');
+    });
+
+    it('Stripe error → mapped to PaymentProviderError', async () => {
+      const adapter = makeAdapter('sk_test_abc123');
+      const genericErr = new Error('network error');
+      (adapter as unknown as { stripe: { checkout: { sessions: { create: jest.Mock } } } }).stripe = {
+        checkout: { sessions: { create: jest.fn().mockRejectedValue(genericErr) } },
+      } as never;
+
+      await expect(
+        adapter.createCheckoutSession({
+          amountCents: 100,
+          currency: 'EUR',
+          productName: 'test',
+          applicationFeeCents: 5,
+          destinationAccountId: 'acct_x',
+          successUrl: 'r',
+          cancelUrl: 'c',
+          metadata: {},
+        }),
+      ).rejects.toBeInstanceOf(PaymentProviderError);
+    });
+  });
+
+  describe('createRefund — SDK param forwarding', () => {
+    it('transmet paymentIntentId et amountCents (partial refund) à Stripe', async () => {
+      const adapter = makeAdapter('sk_test_abc123');
+      const fakeRefund = { id: 're_test_mock' };
+      const createSpy = jest.fn().mockResolvedValue(fakeRefund);
+      (adapter as unknown as { stripe: { refunds: { create: jest.Mock } } }).stripe = {
+        refunds: { create: createSpy },
+      } as never;
+
+      const result = await adapter.createRefund({
+        paymentIntentId: 'pi_test_123',
+        amountCents: 5000,
+      });
+
+      expect(result.refundId).toBe('re_test_mock');
+      const callArg = createSpy.mock.calls[0][0];
+      expect(callArg.payment_intent).toBe('pi_test_123');
+      expect(callArg.amount).toBe(5000);
+      expect(callArg.reason).toBe('requested_by_customer');
+    });
+
+    it('total refund (no amountCents) → amount omitted from Stripe call', async () => {
+      const adapter = makeAdapter('sk_test_abc123');
+      const createSpy = jest.fn().mockResolvedValue({ id: 're_total' });
+      (adapter as unknown as { stripe: { refunds: { create: jest.Mock } } }).stripe = {
+        refunds: { create: createSpy },
+      } as never;
+
+      await adapter.createRefund({ paymentIntentId: 'pi_full' });
+
+      const callArg = createSpy.mock.calls[0][0];
+      expect(callArg.payment_intent).toBe('pi_full');
+      expect(callArg.amount).toBeUndefined();
+    });
+  });
 });

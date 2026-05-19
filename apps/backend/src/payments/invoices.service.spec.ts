@@ -114,6 +114,55 @@ describe('InvoicesService', () => {
         expect.objectContaining({ action: 'INVOICE_CREATED' }),
       );
     });
+
+    // M136 — Idempotency: calling createFromPayment twice throws BadRequestException.
+    it('facture non dupliquée — deuxième appel sur même payment → BadRequestException', async () => {
+      const payment = {
+        id: 'pay-dup',
+        status: PaymentStatus.SUCCEEDED,
+        sellerProfileId: 'sp1',
+        buyerCompanyId: 'co-buyer',
+        amountCents: 5000,
+        currency: 'EUR',
+      };
+      prisma.payment.findUnique.mockResolvedValue(payment);
+      // Simulate invoice already exists for this payment.
+      prisma.invoice.findUnique.mockResolvedValue({
+        id: 'inv-existing',
+        paymentId: 'pay-dup',
+        invoiceNumber: 'IOX-2026-000001',
+      });
+
+      await expect(service.createFromPayment('pay-dup', admin)).rejects.toThrow(
+        BadRequestException,
+      );
+      // Ensure invoice.create was NOT called a second time.
+      expect(prisma.invoice.create).not.toHaveBeenCalled();
+    });
+
+    // M136 — Payment not in SUCCEEDED status → BadRequestException.
+    it('paiement non SUCCEEDED → BadRequestException (facturation impossible)', async () => {
+      prisma.payment.findUnique.mockResolvedValue({
+        id: 'pay-pending',
+        status: PaymentStatus.PENDING,
+        sellerProfileId: 'sp1',
+        buyerCompanyId: 'co-buyer',
+        amountCents: 10000,
+        currency: 'EUR',
+      });
+
+      await expect(service.createFromPayment('pay-pending', admin)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('paiement introuvable → NotFoundException', async () => {
+      prisma.payment.findUnique.mockResolvedValue(null);
+
+      await expect(service.createFromPayment('pay-404', admin)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 
   describe('listByBuyer', () => {
