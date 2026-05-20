@@ -136,7 +136,14 @@ export default function BuyerQuoteRequestDetailPage() {
     rfq.status !== QuoteRequestStatus.CANCELLED &&
     rfq.status !== QuoteRequestStatus.LOST &&
     rfq.status !== QuoteRequestStatus.WON;
-  const canPay = rfq.status === QuoteRequestStatus.WON;
+  // M133 — bouton paiement visible uniquement si WON ET agreedAmountCents défini côté serveur
+  const canPay = rfq.status === QuoteRequestStatus.WON && !!rfq.agreedAmountCents;
+  const isWonNoAmount = rfq.status === QuoteRequestStatus.WON && !rfq.agreedAmountCents;
+
+  /** Formate un montant en centimes en valeur lisible (ex: 12345 → "123.45"). */
+  function formatCents(cents: number, currency: string | null): string {
+    return `${(cents / 100).toFixed(2)} ${currency ?? 'EUR'}`;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -258,7 +265,7 @@ export default function BuyerQuoteRequestDetailPage() {
         </div>
       )}
 
-      {/* CTA paiement — visible uniquement si statut WON */}
+      {/* CTA paiement — visible uniquement si statut WON ET agreedAmountCents défini */}
       {canPay && (
         <div
           className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5"
@@ -268,11 +275,16 @@ export default function BuyerQuoteRequestDetailPage() {
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
             <div>
               <p className="font-semibold text-emerald-900">
-                Votre demande a été acceptée !
+                Votre demande a été acceptée&nbsp;!
               </p>
               <p className="mt-0.5 text-sm text-emerald-700">
                 Finalisez votre commande en procédant au paiement sécurisé via Stripe.
               </p>
+              {rfq.agreedAmountCents && (
+                <p className="mt-1 text-sm font-semibold text-emerald-900" data-testid="buyer-rfq-agreed-amount">
+                  Montant à payer : {formatCents(rfq.agreedAmountCents, rfq.agreedCurrency)}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex justify-end">
@@ -284,6 +296,23 @@ export default function BuyerQuoteRequestDetailPage() {
               <CreditCard className="h-4 w-4" />
               Finaliser le paiement
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Message si WON mais montant non encore défini */}
+      {isWonNoAmount && (
+        <div
+          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-5"
+          data-testid="buyer-rfq-no-amount-notice"
+          role="alert"
+        >
+          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-semibold text-amber-900">Demande acceptée — en attente de validation du montant</p>
+            <p className="mt-0.5 text-sm text-amber-700">
+              Votre coordinateur IOX est en train de valider le montant définitif. Vous serez notifié dès que le paiement sera disponible.
+            </p>
           </div>
         </div>
       )}

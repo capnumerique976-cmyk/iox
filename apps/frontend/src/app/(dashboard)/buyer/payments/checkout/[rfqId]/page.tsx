@@ -3,8 +3,8 @@
 // PAY-1 phase 1 LOT 4 — Page buyer checkout avec pré-remplissage depuis RFQ.
 //
 // Comportement :
-//  1. Au montage, GET /api/v1/marketplace/quote-requests/:rfqId → pré-remplit offerId + amountEuros
-//  2. Affiche résumé (produit, quantité, montant)
+//  1. Au montage, GET /api/v1/marketplace/quote-requests/:rfqId → pré-remplit offerId
+//  2. Affiche montant depuis rfq.agreedAmountCents (verrouillé côté serveur — M133)
 //  3. POST /payments/checkout-session → retourne checkoutUrl
 //  4. window.location.href = checkoutUrl (redirect Stripe)
 
@@ -17,6 +17,11 @@ import { authStorage } from '@/lib/auth';
 import { paymentsApi } from '@/lib/payments';
 import { quoteRequestsApi, type QuoteRequestSummary } from '@/lib/quote-requests';
 
+/** Formate un montant en centimes en euros/dollars lisibles (ex: 12345 → "123.45"). */
+function formatCents(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
 export default function BuyerCheckoutPage() {
   const params = useParams<{ rfqId: string }>();
   const rfqId = params.rfqId;
@@ -24,7 +29,6 @@ export default function BuyerCheckoutPage() {
   const [rfqLoading, setRfqLoading] = useState(true);
   const [rfqError, setRfqError] = useState<string | null>(null);
   const [rfq, setRfq] = useState<QuoteRequestSummary | null>(null);
-  const [amountEuros, setAmountEuros] = useState('');
   const [offerId, setOfferId] = useState('');
 
   // Pre-fill depuis le RFQ
@@ -36,22 +40,8 @@ export default function BuyerCheckoutPage() {
         const token = authStorage.getAccessToken() ?? '';
         const data = await quoteRequestsApi.get(rfqId, token);
         setRfq(data);
-        // Pre-fill offerId
+        // Pre-fill offerId uniquement — le montant vient de agreedAmountCents (M133)
         setOfferId(data.marketplaceOffer.id);
-        // Pre-fill montant : unitPrice × requestedQuantity si disponible
-        const unitPrice = data.marketplaceOffer.unitPrice;
-        const qty = data.requestedQuantity;
-        if (unitPrice && qty) {
-          const computed = parseFloat(String(unitPrice)) * parseFloat(String(qty));
-          if (Number.isFinite(computed) && computed > 0) {
-            setAmountEuros(computed.toFixed(2));
-          }
-        } else if (unitPrice) {
-          const price = parseFloat(String(unitPrice));
-          if (Number.isFinite(price) && price > 0) {
-            setAmountEuros(price.toFixed(2));
-          }
-        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'RFQ introuvable';
         setRfqError(msg);
@@ -66,7 +56,11 @@ export default function BuyerCheckoutPage() {
     // M133 — Le montant est verrouillé côté serveur (rfq.agreedAmountCents).
     // Aucun amountCents transmis depuis le frontend.
     if (!offerId) {
-      toast.error('Offer ID manquant');
+      toast.error('Offre ID manquant');
+      return;
+    }
+    if (!rfq?.agreedAmountCents) {
+      toast.error('Le montant convenu n\'a pas encore été défini. Contactez votre coordinateur IOX.');
       return;
     }
     setLoading(true);
@@ -84,7 +78,7 @@ export default function BuyerCheckoutPage() {
       );
       window.location.href = res.checkoutUrl;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur création session');
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création de la session de paiement. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -125,6 +119,11 @@ export default function BuyerCheckoutPage() {
     '—';
   const shortOfferId = offerId.length > 8 ? `${offerId.slice(0, 8)}…` : offerId;
 
+  // M133 — montant verrouillé côté serveur : rfq.agreedAmountCents (centimes) + rfq.agreedCurrency
+  const agreedCurrency = rfq?.agreedCurrency ?? rfq?.marketplaceOffer.currency ?? 'EUR';
+  const amountDisplay = rfq?.agreedAmountCents ? formatCents(rfq.agreedAmountCents) : null;
+  const hasNoAmount = rfq && !rfq.agreedAmountCents;
+
   return (
     <div className="space-y-6 p-6" data-testid="buyer-checkout-page">
       <div>
@@ -134,6 +133,18 @@ export default function BuyerCheckoutPage() {
         </p>
         <p className="mt-1 text-xs text-gray-500">RFQ : {rfqId}</p>
       </div>
+
+      {/* Alerte montant manquant */}
+      {hasNoAmount && (
+        <div
+          role="alert"
+          data-testid="buyer-checkout-no-amount-warning"
+          className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+        >
+          <AlertCircle className="mr-2 inline h-4 w-4" />
+          Le montant convenu n&apos;a pas encore été validé pour cette demande. Veuillez contacter votre coordinateur IOX avant de procéder au paiement.
+        </div>
+      )}
 
       {/* Résumé RFQ */}
       {rfq && (
@@ -163,9 +174,9 @@ export default function BuyerCheckoutPage() {
               <dd className="font-mono font-medium text-gray-800">{shortOfferId}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Montant</dt>
+              <dt className="text-gray-500">Montant convenu</dt>
               <dd className="font-semibold text-gray-900">
-                {amountEuros ? `${amountEuros} ${rfq.marketplaceOffer.currency ?? 'EUR'}` : '—'}
+                {amountDisplay ? `${amountDisplay} ${agreedCurrency}` : '—'}
               </dd>
             </div>
             <div>
@@ -200,21 +211,21 @@ export default function BuyerCheckoutPage() {
         </div>
       )}
 
-      {rfq && amountEuros && (
+      {rfq && amountDisplay && (
         <div
           className="rounded-lg bg-gray-900 p-4 text-center"
           data-testid="buyer-checkout-total"
         >
           <p className="text-xs text-gray-400 uppercase tracking-wide">Total à payer</p>
           <p className="mt-1 text-3xl font-bold text-white">
-            {amountEuros} {rfq.marketplaceOffer.currency ?? 'EUR'}
+            {amountDisplay} {agreedCurrency}
           </p>
         </div>
       )}
 
       <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-5">
         <div>
-          <label className="block text-xs font-medium text-gray-700">Offer ID</label>
+          <label className="block text-xs font-medium text-gray-700">Offre (ID)</label>
           <input
             type="text"
             value={offerId}
@@ -224,19 +235,21 @@ export default function BuyerCheckoutPage() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700">Montant total (EUR)</label>
-          {/* Montant read-only : vient du serveur (unitPrice × quantité du RFQ), non modifiable par le buyer. */}
+          <label className="block text-xs font-medium text-gray-700">
+            Montant total ({agreedCurrency})
+          </label>
+          {/* M133 — Montant verrouillé côté serveur (rfq.agreedAmountCents), non modifiable par le buyer. */}
           <p
             className="mt-1 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 select-none"
             data-testid="buyer-checkout-amount"
           >
-            {amountEuros || '—'}
+            {amountDisplay ?? '—'}
           </p>
         </div>
         <button
           type="button"
           onClick={handlePay}
-          disabled={loading}
+          disabled={loading || !rfq?.agreedAmountCents}
           className="inline-flex items-center gap-2 rounded-md bg-premium-accent px-4 py-2 text-sm font-semibold text-white shadow-premium-sm hover:bg-premium-primary disabled:opacity-50"
           data-testid="buyer-checkout-pay"
         >

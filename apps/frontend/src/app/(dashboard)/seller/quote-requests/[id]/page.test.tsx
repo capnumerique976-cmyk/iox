@@ -14,6 +14,7 @@ vi.mock('lucide-react', () => {
     CheckCircle2: icon('CheckCircle2'),
     Circle: icon('Circle'),
     XCircle: icon('XCircle'),
+    Clock: icon('Clock'),
   };
 });
 

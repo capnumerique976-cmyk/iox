@@ -10,7 +10,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Circle, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuoteRequestStatus } from '@iox/shared';
 import { useAuth } from '@/contexts/auth.context';
@@ -127,6 +127,12 @@ export default function SellerQuoteRequestDetailPage() {
 
   const isTerminal = TERMINAL_STATUSES.includes(rfq.status);
   const canMessage = !isTerminal;
+  const isWon = rfq.status === QuoteRequestStatus.WON;
+
+  /** Formate un montant en centimes en valeur lisible (ex: 12345 → "123.45"). */
+  function formatCents(cents: number, currency: string | null): string {
+    return `${(cents / 100).toFixed(2)} ${currency ?? 'EUR'}`;
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="seller-rfq-detail-page">
@@ -257,6 +263,43 @@ export default function SellerQuoteRequestDetailPage() {
           </div>
         )}
       </section>
+
+      {/* Statut paiement — visible si WON */}
+      {isWon && (
+        <section
+          className={`rounded-lg border p-4 ${
+            rfq.agreedAmountCents
+              ? 'border-emerald-200 bg-emerald-50'
+              : 'border-amber-200 bg-amber-50'
+          }`}
+          data-testid="seller-rfq-payment-status"
+        >
+          <div className="flex items-start gap-3">
+            {rfq.agreedAmountCents ? (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            ) : (
+              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            )}
+            <div>
+              <p className={`font-semibold ${rfq.agreedAmountCents ? 'text-emerald-900' : 'text-amber-900'}`}>
+                {rfq.agreedAmountCents
+                  ? 'Montant convenu — paiement acheteur en attente'
+                  : 'En attente de validation du montant'
+                }
+              </p>
+              {rfq.agreedAmountCents ? (
+                <p className="mt-0.5 text-sm text-emerald-700" data-testid="seller-rfq-agreed-amount">
+                  Montant accepté&nbsp;: {formatCents(rfq.agreedAmountCents, rfq.agreedCurrency)}
+                </p>
+              ) : (
+                <p className="mt-0.5 text-sm text-amber-700">
+                  Le coordinateur IOX est en train de valider le montant définitif avant l&apos;étape de paiement.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

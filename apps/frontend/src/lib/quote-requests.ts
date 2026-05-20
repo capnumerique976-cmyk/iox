@@ -10,6 +10,10 @@ export interface QuoteRequestSummary {
   targetMarket: string | null;
   message: string | null;
   assignedToUserId: string | null;
+  /** M133 — montant verrouillé côté serveur lors du passage en WON (en centimes). */
+  agreedAmountCents: number | null;
+  /** M133 — devise ISO 4217 correspondant à agreedAmountCents (EUR ou USD). */
+  agreedCurrency: string | null;
   createdAt: string;
   updatedAt: string;
   marketplaceOffer: {
