@@ -84,7 +84,13 @@ describe('PaymentsWebhookService', () => {
         },
         {
           provide: ConfigService,
-          useValue: { get: jest.fn().mockReturnValue('whsec_test') },
+          useValue: {
+            get: jest.fn().mockImplementation((key: string) => {
+              if (key === 'STRIPE_WEBHOOK_SECRET') return 'whsec_test';
+              if (key === 'FRONTEND_URL') return 'https://iox.mycloud.yt';
+              return undefined;
+            }),
+          },
         },
       ],
     }).compile();
@@ -220,6 +226,30 @@ describe('PaymentsWebhookService', () => {
         templateData: expect.objectContaining({
           buyerDisplayName: 'Jean Dupont',
           offerTitle: 'Vanille premium',
+        }),
+      }),
+    );
+  });
+
+  it('M137 — payment_intent.succeeded email ctaUrl = FRONTEND_URL/buyer/payments', async () => {
+    const event = {
+      id: 'evt_cta_1',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_cta1',
+          metadata: { payment_id: 'pay_cta1' },
+          latest_charge: 'ch_cta1',
+          amount: 10000,
+        },
+      },
+    };
+    await service.handleEvent(event);
+
+    expect(notifEmail.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateData: expect.objectContaining({
+          ctaUrl: 'https://iox.mycloud.yt/buyer/payments',
         }),
       }),
     );

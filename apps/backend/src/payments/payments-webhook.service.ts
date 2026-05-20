@@ -50,6 +50,7 @@ interface StripeAccountLike {
 export class PaymentsWebhookService {
   private readonly logger = new Logger(PaymentsWebhookService.name);
   private readonly webhookSecret: string;
+  private readonly frontendUrl: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -60,6 +61,7 @@ export class PaymentsWebhookService {
     config: ConfigService,
   ) {
     this.webhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
+    this.frontendUrl = config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
   }
 
   /**
@@ -200,7 +202,7 @@ export class PaymentsWebhookService {
           offerTitle,
           amountFormatted,
           paymentId: payment.id,
-          ctaUrl: '', // V1 — URL commande non encore disponible
+          ctaUrl: `${this.frontendUrl}/buyer/payments`,
         },
       });
       this.logger.log(`safeNotifyBuyer email sent paymentId=${payment.id}`);
