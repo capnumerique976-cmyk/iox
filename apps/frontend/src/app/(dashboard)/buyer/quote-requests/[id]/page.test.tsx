@@ -80,6 +80,9 @@ function makeRfq(status: QuoteRequestStatus) {
     buyerCompany: { id: 'c1', code: 'BUY', name: 'Buyer Co', country: 'FR' },
     buyerUser: { id: 'b-1', firstName: 'Bob', lastName: 'Buyer', email: 'b@ex.com' },
     assignedToUser: null,
+    // M133 — montant verrouillé côté serveur requis pour que le CTA paiement soit visible
+    agreedAmountCents: 42000,
+    agreedCurrency: 'EUR',
   };
 }
 

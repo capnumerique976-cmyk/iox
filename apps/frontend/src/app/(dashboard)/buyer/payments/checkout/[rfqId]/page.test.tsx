@@ -70,6 +70,9 @@ function makeRfq(overrides: Record<string, unknown> = {}) {
     buyerCompany: { id: 'c1', code: 'BUY', name: 'Buyer Co', country: 'FR' },
     buyerUser: { id: 'b-1', firstName: 'Bob', lastName: 'Buyer', email: 'b@ex.com' },
     assignedToUser: null,
+    // M133 — montant verrouillé côté serveur (500 EUR = 50000 centimes)
+    agreedAmountCents: 50000,
+    agreedCurrency: 'EUR',
     ...overrides,
   };
 }
