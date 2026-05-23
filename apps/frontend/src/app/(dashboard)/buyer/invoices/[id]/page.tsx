@@ -51,6 +51,32 @@ export default function BuyerInvoiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadErr, setDownloadErr] = useState<string | null>(null);
+
+  const handleDownload = useCallback(async () => {
+    if (!token || !invoice) return;
+    setDownloading(true);
+    setDownloadErr(null);
+    try {
+      const blob = await invoicesApi.downloadPdf(invoice.id, token);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `facture-${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Free memory after browser starts download (next tick).
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (e) {
+      setDownloadErr(
+        e instanceof Error ? e.message : 'Téléchargement du PDF échoué',
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }, [token, invoice]);
 
   const load = useCallback(() => {
     if (!token || !id) return;
@@ -158,21 +184,28 @@ export default function BuyerInvoiceDetailPage() {
         title={`Facture ${invoice.invoiceNumber}`}
         subtitle={formatDate(invoice.issuedAt)}
         actions={
-          invoice.pdfStorageKey ? (
-            // TODO: remplacer par l'URL signée du backend quand l'endpoint GET /invoices/:id/pdf est disponible
-            <a
-              href={`/api/v1/invoices/${invoice.id}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-              data-testid="buyer-invoice-download-pdf"
-            >
-              <Download className="h-4 w-4" />
-              Télécharger le PDF
-            </a>
-          ) : undefined
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            data-testid="buyer-invoice-download-pdf"
+          >
+            <Download className="h-4 w-4" />
+            {downloading ? 'Téléchargement…' : 'Télécharger le PDF'}
+          </button>
         }
       />
+
+      {downloadErr && (
+        <div
+          role="alert"
+          data-testid="buyer-invoice-download-error"
+          className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+        >
+          {downloadErr}
+        </div>
+      )}
 
       {/* Carte statut + montant */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
