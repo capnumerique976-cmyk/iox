@@ -30,6 +30,7 @@ export default function BuyerCheckoutPage() {
   const [rfqError, setRfqError] = useState<string | null>(null);
   const [rfq, setRfq] = useState<QuoteRequestSummary | null>(null);
   const [offerId, setOfferId] = useState('');
+  const [stripeNotConfigured, setStripeNotConfigured] = useState(false);
 
   // Pre-fill depuis le RFQ
   useEffect(() => {
@@ -78,7 +79,12 @@ export default function BuyerCheckoutPage() {
       );
       window.location.href = res.checkoutUrl;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création de la session de paiement. Veuillez réessayer.');
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.toLowerCase().includes('stripe non configuré')) {
+        setStripeNotConfigured(true);
+      } else {
+        toast.error(msg || 'Erreur lors de la création de la session de paiement. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -143,6 +149,18 @@ export default function BuyerCheckoutPage() {
         >
           <AlertCircle className="mr-2 inline h-4 w-4" />
           Le montant convenu n&apos;a pas encore été validé pour cette demande. Veuillez contacter votre coordinateur IOX avant de procéder au paiement.
+        </div>
+      )}
+
+      {/* Alerte Stripe non configuré */}
+      {stripeNotConfigured && (
+        <div
+          role="alert"
+          data-testid="stripe-not-configured-alert"
+          className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+        >
+          <AlertCircle className="mr-2 inline h-4 w-4" />
+          Paiement temporairement indisponible. Contacter le support.
         </div>
       )}
 

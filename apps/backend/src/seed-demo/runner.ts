@@ -52,6 +52,7 @@ export interface RunnerEnv {
   IOX_DEMO_SEED?: string;
   NODE_ENV?: string;
   SMOKE_SELLER_PASSWORD?: string;
+  SEED_STRIPE_ACCOUNT_ID?: string;
 }
 
 export interface RunnerOptions {
@@ -75,6 +76,7 @@ export interface RunnerOptions {
     // M62-DEMO
     | 'payment'
     | 'invoice'
+    | 'sellerStripeAccount'
   >;
   env: RunnerEnv;
   log?: (msg: string) => void;
@@ -444,6 +446,28 @@ export async function runDemoSeed(opts: RunnerOptions): Promise<RunnerSummary> {
       });
     }
     smokeSellerCreated = smokeSellerEmail;
+
+    // --- SellerStripeAccount pour le smoke-seller (configurable via env) ----
+    // Permet de tester le path "Stripe configuré" en pré-prod/test sans avoir
+    // besoin d'un vrai compte Stripe. La valeur par défaut est un ID fictif
+    // reconnaissable ; en Stripe test mode on peut surcharger via
+    // SEED_STRIPE_ACCOUNT_ID=acct_xxxx (clé test réelle).
+    const smokeSellerProfileId = sellerProfileIdBySlug.get(firstSeller.slug);
+    if (smokeSellerProfileId) {
+      const stripeAccountId =
+        env.SEED_STRIPE_ACCOUNT_ID ?? 'acct_demo_stripe_test_001';
+      await prisma.sellerStripeAccount.upsert({
+        where: { sellerProfileId: smokeSellerProfileId },
+        update: { stripeAccountId, chargesEnabled: true, payoutsEnabled: true, detailsSubmitted: true },
+        create: {
+          sellerProfileId: smokeSellerProfileId,
+          stripeAccountId,
+          chargesEnabled: true,
+          payoutsEnabled: true,
+          detailsSubmitted: true,
+        },
+      });
+    }
   }
 
   // --- MediaAssets PRIMARY APPROVED placeholders (SEED-DEMO-FIX) -----------

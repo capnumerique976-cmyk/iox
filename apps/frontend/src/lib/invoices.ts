@@ -35,4 +35,30 @@ export const invoicesApi = {
   },
   get: (id: string, token: string) =>
     api.get<InvoiceSummary>(`/invoices/${id}`, token),
+  /**
+   * Télécharge le PDF d'une facture via fetch authentifié.
+   * Le backend renvoie un binary application/pdf avec
+   * Content-Disposition: attachment.
+   * Retourne un Blob que la page peut transformer en URL et déclencher
+   * un download programmatique (préserve l'auth JWT, contrairement à un
+   * simple <a href>).
+   */
+  downloadPdf: async (id: string, token: string): Promise<Blob> => {
+    const base =
+      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || '/api/v1';
+    const res = await fetch(`${base}/invoices/${id}/pdf`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/pdf',
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(
+        text || `Téléchargement du PDF échoué (HTTP ${res.status})`,
+      );
+    }
+    return res.blob();
+  },
 };

@@ -531,5 +531,21 @@ describe('PaymentsService', () => {
         service.refund('pay1', {}, seller),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    it('isConfigured() = false → BadRequestException("Stripe non configuré côté serveur. Contacter l\'admin.")', async () => {
+      const module = await Test.createTestingModule({
+        providers: [
+          PaymentsService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: SellerOwnershipService, useValue: ownershipMock },
+          { provide: AuditService, useValue: auditMock },
+          { provide: PAYMENT_PROVIDER, useValue: makeProviderMock({ configured: false }) },
+        ],
+      }).compile();
+      const svc = module.get(PaymentsService);
+      await expect(
+        svc.refund('pay1', {}, admin),
+      ).rejects.toThrow(new BadRequestException("Stripe non configuré côté serveur. Contacter l'admin."));
+    });
   });
 });

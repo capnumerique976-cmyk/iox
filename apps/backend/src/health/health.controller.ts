@@ -155,6 +155,38 @@ export class HealthController {
     };
   }
 
+  /**
+   * M138 — Stripe configuration status (ops/monitoring).
+   * Retourne configured/mode sans exposer la clé.
+   */
+  @Get('stripe')
+  @Public()
+  @ApiOperation({
+    summary: 'Stripe configuration status — pour ops et runbook M138',
+    description:
+      'Indique si Stripe est configuré et en quel mode (test/live/unconfigured). ' +
+      'Ne révèle jamais la clé — seulement les métadonnées de configuration.',
+  })
+  stripeStatus() {
+    const key = this.config.get<string>('STRIPE_SECRET_KEY') ?? '';
+    const webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
+    const configured = key.length > 0;
+    const mode = !configured
+      ? 'unconfigured'
+      : key.startsWith('sk_test_')
+        ? 'test'
+        : key.startsWith('sk_live_')
+          ? 'live'
+          : 'unknown';
+    const webhookConfigured = webhookSecret.length > 0;
+    return {
+      configured,
+      mode,
+      webhookConfigured,
+      checkoutEnabled: configured && webhookConfigured,
+    };
+  }
+
   private async checkStorageConfig(): Promise<HealthIndicatorResult> {
     const endpoint = this.config.get<string>('MINIO_ENDPOINT');
     const bucket = this.config.get<string>('MINIO_BUCKET');

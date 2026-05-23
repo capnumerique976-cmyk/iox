@@ -40,6 +40,8 @@ interface MockedPrisma {
   // M62-DEMO
   payment: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
   invoice: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
+  // M138 — SellerStripeAccount pour smoke-seller
+  sellerStripeAccount: { upsert: jest.Mock };
 }
 
 // Nombre de RFQ WON dans le dataset (ont un paymentAmountCents).
@@ -166,6 +168,10 @@ function makePrismaMock(opts: {
         .mockResolvedValue(opts.invoiceExists ? { id: 'existing-invoice-id' } : null),
       create: jest.fn().mockResolvedValue({ id: 'mock-invoice-id' }),
       update: jest.fn().mockResolvedValue({ id: 'existing-invoice-id' }),
+    },
+    // M138 — SellerStripeAccount pour smoke-seller
+    sellerStripeAccount: {
+      upsert: jest.fn().mockResolvedValue({ id: 'mock-stripe-acct-id' }),
     },
   };
 }
