@@ -199,6 +199,23 @@ describe('BuyerCheckoutPage (PAY-1 LOT 4)', () => {
     expect(screen.getByTestId('buyer-checkout-security')).toHaveTextContent('Stripe');
   });
 
+  it('createCheckoutSession retourne 400 "Stripe non configuré" → alert "Paiement temporairement indisponible" affiché', async () => {
+    getMock.mockResolvedValue(makeRfq());
+    createCheckoutSessionMock.mockRejectedValue(
+      new Error('Stripe non configuré côté serveur. Contacter l\'admin.'),
+    );
+    const user = userEvent.setup();
+    render(<BuyerCheckoutPage />);
+    await waitFor(() => expect(screen.getByTestId('buyer-checkout-pay')).toBeInTheDocument());
+    await user.click(screen.getByTestId('buyer-checkout-pay'));
+    await waitFor(() => {
+      expect(screen.getByTestId('stripe-not-configured-alert')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('stripe-not-configured-alert')).toHaveTextContent(
+      'Paiement temporairement indisponible',
+    );
+  });
+
   it('lien retour pointe vers la demande RFQ', async () => {
     getMock.mockResolvedValue(makeRfq());
     render(<BuyerCheckoutPage />);
