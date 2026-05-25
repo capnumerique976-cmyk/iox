@@ -457,3 +457,21 @@ export enum InvoiceStatus {
   PAID = 'PAID',
   CANCELED = 'CANCELED',
 }
+
+// ─── MP-NOTIF — Email (ADR-0003) ──────────────────────────────────────────
+// Source of truth domaine pour les enums email. Identiques aux enums
+// `EmailLogStatus` / `EmailUnsubscribeType` de Prisma. Ne PAS importer
+// depuis @prisma/client en dehors de la couche persistence.
+
+export enum EmailLogStatus {
+  SENT = 'SENT',
+  FAILED = 'FAILED',
+  /** Email skipped (unsubscribed, dry-run, etc.) */
+  SKIPPED = 'SKIPPED',
+}
+
+export enum EmailUnsubscribeType {
+  ALL = 'ALL',
+  RFQ_NOTIFICATIONS = 'RFQ_NOTIFICATIONS',
+  TRANSACTIONAL = 'TRANSACTIONAL',
+}

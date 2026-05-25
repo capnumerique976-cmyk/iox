@@ -3,7 +3,7 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { EmailUnsubscribeType } from '@prisma/client';
+import { EmailUnsubscribeType } from '@iox/shared';
 
 export class ListUnsubscribesQueryDto {
   @ApiPropertyOptional({ minimum: 1, default: 1 })

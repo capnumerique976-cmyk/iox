@@ -15,7 +15,9 @@
 
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EmailLogStatus, EmailUnsubscribeType, Prisma } from '@prisma/client';
+// ADR-0003 — enums depuis @iox/shared, Prisma type pour input JSON uniquement.
+import { EmailLogStatus, EmailUnsubscribeType } from '@iox/shared';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import type {
   SendEmailInput,

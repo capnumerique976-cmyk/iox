@@ -15,7 +15,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { EmailUnsubscribeType } from '@prisma/client';
+import { EmailUnsubscribeType } from '@iox/shared';
 import { PrismaService } from '../database/prisma.service';
 
 export interface UnsubscribeTokenPayload {
@@ -150,7 +150,9 @@ export class UnsubscribeService {
       select: { unsubscribeType: true, createdAt: true },
     });
     return rows.map((r) => ({
-      unsubscribeType: r.unsubscribeType,
+      // ADR-0003 — cast au boundary persistence : Prisma string-literal
+      // union → enum domaine partageant les mêmes valeurs.
+      unsubscribeType: r.unsubscribeType as EmailUnsubscribeType,
       createdAt: r.createdAt.toISOString(),
     }));
   }
@@ -207,7 +209,8 @@ export class UnsubscribeService {
     const data = rows.map((r) => ({
       id: r.id,
       email: r.email,
-      unsubscribeType: r.unsubscribeType,
+      // ADR-0003 — cast au boundary persistence.
+      unsubscribeType: r.unsubscribeType as EmailUnsubscribeType,
       userId: r.userId ?? null,
       reason: r.reason ?? null,
       createdAt: r.createdAt.toISOString(),

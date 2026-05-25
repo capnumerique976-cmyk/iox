@@ -2,7 +2,7 @@
 
 import { IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { EmailUnsubscribeType } from '@prisma/client';
+import { EmailUnsubscribeType } from '@iox/shared';
 
 export class ToggleMyPreferenceDto {
   @ApiProperty({ enum: ['ALL', 'RFQ_NOTIFICATIONS', 'TRANSACTIONAL'] })
