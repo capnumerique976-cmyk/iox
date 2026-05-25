@@ -6,9 +6,10 @@ import { RfqReminderService } from './rfq-reminder.service';
 import { AuditModule } from '../audit/audit.module';
 import { NotifEmailModule } from '../notif-email/notif-email.module';
 import { QueueModule } from '../queue/queue.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
-  imports: [AuditModule, NotifEmailModule, QueueModule],
+  imports: [AuditModule, NotifEmailModule, QueueModule, PaymentsModule],
   providers: [QuoteRequestsService, RfqExpirationService, RfqReminderService],
   controllers: [QuoteRequestsController],
   exports: [QuoteRequestsService],

@@ -5,6 +5,7 @@ import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { MarketplaceReviewService } from '../marketplace-review/marketplace-review.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import { PricingPolicyService } from '../payments/domain/pricing-policy.service';
 import {
   ExportReadinessStatus,
   MarketplacePriceMode,
@@ -96,6 +97,7 @@ describe('MarketplaceOffersService', () => {
         { provide: AuditService, useValue: audit },
         { provide: MarketplaceReviewService, useValue: reviewQueue },
         { provide: SellerOwnershipService, useValue: ownershipMock },
+        PricingPolicyService,
       ],
     }).compile();
 
@@ -659,6 +661,7 @@ describe('MarketplaceOffersService', () => {
           { provide: AuditService, useValue: audit },
           { provide: MarketplaceReviewService, useValue: reviewQueue },
           { provide: SellerOwnershipService, useValue: sellerOwnership },
+          PricingPolicyService,
         ],
       }).compile();
       const sellerService = m.get(MarketplaceOffersService);
@@ -683,6 +686,7 @@ describe('MarketplaceOffersService', () => {
           { provide: AuditService, useValue: audit },
           { provide: MarketplaceReviewService, useValue: reviewQueue },
           { provide: SellerOwnershipService, useValue: sellerOwnership },
+          PricingPolicyService,
         ],
       }).compile();
       const sellerService = m.get(MarketplaceOffersService);

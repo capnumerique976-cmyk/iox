@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotifEmailService } from '../notif-email/notif-email.service';
+import { PricingPolicyService } from '../payments/domain/pricing-policy.service';
 import { EmailQueueService } from '../queue/services/email-queue.service';
 import {
   CreateQuoteRequestDto,
@@ -90,6 +91,7 @@ export class QuoteRequestsService {
     // routes via EmailQueueService when available.
     private notifEmail: NotifEmailService,
     private config: ConfigService,
+    private pricing: PricingPolicyService,
     // Mandat 53 — BullMQ email queue (optional: tests without Redis omit this).
     @Optional() private emailQueue?: EmailQueueService,
   ) {}
@@ -446,43 +448,29 @@ export class QuoteRequestsService {
     QuoteRequestFsm.assertTransition(rfq.status as QuoteRequestStatus, dto.status, actor);
 
     // M133 — Verrouillage serveur du montant payable à la transition → WON.
-    // Si agreedAmountCents fourni dans le dto : utiliser directement (montant négocié explicite).
-    // Sinon : calculer unitPrice × requestedQuantity depuis l'offre.
-    // Si le montant ne peut être déterminé : rejeter la transition (guard).
+    // Délègue à PricingPolicyService (ADR-0002) : single source of truth
+    // pour calcul + devises supportées + invariants.
     let agreedAmountCents: number | undefined;
     let agreedCurrency: string | undefined;
 
     if (dto.status === QuoteRequestStatus.WON) {
-      if (dto.agreedAmountCents !== undefined) {
-        agreedAmountCents = dto.agreedAmountCents;
-        agreedCurrency = dto.agreedCurrency ?? 'EUR';
-      } else {
-        const offer = rfq.marketplaceOffer as {
-          unitPrice?: { toNumber?: () => number } | number | string | null;
-          currency?: string | null;
-        } | null;
-        const unitPrice = offer?.unitPrice
-          ? typeof offer.unitPrice === 'object' && 'toNumber' in offer.unitPrice
-            ? offer.unitPrice.toNumber?.()
-            : parseFloat(String(offer.unitPrice))
-          : null;
-        const qty = rfq.requestedQuantity
-          ? typeof rfq.requestedQuantity === 'object' && 'toNumber' in rfq.requestedQuantity
-            ? (rfq.requestedQuantity as { toNumber: () => number }).toNumber()
-            : parseFloat(String(rfq.requestedQuantity))
-          : null;
-
-        if (unitPrice && qty && unitPrice > 0 && qty > 0) {
-          agreedAmountCents = Math.round(unitPrice * qty * 100);
-          agreedCurrency = offer?.currency ?? 'EUR';
-        } else {
-          throw new BadRequestException(
-            'Impossible de verrouiller le montant payable : ' +
-              'fournissez agreedAmountCents dans le body ou assurez-vous que ' +
-              "l'offre a un unitPrice et que la RFQ a une requestedQuantity.",
-          );
-        }
-      }
+      const offer = rfq.marketplaceOffer as {
+        unitPrice?: { toNumber?: () => number } | number | string | null;
+        currency?: string | null;
+      } | null;
+      const locked = this.pricing.lockAgreedAmount({
+        dtoAmountCents: dto.agreedAmountCents,
+        dtoCurrency: dto.agreedCurrency,
+        offerUnitPrice: offer?.unitPrice ?? null,
+        offerCurrency: offer?.currency ?? null,
+        requestedQuantity: rfq.requestedQuantity as
+          | number
+          | string
+          | { toNumber(): number }
+          | null,
+      });
+      agreedAmountCents = locked.agreedAmountCents;
+      agreedCurrency = locked.agreedCurrency;
     }
 
     const updated = await this.prisma.quoteRequest.update({
