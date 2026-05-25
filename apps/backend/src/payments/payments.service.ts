@@ -31,11 +31,12 @@ import {
 import { PaymentProviderError } from './provider/payment-provider.errors';
 import type { RefundPaymentDto } from './dto/payments.dto';
 import { QuoteRequestFsm } from '../quote-requests/quote-request-fsm';
+import { PricingPolicyService } from './domain/pricing-policy.service';
 
 /**
- * Commission IOX V1 : 5% du montant brut.
- * Calcul : Math.floor(amountCents * 0.05). Le seller reçoit le reste via
- * `transfer_data.destination` Stripe (split à la source).
+ * Commission IOX V1 : 5% du montant brut. Source de vérité : ADR-0002 +
+ * `PricingPolicyService.APPLICATION_FEE_PERCENT`. La constante exportée
+ * ici reste pour rétro-compat des tests existants.
  */
 export const APPLICATION_FEE_PERCENT = 0.05;
 
@@ -59,14 +60,15 @@ export class PaymentsService {
     private readonly ownership: SellerOwnershipService,
     private readonly audit: AuditService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
+    private readonly pricing: PricingPolicyService,
   ) {}
 
   /**
    * Calcule la commission IOX (gross 5%) en centimes.
-   * `Math.floor` pour garantir que la commission est ≤ amountCents.
+   * Délègue à PricingPolicyService (ADR-0002).
    */
   computeApplicationFeeCents(amountCents: number): number {
-    return Math.floor(amountCents * APPLICATION_FEE_PERCENT);
+    return this.pricing.computeApplicationFeeCents(amountCents);
   }
 
   /**

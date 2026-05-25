@@ -6,6 +6,7 @@ import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
 import { NotifEmailService } from '../notif-email/notif-email.service';
+import { PricingPolicyService } from '../payments/domain/pricing-policy.service';
 import {
   MarketplacePublicationStatus,
   MarketplaceVisibilityScope,
@@ -105,6 +106,7 @@ describe('QuoteRequestsService', () => {
         },
         { provide: NotifEmailService, useValue: notifEmail },
         { provide: ConfigService, useValue: config },
+        PricingPolicyService,
       ],
     }).compile();
 

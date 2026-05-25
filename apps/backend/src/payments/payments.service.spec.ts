@@ -8,6 +8,7 @@ import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
 import { AuditService } from '../audit/audit.service';
 import { PAYMENT_PROVIDER, type PaymentProvider } from './provider/payment-provider.interface';
+import { PricingPolicyService } from './domain/pricing-policy.service';
 import {
   PaymentStatus,
   QuoteRequestStatus,
@@ -78,6 +79,7 @@ describe('PaymentsService', () => {
         { provide: SellerOwnershipService, useValue: ownershipMock },
         { provide: AuditService, useValue: auditMock },
         { provide: PAYMENT_PROVIDER, useValue: providerMock },
+        PricingPolicyService,
       ],
     }).compile();
     service = module.get(PaymentsService);
@@ -410,6 +412,7 @@ describe('PaymentsService', () => {
           { provide: SellerOwnershipService, useValue: ownershipMock },
           { provide: AuditService, useValue: auditMock },
           { provide: PAYMENT_PROVIDER, useValue: makeProviderMock({ configured: false }) },
+          PricingPolicyService,
         ],
       }).compile();
       const svc = module.get(PaymentsService);
@@ -540,6 +543,7 @@ describe('PaymentsService', () => {
           { provide: SellerOwnershipService, useValue: ownershipMock },
           { provide: AuditService, useValue: auditMock },
           { provide: PAYMENT_PROVIDER, useValue: makeProviderMock({ configured: false }) },
+          PricingPolicyService,
         ],
       }).compile();
       const svc = module.get(PaymentsService);

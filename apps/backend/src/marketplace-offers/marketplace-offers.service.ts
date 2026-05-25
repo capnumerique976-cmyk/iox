@@ -32,6 +32,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { MarketplaceReviewService } from '../marketplace-review/marketplace-review.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import { PricingPolicyService } from '../payments/domain/pricing-policy.service';
 
 const OFFER_INCLUDE = {
   marketplaceProduct: {
@@ -56,6 +57,7 @@ export class MarketplaceOffersService {
     private auditService: AuditService,
     private reviewQueue: MarketplaceReviewService,
     private ownership: SellerOwnershipService,
+    private pricing: PricingPolicyService,
   ) {}
 
   // ─── Lecture ─────────────────────────────────────────────────────────────
@@ -843,19 +845,15 @@ export class MarketplaceOffersService {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
+  /**
+   * Délègue à PricingPolicyService (ADR-0002). Conservé en private pour
+   * minimiser le diff sur les call-sites — seul le contenu change.
+   */
   private validatePricing(
     priceMode: MarketplacePriceMode,
     unitPrice: number | null | undefined | Prisma.Decimal,
     currency: string | null | undefined,
   ) {
-    if (priceMode === MarketplacePriceMode.FIXED || priceMode === MarketplacePriceMode.FROM_PRICE) {
-      const hasPrice = unitPrice !== null && unitPrice !== undefined && Number(unitPrice) > 0;
-      if (!hasPrice) {
-        throw new BadRequestException(`priceMode=${priceMode} exige un unitPrice > 0`);
-      }
-      if (!currency) {
-        throw new BadRequestException(`priceMode=${priceMode} exige une currency`);
-      }
-    }
+    this.pricing.assertOfferPricingValid({ priceMode, unitPrice, currency });
   }
 }

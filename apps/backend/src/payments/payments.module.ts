@@ -15,6 +15,7 @@ import { StripeOnboardingService } from './stripe-onboarding.service';
 import { InvoicesService } from './invoices.service';
 import { PAYMENT_PROVIDER } from './provider/payment-provider.interface';
 import { StripePaymentAdapter } from './provider/stripe/stripe-payment.adapter';
+import { PricingPolicyService } from './domain/pricing-policy.service';
 
 @Module({
   imports: [ConfigModule, DatabaseModule, CommonModule, AuditModule, NotifEmailModule],
@@ -24,11 +25,18 @@ import { StripePaymentAdapter } from './provider/stripe/stripe-payment.adapter';
     PaymentsWebhookService,
     StripeOnboardingService,
     InvoicesService,
+    PricingPolicyService,
     {
       provide: PAYMENT_PROVIDER,
       useClass: StripePaymentAdapter,
     },
   ],
-  exports: [PaymentsService, PaymentsWebhookService, StripeOnboardingService, InvoicesService],
+  exports: [
+    PaymentsService,
+    PaymentsWebhookService,
+    StripeOnboardingService,
+    InvoicesService,
+    PricingPolicyService,
+  ],
 })
 export class PaymentsModule {}
