@@ -14,6 +14,7 @@ import {
   SellerProfileStatus,
 } from '@iox/shared';
 import type { Prisma } from '@prisma/client';
+import { MarketplaceVisibilityFilter } from './domain/marketplace-visibility-filter.service';
 
 /**
  * Service public de consultation du catalogue marketplace.
@@ -41,7 +42,10 @@ import type { Prisma } from '@prisma/client';
  */
 @Injectable()
 export class MarketplaceCatalogService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private visibility: MarketplaceVisibilityFilter,
+  ) {}
 
   // ─── Catalogue ────────────────────────────────────────────────────────────
 
@@ -153,10 +157,9 @@ export class MarketplaceCatalogService {
     const product = await this.prisma.marketplaceProduct.findFirst({
       where: {
         slug,
-        publicationStatus: {
-          in: [MarketplacePublicationStatus.APPROVED, MarketplacePublicationStatus.PUBLISHED],
-        },
-        sellerProfile: { status: SellerProfileStatus.APPROVED },
+        // ADR-0004 — règles publicProductWhere (publicationStatus +
+        // sellerProfile=APPROVED) centralisées.
+        ...this.visibility.publicProductWhere(),
       },
       include: {
         category: { select: { id: true, slug: true, nameFr: true, nameEn: true } },
@@ -176,10 +179,8 @@ export class MarketplaceCatalogService {
           },
         },
         offers: {
-          where: {
-            publicationStatus: MarketplacePublicationStatus.PUBLISHED,
-            visibilityScope: { not: MarketplaceVisibilityScope.PRIVATE },
-          },
+          // ADR-0004 — règle publicOfferWhere centralisée.
+          where: this.visibility.publicOfferWhere(),
           orderBy: [{ featuredRank: 'asc' }, { publishedAt: 'desc' }],
           select: {
             id: true,
@@ -210,7 +211,8 @@ export class MarketplaceCatalogService {
       where: {
         relatedType: MarketplaceRelatedEntityType.MARKETPLACE_PRODUCT,
         relatedId: product.id,
-        moderationStatus: MediaModerationStatus.APPROVED,
+        // ADR-0004 — règle publicMediaWhere centralisée.
+        ...this.visibility.publicMediaWhere(),
       },
       orderBy: [{ role: 'asc' }, { sortOrder: 'asc' }],
       select: {
@@ -332,7 +334,8 @@ export class MarketplaceCatalogService {
 
   async findSellerBySlug(slug: string) {
     const seller = await this.prisma.sellerProfile.findFirst({
-      where: { slug, status: SellerProfileStatus.APPROVED },
+      // ADR-0004 — règle publicSellerWhere centralisée.
+      where: { slug, ...this.visibility.publicSellerWhere() },
     });
     if (!seller) throw new NotFoundException('Vendeur introuvable ou non approuvé');
 
@@ -341,7 +344,8 @@ export class MarketplaceCatalogService {
         relatedType: MarketplaceRelatedEntityType.SELLER_PROFILE,
         relatedId: seller.id,
         role: { in: [MediaAssetRole.LOGO, MediaAssetRole.BANNER] },
-        moderationStatus: MediaModerationStatus.APPROVED,
+        // ADR-0004 — règle publicMediaWhere centralisée.
+        ...this.visibility.publicMediaWhere(),
       },
       select: { id: true, role: true, publicUrl: true, altTextFr: true },
     });
@@ -354,14 +358,10 @@ export class MarketplaceCatalogService {
       where: {
         sellerProfileId: seller.id,
         id: { in: eligibleProductIds },
-        publicationStatus: {
-          in: [MarketplacePublicationStatus.APPROVED, MarketplacePublicationStatus.PUBLISHED],
-        },
+        // ADR-0004 — règles publicProductWhere + publicOfferWhere centralisées.
+        publicationStatus: this.visibility.publicProductWhere().publicationStatus,
         offers: {
-          some: {
-            publicationStatus: MarketplacePublicationStatus.PUBLISHED,
-            visibilityScope: { not: MarketplaceVisibilityScope.PRIVATE },
-          },
+          some: this.visibility.publicOfferWhere(),
         },
       },
       orderBy: { updatedAt: 'desc' },
@@ -504,10 +504,11 @@ export class MarketplaceCatalogService {
   }
 
   private buildSellersWhere(q: SellersQueryDto): Prisma.SellerProfileWhereInput {
-    // Filtre dur — non surchargeable par la query, garantit l'invariant
-    // "aucun seller non APPROVED dans la projection publique".
+    // ADR-0004 — règle publicSellerWhere centralisée. Filtre dur non
+    // surchargeable par la query, garantit "aucun seller non APPROVED
+    // dans la projection publique".
     const where: Prisma.SellerProfileWhereInput = {
-      status: SellerProfileStatus.APPROVED,
+      ...this.visibility.publicSellerWhere(),
     };
 
     if (q.country) where.country = q.country.toUpperCase();
@@ -625,11 +626,9 @@ export class MarketplaceCatalogService {
     q: CatalogQueryDto,
     eligibleProductIds: string[],
   ): Prisma.MarketplaceOfferWhereInput {
+    // ADR-0004 — règles publicProductWhere + publicSellerWhere centralisées.
     const mpWhere: Prisma.MarketplaceProductWhereInput = {
-      publicationStatus: {
-        in: [MarketplacePublicationStatus.APPROVED, MarketplacePublicationStatus.PUBLISHED],
-      },
-      sellerProfile: { status: SellerProfileStatus.APPROVED },
+      ...this.visibility.publicProductWhere(),
     };
 
     if (q.categoryId) mpWhere.categoryId = q.categoryId;
@@ -643,8 +642,9 @@ export class MarketplaceCatalogService {
       mpWhere.productionMethod = { contains: q.productionMethod, mode: 'insensitive' };
     }
     if (q.sellerSlug) {
+      // Override sellerProfile clause : combine public rule + slug filter.
       mpWhere.sellerProfile = {
-        status: SellerProfileStatus.APPROVED,
+        ...this.visibility.publicSellerWhere(),
         slug: q.sellerSlug,
       };
     }
@@ -661,9 +661,9 @@ export class MarketplaceCatalogService {
       ];
     }
 
+    // ADR-0004 — règle publicOfferWhere centralisée.
     const where: Prisma.MarketplaceOfferWhereInput = {
-      publicationStatus: MarketplacePublicationStatus.PUBLISHED,
-      visibilityScope: { not: MarketplaceVisibilityScope.PRIVATE },
+      ...this.visibility.publicOfferWhere(),
       marketplaceProductId: { in: eligibleProductIds },
       marketplaceProduct: mpWhere,
     };
@@ -907,28 +907,19 @@ export class MarketplaceCatalogService {
    * Retourne le nombre de produits publiés, vendeurs APPROVED, et pays distincts.
    */
   async stats() {
+    // ADR-0004 — règles publicProductWhere + publicOfferWhere + publicSellerWhere centralisées.
     const [productsCount, sellersCount, countriesRaw] = await Promise.all([
       this.prisma.marketplaceProduct.count({
         where: {
-          publicationStatus: {
-            in: [
-              MarketplacePublicationStatus.APPROVED,
-              MarketplacePublicationStatus.PUBLISHED,
-            ],
-          },
-          offers: {
-            some: {
-              publicationStatus: MarketplacePublicationStatus.PUBLISHED,
-              visibilityScope: { not: MarketplaceVisibilityScope.PRIVATE },
-            },
-          },
+          publicationStatus: this.visibility.publicProductWhere().publicationStatus,
+          offers: { some: this.visibility.publicOfferWhere() },
         },
       }),
       this.prisma.sellerProfile.count({
-        where: { status: SellerProfileStatus.APPROVED },
+        where: this.visibility.publicSellerWhere(),
       }),
       this.prisma.sellerProfile.findMany({
-        where: { status: SellerProfileStatus.APPROVED },
+        where: this.visibility.publicSellerWhere(),
         select: { country: true },
         distinct: ['country'],
       }),
@@ -949,28 +940,23 @@ export class MarketplaceCatalogService {
 
     const pattern = `%${term}%`;
 
-    // Produits publiés avec une offre PUBLISHED
+    // ADR-0004 — règles publicProductWhere + publicOfferWhere centralisées.
     const products = await this.prisma.marketplaceProduct.findMany({
       where: {
         commercialName: { contains: term, mode: 'insensitive' },
-        publicationStatus: { in: [MarketplacePublicationStatus.APPROVED, MarketplacePublicationStatus.PUBLISHED] },
-        offers: {
-          some: {
-            publicationStatus: MarketplacePublicationStatus.PUBLISHED,
-            visibilityScope: { not: MarketplaceVisibilityScope.PRIVATE },
-          },
-        },
+        publicationStatus: this.visibility.publicProductWhere().publicationStatus,
+        offers: { some: this.visibility.publicOfferWhere() },
       },
       select: { id: true, slug: true, commercialName: true },
       take: 5,
       orderBy: { commercialName: 'asc' },
     });
 
-    // Vendeurs APPROVED
+    // ADR-0004 — règle publicSellerWhere centralisée.
     const sellers = await this.prisma.sellerProfile.findMany({
       where: {
         publicDisplayName: { contains: term, mode: 'insensitive' },
-        status: SellerProfileStatus.APPROVED,
+        ...this.visibility.publicSellerWhere(),
       },
       select: { id: true, slug: true, publicDisplayName: true },
       take: 3,

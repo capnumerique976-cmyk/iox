@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { MarketplaceCatalogService } from './marketplace-catalog.service';
+import { MarketplaceVisibilityFilter } from './domain/marketplace-visibility-filter.service';
 import { PrismaService } from '../database/prisma.service';
 import {
   ExportReadinessStatus,
@@ -51,7 +52,11 @@ describe('MarketplaceCatalogService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [MarketplaceCatalogService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        MarketplaceCatalogService,
+        { provide: PrismaService, useValue: prisma },
+        MarketplaceVisibilityFilter,
+      ],
     }).compile();
 
     service = module.get(MarketplaceCatalogService);
