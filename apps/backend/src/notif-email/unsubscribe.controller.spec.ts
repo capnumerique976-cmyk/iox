@@ -2,7 +2,7 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { EmailUnsubscribeType } from '@prisma/client';
+import { EmailUnsubscribeType } from '@iox/shared';
 import { UnsubscribeController } from './unsubscribe.controller';
 import { UnsubscribeService, UnsubscribeTokenError } from './unsubscribe.service';
 

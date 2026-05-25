@@ -3,7 +3,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
-import { EmailUnsubscribeType } from '@prisma/client';
+import { EmailUnsubscribeType } from '@iox/shared';
 import {
   UnsubscribeService,
   UnsubscribeTokenError,
