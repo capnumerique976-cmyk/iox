@@ -5,6 +5,7 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import { BuyerOwnershipService } from '../common/services/buyer-ownership.service';
 import { AuditService } from '../audit/audit.service';
 import {
   PaymentStatus,
@@ -81,6 +82,7 @@ describe('InvoicesService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: SellerOwnershipService, useValue: ownershipMock },
         { provide: AuditService, useValue: auditMock },
+        BuyerOwnershipService,
       ],
     }).compile();
     service = module.get(InvoicesService);
