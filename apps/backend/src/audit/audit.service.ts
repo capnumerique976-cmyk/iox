@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EntityType } from '@iox/shared';
+import { EntityType, RequestUser } from '@iox/shared';
 import { PrismaService } from '../database/prisma.service';
 
 interface CreateAuditLogParams {
@@ -14,11 +14,46 @@ interface CreateAuditLogParams {
   notes?: string;
 }
 
+/**
+ * ADR-0007 — Params typés pour `recordAction(actor, params)`.
+ * Le `userId` est extrait automatiquement de `actor.id` — ne pas le
+ * passer ici (forçage de la convention).
+ */
+export interface AuditActionParams {
+  action: string;
+  entityType: EntityType;
+  entityId: string;
+  previousData?: unknown;
+  newData?: unknown;
+  ipAddress?: string;
+  userAgent?: string;
+  notes?: string;
+}
+
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * ADR-0007 — Helper typé enforçant actor.id positionnel requis.
+   *
+   * Usage recommandé pour tout nouveau call-site. Évite l'oubli de
+   * `userId` (anti-pattern audit anonyme).
+   *
+   * Pour les call-sites système (webhooks, cron, seed) sans actor,
+   * utiliser `log()` directement avec `userId: undefined`.
+   */
+  async recordAction(
+    actor: RequestUser,
+    params: AuditActionParams,
+  ): Promise<void> {
+    return this.log({
+      ...params,
+      userId: actor.id,
+    });
+  }
 
   async log(params: CreateAuditLogParams): Promise<void> {
     try {

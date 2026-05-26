@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuditService } from './audit.service';
 import { PrismaService } from '../database/prisma.service';
-import { EntityType } from '@iox/shared';
+import { EntityType, RequestUser, UserRole } from '@iox/shared';
 
 describe('AuditService', () => {
   let service: AuditService;
@@ -75,6 +75,58 @@ describe('AuditService', () => {
       prisma.auditLog.create.mockRejectedValue(new Error('DB down'));
       await expect(
         service.log({ action: 'X', entityType: EntityType.USER, entityId: 'uuid' }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  // ADR-0007 — recordAction typed helper.
+  describe('recordAction', () => {
+    const actor: RequestUser = {
+      id: 'u-actor-1',
+      email: 'actor@iox.test',
+      role: UserRole.ADMIN,
+      sellerProfileIds: [],
+      companyIds: [],
+    };
+
+    it('inject actor.id comme userId dans Prisma create', async () => {
+      prisma.auditLog.create.mockResolvedValue({});
+      await service.recordAction(actor, {
+        action: 'INVOICE_CREATED',
+        entityType: EntityType.INVOICE,
+        entityId: 'inv-1',
+        newData: { amountCents: 10000 },
+      });
+      const data = prisma.auditLog.create.mock.calls[0][0].data;
+      expect(data.userId).toBe('u-actor-1');
+      expect(data.action).toBe('INVOICE_CREATED');
+      expect(data.newData).toEqual({ amountCents: 10000 });
+    });
+
+    it('passe previousData + newData + notes', async () => {
+      prisma.auditLog.create.mockResolvedValue({});
+      await service.recordAction(actor, {
+        action: 'PAYMENT_REFUNDED',
+        entityType: EntityType.PAYMENT,
+        entityId: 'pay-1',
+        previousData: { status: 'SUCCEEDED' },
+        newData: { status: 'REFUNDED' },
+        notes: 'Refund admin',
+      });
+      const data = prisma.auditLog.create.mock.calls[0][0].data;
+      expect(data.previousData).toEqual({ status: 'SUCCEEDED' });
+      expect(data.newData).toEqual({ status: 'REFUNDED' });
+      expect(data.notes).toBe('Refund admin');
+    });
+
+    it('ne throw pas si Prisma plante (non-bloquant)', async () => {
+      prisma.auditLog.create.mockRejectedValueOnce(new Error('DB down'));
+      await expect(
+        service.recordAction(actor, {
+          action: 'INVOICE_CREATED',
+          entityType: EntityType.INVOICE,
+          entityId: 'inv-1',
+        }),
       ).resolves.toBeUndefined();
     });
   });

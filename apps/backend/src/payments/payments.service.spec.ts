@@ -53,6 +53,7 @@ describe('PaymentsService', () => {
   };
   const auditMock = {
     log: jest.fn().mockResolvedValue(undefined),
+    recordAction: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -483,7 +484,9 @@ describe('PaymentsService', () => {
           status: PaymentStatus.REFUNDED,
         }),
       });
-      expect(auditMock.log).toHaveBeenCalledWith(
+      // ADR-0007 — assertions migrées vers recordAction
+      expect(auditMock.recordAction).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({ action: 'PAYMENT_REFUNDED' }),
       );
     });

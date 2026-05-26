@@ -190,11 +190,11 @@ export class PaymentsService {
     );
 
     // M136 — Audit log : création d'une Checkout Session.
-    await this.audit.log({
+    // ADR-0007 — recordAction(actor, params).
+    await this.audit.recordAction(actor, {
       action: 'PAYMENT_CHECKOUT_SESSION_CREATED',
       entityType: EntityType.PAYMENT,
       entityId: payment.id,
-      userId: actor.id,
       newData: {
         paymentId: payment.id,
         sessionId: sessionResult.sessionId,
@@ -322,11 +322,11 @@ export class PaymentsService {
       },
     });
 
-    await this.audit.log({
+    // ADR-0007 — recordAction(actor, params).
+    await this.audit.recordAction(actor, {
       action: 'PAYMENT_REFUNDED',
       entityType: EntityType.PAYMENT,
       entityId: id,
-      userId: actor.id,
       previousData: { status: payment.status },
       newData: {
         status: PaymentStatus.REFUNDED,

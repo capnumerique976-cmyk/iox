@@ -33,6 +33,7 @@ describe('InvoicesService', () => {
   };
   const auditMock = {
     log: jest.fn().mockResolvedValue(undefined),
+    recordAction: jest.fn().mockResolvedValue(undefined),
   };
 
   const admin: RequestUser = {
@@ -112,7 +113,9 @@ describe('InvoicesService', () => {
       expect(result.invoiceNumber).toBe(`IOX-${year}-000043`);
       expect(result.amountCents).toBe(10000);
       expect(result.paymentId).toBe('pay1');
-      expect(auditMock.log).toHaveBeenCalledWith(
+      // ADR-0007 — assertion migrée vers recordAction
+      expect(auditMock.recordAction).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({ action: 'INVOICE_CREATED' }),
       );
     });
