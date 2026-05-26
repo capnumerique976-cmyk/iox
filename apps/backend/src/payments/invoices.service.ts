@@ -85,11 +85,11 @@ export class InvoicesService {
       },
     });
 
-    await this.audit.log({
+    // ADR-0007 — recordAction(actor, params) : actor.id requis positionnel.
+    await this.audit.recordAction(actor, {
       action: 'INVOICE_CREATED',
       entityType: EntityType.INVOICE,
       entityId: invoice.id,
-      userId: actor.id,
       newData: {
         invoiceNumber,
         paymentId,
