@@ -14,6 +14,7 @@ import {
 const PDFDocument = require('pdfkit');
 import { PrismaService } from '../database/prisma.service';
 import { SellerOwnershipService } from '../common/services/seller-ownership.service';
+import { BuyerOwnershipService } from '../common/services/buyer-ownership.service';
 import { AuditService } from '../audit/audit.service';
 import {
   EntityType,
@@ -30,6 +31,7 @@ export class InvoicesService {
     private readonly prisma: PrismaService,
     private readonly ownership: SellerOwnershipService,
     private readonly audit: AuditService,
+    private readonly buyerOwnership: BuyerOwnershipService,
   ) {}
 
   /**
@@ -106,14 +108,15 @@ export class InvoicesService {
     const invoice = await this.prisma.invoice.findUnique({ where: { id } });
     if (!invoice) throw new NotFoundException('Facture introuvable');
 
-    // Ownership checks.
+    // ADR-0006 — ownership via SellerOwnership + BuyerOwnership services.
     if (!this.ownership.isStaff(actor)) {
       const isSeller =
         actor.role === UserRole.MARKETPLACE_SELLER &&
         (actor.sellerProfileIds ?? []).includes(invoice.sellerProfileId);
-      const isBuyer =
-        actor.role === UserRole.MARKETPLACE_BUYER &&
-        (actor.companyIds ?? []).includes(invoice.buyerCompanyId);
+      const isBuyer = this.buyerOwnership.canReadBuyerCompany(
+        actor,
+        invoice.buyerCompanyId,
+      );
       if (!isSeller && !isBuyer) {
         throw new NotFoundException('Facture introuvable');
       }
@@ -127,14 +130,13 @@ export class InvoicesService {
     query: { page?: number; limit?: number },
     actor: RequestUser,
   ) {
-    // Ownership : staff voit tout, buyer ne voit que ses propres companies.
-    if (!this.ownership.isStaff(actor)) {
-      if (
-        actor.role !== UserRole.MARKETPLACE_BUYER ||
-        !(actor.companyIds ?? []).includes(buyerCompanyId)
-      ) {
-        throw new ForbiddenException('Accès refusé aux factures de cette entreprise');
-      }
+    // ADR-0006 — délègue à BuyerOwnershipService.
+    try {
+      this.buyerOwnership.assertBuyerCompanyOwnership(actor, buyerCompanyId);
+    } catch {
+      throw new ForbiddenException(
+        'Accès refusé aux factures de cette entreprise',
+      );
     }
 
     const page = query.page ?? 1;
@@ -195,14 +197,15 @@ export class InvoicesService {
     });
     if (!invoice) throw new NotFoundException('Facture introuvable');
 
-    // 2. Ownership check
+    // 2. Ownership check (ADR-0006 — délègue à BuyerOwnership).
     if (!this.ownership.isStaff(actor)) {
       const isSeller =
         actor.role === UserRole.MARKETPLACE_SELLER &&
         (actor.sellerProfileIds ?? []).includes(invoice.sellerProfileId);
-      const isBuyer =
-        actor.role === UserRole.MARKETPLACE_BUYER &&
-        (actor.companyIds ?? []).includes(invoice.buyerCompanyId);
+      const isBuyer = this.buyerOwnership.canReadBuyerCompany(
+        actor,
+        invoice.buyerCompanyId,
+      );
       if (!isSeller && !isBuyer) {
         throw new NotFoundException('Facture introuvable');
       }
