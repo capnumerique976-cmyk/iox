@@ -1,8 +1,15 @@
 // PAY-1 phase 1 LOT 2 — Helper API frontend payments.
 //
-// 3 endpoints onboarding seller : onboarding-link / refresh-status / account-status.
+// ADR-0005 — délègue le transport à `api.ts` (auto-idempotency, toast 429,
+// x-request-id, ApiError unifié). Aucun `request()` custom ici.
+//
+// Endpoints couverts :
+//  - POST /payments/connect/onboarding-link
+//  - POST /payments/connect/refresh-status
+//  - GET  /payments/connect/account-status
+//  - POST /payments/checkout-session
 
-import { ApiError } from './api';
+import { api } from './api';
 import { SellerStripeAccountStatus } from '@iox/shared';
 
 export { SellerStripeAccountStatus };
@@ -24,96 +31,62 @@ export interface SellerStripeAccountSummary {
   updatedAt?: string;
 }
 
-function getApiBase(): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL;
-  if (raw && raw.trim().length > 0) return raw.replace(/\/$/, '');
-  return '/api/v1';
+export interface CheckoutSessionInput {
+  quoteRequestId: string;
+  marketplaceOfferId: string;
+  /** @deprecated M133 — ignoré par le backend, montant verrouillé serveur. */
+  amountCents?: number;
+  /** @deprecated M133 — ignoré par le backend, devise lue depuis rfq.agreedCurrency. */
+  currency?: string;
+  returnUrl: string;
+  cancelUrl: string;
 }
 
-async function request<T>(
-  path: string,
-  init: RequestInit & { token?: string },
-): Promise<T> {
-  const { token, headers, ...rest } = init;
-  const response = await fetch(`${getApiBase()}${path}`, {
-    ...rest,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(headers ?? {}),
-    },
-  });
-  const text = await response.text();
-  const parsed = text.length ? JSON.parse(text) : {};
-  if (!response.ok) {
-    const err = parsed as { error?: { code?: string; message?: string } };
-    throw new ApiError(
-      err.error?.code ?? 'UNKNOWN_ERROR',
-      err.error?.message ?? `Erreur API (${response.status})`,
-      undefined,
-      undefined,
-      response.status,
-    );
-  }
-  const body = parsed as { data?: T };
-  if (body.data === undefined) {
-    throw new ApiError('INVALID_RESPONSE', 'Réponse API inattendue.');
-  }
-  return body.data;
+export interface CheckoutSessionResult {
+  paymentId: string;
+  sessionId: string;
+  checkoutUrl: string;
 }
 
 export const paymentsApi = {
   /** Démarre ou poursuit l'onboarding Stripe Connect Express. */
-  async getOnboardingLink(
+  getOnboardingLink: (
     returnUrl: string,
     refreshUrl: string,
     token: string,
-  ): Promise<OnboardingLink> {
-    return request<OnboardingLink>('/payments/connect/onboarding-link', {
-      method: 'POST',
-      body: JSON.stringify({ returnUrl, refreshUrl }),
+  ): Promise<OnboardingLink> =>
+    api.post<OnboardingLink>(
+      '/payments/connect/onboarding-link',
+      { returnUrl, refreshUrl },
       token,
-    });
-  },
+    ),
 
   /** Sync le status compte depuis Stripe → DB. */
-  async refreshAccountStatus(token: string): Promise<SellerStripeAccountSummary> {
-    return request<SellerStripeAccountSummary>('/payments/connect/refresh-status', {
-      method: 'POST',
+  refreshAccountStatus: (token: string): Promise<SellerStripeAccountSummary> =>
+    api.post<SellerStripeAccountSummary>(
+      '/payments/connect/refresh-status',
+      {},
       token,
-    });
-  },
+    ),
 
   /** Lecture status (pas d'appel Stripe, lecture DB seule). */
-  async getAccountStatus(token: string): Promise<SellerStripeAccountSummary> {
-    return request<SellerStripeAccountSummary>('/payments/connect/account-status', {
-      method: 'GET',
+  getAccountStatus: (token: string): Promise<SellerStripeAccountSummary> =>
+    api.get<SellerStripeAccountSummary>(
+      '/payments/connect/account-status',
       token,
-    });
-  },
+    ),
 
-  /** PAY-1 LOT 3 — Crée Stripe Checkout Session pour buyer payant RFQ WON.
-   * M133 — amountCents retiré : montant lu depuis rfq.agreedAmountCents côté serveur. */
-  async createCheckoutSession(
-    input: {
-      quoteRequestId: string;
-      marketplaceOfferId: string;
-      /** @deprecated M133 — ignoré par le backend, montant verrouillé serveur. */
-      amountCents?: number;
-      /** @deprecated M133 — ignoré par le backend, devise lue depuis rfq.agreedCurrency. */
-      currency?: string;
-      returnUrl: string;
-      cancelUrl: string;
-    },
+  /**
+   * PAY-1 LOT 3 — Crée Stripe Checkout Session pour buyer payant RFQ WON.
+   * M133 — amountCents retiré : montant lu depuis rfq.agreedAmountCents
+   * côté serveur.
+   *
+   * Idempotency-Key automatique via `api.post` (ADR-0005) — protège
+   * contre la double-soumission/replay HTTP.
+   */
+  createCheckoutSession: (
+    input: CheckoutSessionInput,
     token: string,
-  ): Promise<{ paymentId: string; sessionId: string; checkoutUrl: string }> {
-    return request<{ paymentId: string; sessionId: string; checkoutUrl: string }>(
-      '/payments/checkout-session',
-      {
-        method: 'POST',
-        body: JSON.stringify(input),
-        token,
-      },
-    );
-  },
+  ): Promise<CheckoutSessionResult> =>
+    api.post<CheckoutSessionResult>('/payments/checkout-session', input, token),
 };
